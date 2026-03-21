@@ -1,5 +1,4 @@
-import { writeFileSync, mkdirSync } from "node:fs";
-import { readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import {
   Application,
@@ -10,6 +9,21 @@ import {
   ReflectionKind,
   ParameterType,
 } from "typedoc";
+import { estimateTokens } from "@to-skills/core";
+
+/** Max description length in llms.txt summary (rachfop pattern: 150, Mintlify: 300) */
+const SUMMARY_DESC_MAX = 150;
+
+/** Section ordering — functions/classes first (primary API), types/enums in Optional */
+const SECTION_ORDER: Record<string, number> = {
+  Functions: 1,
+  Classes: 2,
+  Variables: 3,
+  Interfaces: 10,
+  Types: 11,
+  Enums: 12,
+  Other: 20,
+};
 
 export function load(app: Application): void {
   app.options.addDeclaration({
@@ -45,22 +59,30 @@ export function load(app: Application): void {
     const projectName = pkg.name || project.name;
     const description = pkg.description || "";
 
-    // Generate llms.txt (link index / summary)
+    // Generate llms.txt (summary index)
     const llmsTxt = renderLlmsTxt(project, projectName, description);
     const llmsTxtPath = join(outDir, "llms.txt");
     mkdirSync(dirname(llmsTxtPath), { recursive: true });
     writeFileSync(llmsTxtPath, llmsTxt, "utf-8");
-    app.logger.info(`[llms-txt] Generated ${llmsTxtPath}`);
+    app.logger.info(
+      `[llms-txt] Generated ${llmsTxtPath} (~${estimateTokens(llmsTxt)} tokens)`,
+    );
 
     // Generate llms-full.txt (complete API content)
     if (generateFull) {
       const llmsFullTxt = renderLlmsFullTxt(project, projectName, description);
       const llmsFullPath = join(outDir, "llms-full.txt");
       writeFileSync(llmsFullPath, llmsFullTxt, "utf-8");
-      app.logger.info(`[llms-txt] Generated ${llmsFullPath}`);
+      app.logger.info(
+        `[llms-txt] Generated ${llmsFullPath} (~${estimateTokens(llmsFullTxt)} tokens)`,
+      );
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// llms.txt — summary index with truncated descriptions
+// ---------------------------------------------------------------------------
 
 function renderLlmsTxt(
   project: ProjectReflection,
@@ -80,19 +102,38 @@ function renderLlmsTxt(
   );
 
   if (modules.length > 0) {
-    // Monorepo: list each module with its exports
     for (const mod of modules) {
       lines.push(`## ${mod.name}\n`);
       renderModuleSummary(mod, lines);
     }
   } else {
-    // Single package
-    lines.push("## API\n");
     renderModuleSummary(project as unknown as DeclarationReflection, lines);
   }
 
   return lines.join("\n");
 }
+
+function renderModuleSummary(
+  mod: DeclarationReflection | ProjectReflection,
+  lines: string[],
+): void {
+  const children = (mod as DeclarationReflection).children ?? [];
+  const { primary, optional } = groupByPriority(children);
+
+  // Primary API sections (Functions, Classes, Variables)
+  renderGroupedSections(primary, lines, true);
+
+  // Optional section (Types, Interfaces, Enums) — per llmstxt.org spec,
+  // agents can drop this when context is tight
+  if (optional.length > 0) {
+    lines.push("## Optional\n");
+    renderGroupedSections(optional, lines, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// llms-full.txt — complete API content
+// ---------------------------------------------------------------------------
 
 function renderLlmsFullTxt(
   project: ProjectReflection,
@@ -115,6 +156,7 @@ function renderLlmsFullTxt(
     for (const mod of modules) {
       lines.push(`## ${mod.name}\n`);
       renderModuleFull(mod, lines);
+      lines.push("\n---\n");
     }
   } else {
     renderModuleFull(project as unknown as DeclarationReflection, lines);
@@ -123,27 +165,10 @@ function renderLlmsFullTxt(
   return lines.join("\n");
 }
 
-function renderModuleSummary(mod: DeclarationReflection | ProjectReflection, lines: string[]): void {
-  const children = (mod as DeclarationReflection).children ?? [];
-
-  const groups: Record<string, DeclarationReflection[]> = {};
-  for (const child of children) {
-    const kind = getKindLabel(child.kind);
-    if (!groups[kind]) groups[kind] = [];
-    groups[kind]!.push(child);
-  }
-
-  for (const [kind, members] of Object.entries(groups)) {
-    lines.push(`### ${kind}\n`);
-    for (const m of members) {
-      const desc = getShortDescription(m);
-      lines.push(`- \`${m.name}\`${desc ? `: ${desc}` : ""}`);
-    }
-    lines.push("");
-  }
-}
-
-function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines: string[]): void {
+function renderModuleFull(
+  mod: DeclarationReflection | ProjectReflection,
+  lines: string[],
+): void {
   const children = (mod as DeclarationReflection).children ?? [];
 
   for (const child of children) {
@@ -152,11 +177,14 @@ function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines:
     const desc = getFullDescription(child);
     if (desc) lines.push(`${desc}\n`);
 
-    // Signature
+    // Function signature
     if (child.kind === ReflectionKind.Function && child.signatures?.length) {
       const sig = child.signatures[0]!;
       const params = (sig.parameters ?? [])
-        .map((p) => `${p.name}${p.flags.isOptional ? "?" : ""}: ${p.type?.toString() ?? "unknown"}`)
+        .map(
+          (p) =>
+            `${p.name}${p.flags.isOptional ? "?" : ""}: ${p.type?.toString() ?? "unknown"}`,
+        )
         .join(", ");
       const ret = sig.type?.toString() ?? "void";
       lines.push("```ts", `function ${child.name}(${params}): ${ret}`, "```\n");
@@ -165,7 +193,9 @@ function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines:
         lines.push("**Parameters:**");
         for (const p of sig.parameters) {
           const pdesc = getCommentText(p.comment);
-          lines.push(`- \`${p.name}\`: \`${p.type?.toString() ?? "unknown"}\`${pdesc ? ` — ${pdesc}` : ""}`);
+          lines.push(
+            `- \`${p.name}\`: \`${p.type?.toString() ?? "unknown"}\`${pdesc ? ` — ${pdesc}` : ""}`,
+          );
         }
         lines.push("");
       }
@@ -173,13 +203,20 @@ function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines:
 
     // Class members
     if (child.kind === ReflectionKind.Class && child.children?.length) {
-      const props = child.children.filter((c) => c.kind === ReflectionKind.Property && !c.flags.isPrivate);
-      const methods = child.children.filter((c) => c.kind === ReflectionKind.Method && !c.flags.isPrivate);
+      const props = child.children.filter(
+        (c) => c.kind === ReflectionKind.Property && !c.flags.isPrivate,
+      );
+      const methods = child.children.filter(
+        (c) => c.kind === ReflectionKind.Method && !c.flags.isPrivate,
+      );
 
       if (props.length > 0) {
         lines.push("**Properties:**");
         for (const p of props) {
-          lines.push(`- \`${p.name}: ${p.type?.toString() ?? "unknown"}\`${getShortDescription(p) ? ` — ${getShortDescription(p)}` : ""}`);
+          const pdesc = getShortDescription(p);
+          lines.push(
+            `- \`${p.name}: ${p.type?.toString() ?? "unknown"}\`${pdesc ? ` — ${pdesc}` : ""}`,
+          );
         }
         lines.push("");
       }
@@ -196,7 +233,8 @@ function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines:
 
     // Interface/TypeAlias
     if (
-      (child.kind === ReflectionKind.Interface || child.kind === ReflectionKind.TypeAlias) &&
+      (child.kind === ReflectionKind.Interface ||
+        child.kind === ReflectionKind.TypeAlias) &&
       child.type
     ) {
       lines.push("```ts", `type ${child.name} = ${child.type.toString()}`, "```\n");
@@ -212,6 +250,74 @@ function renderModuleFull(mod: DeclarationReflection | ProjectReflection, lines:
   }
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Split children into primary (functions, classes) and optional (types, enums) */
+function groupByPriority(children: DeclarationReflection[]): {
+  primary: DeclarationReflection[];
+  optional: DeclarationReflection[];
+} {
+  const primary: DeclarationReflection[] = [];
+  const optional: DeclarationReflection[] = [];
+
+  for (const child of children) {
+    const order = SECTION_ORDER[getKindLabel(child.kind)] ?? 20;
+    if (order <= 3) {
+      primary.push(child);
+    } else {
+      optional.push(child);
+    }
+  }
+
+  return { primary, optional };
+}
+
+function renderGroupedSections(
+  children: DeclarationReflection[],
+  lines: string[],
+  truncate: boolean,
+): void {
+  const groups: Record<string, DeclarationReflection[]> = {};
+
+  for (const child of children) {
+    const kind = getKindLabel(child.kind);
+    if (!groups[kind]) groups[kind] = [];
+    groups[kind]!.push(child);
+  }
+
+  // Sort groups by SECTION_ORDER
+  const sorted = Object.entries(groups).sort(
+    ([a], [b]) => (SECTION_ORDER[a] ?? 20) - (SECTION_ORDER[b] ?? 20),
+  );
+
+  for (const [kind, members] of sorted) {
+    lines.push(`### ${kind}\n`);
+    for (const m of members) {
+      const desc = truncate
+        ? truncateDescription(getShortDescription(m))
+        : getShortDescription(m);
+      lines.push(`- \`${m.name}\`${desc ? `: ${desc}` : ""}`);
+    }
+    lines.push("");
+  }
+}
+
+/** Truncate description to SUMMARY_DESC_MAX chars, keeping first sentence */
+function truncateDescription(desc: string): string {
+  if (!desc || desc.length <= SUMMARY_DESC_MAX) return desc;
+
+  // Try to cut at sentence boundary
+  const firstSentence = desc.match(/^[^.!?]+[.!?]/)?.[0];
+  if (firstSentence && firstSentence.length <= SUMMARY_DESC_MAX) {
+    return firstSentence;
+  }
+
+  // Hard truncate with ellipsis
+  return desc.slice(0, SUMMARY_DESC_MAX - 3) + "...";
+}
+
 function getKindLabel(kind: ReflectionKind): string {
   if (kind === ReflectionKind.Function) return "Functions";
   if (kind === ReflectionKind.Class) return "Classes";
@@ -225,7 +331,6 @@ function getKindLabel(kind: ReflectionKind): string {
 function getShortDescription(decl: DeclarationReflection): string {
   const text = getCommentText(decl.comment);
   if (text) return text.split("\n")[0]!;
-  // Fall back to first signature comment
   if (decl.signatures?.length) {
     return getCommentText(decl.signatures[0]!.comment).split("\n")[0] ?? "";
   }
