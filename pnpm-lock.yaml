@@ -45,6 +45,15 @@ importers:
         specifier: ^0.28.17
         version: 0.28.17(typescript@5.9.3)
 
+  packages/typedoc-plugin:
+    dependencies:
+      '@to-skills/typedoc':
+        specifier: workspace:*
+        version: link:../typedoc
+      typedoc:
+        specifier: '>=0.28.0'
+        version: 0.28.17(typescript@5.9.3)
+
 packages:
 
   '@babel/runtime@7.29.2':
