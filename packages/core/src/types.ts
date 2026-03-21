@@ -4,6 +4,8 @@ export interface ExtractedSkill {
   name: string;
   /** Package description */
   description: string;
+  /** License identifier (e.g. "MIT", "Apache-2.0") */
+  license?: string;
   /** Exported functions */
   functions: ExtractedFunction[];
   /** Exported classes */
@@ -72,7 +74,7 @@ export interface RenderedSkill {
 
 /** Options controlling skill rendering */
 export interface SkillRenderOptions {
-  /** Output directory for skill files */
+  /** Output directory for skill files (default: ".github/skills") */
   outDir: string;
   /** Include usage examples (default: true) */
   includeExamples: boolean;
@@ -82,4 +84,6 @@ export interface SkillRenderOptions {
   maxTokens: number;
   /** Custom name prefix */
   namePrefix: string;
+  /** License to include in frontmatter (default: read from package.json) */
+  license: string;
 }

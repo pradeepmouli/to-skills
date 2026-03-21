@@ -15,6 +15,7 @@ const DEFAULT_OPTIONS: SkillRenderOptions = {
   includeSignatures: true,
   maxTokens: 4000,
   namePrefix: "",
+  license: "",
 };
 
 /** Render multiple extracted skills into SKILL.md files */
@@ -37,12 +38,23 @@ export function renderSkill(
   const sections: string[] = [];
 
   // Frontmatter
-  sections.push(renderFrontmatter(skillName, skill.description));
+  sections.push(
+    renderFrontmatter(skillName, skill.description, opts.license || skill.license || ""),
+  );
+
+  // Title
+  sections.push(`# ${skill.name}`);
 
   // Overview
   if (skill.description) {
     sections.push(skill.description);
   }
+
+  // When to Use
+  sections.push(renderWhenToUse(skill));
+
+  // Quick Reference (summary of exported API surface)
+  sections.push(renderQuickReference(skill));
 
   // Functions
   if (skill.functions.length > 0) {
@@ -77,13 +89,74 @@ export function renderSkill(
   };
 }
 
-function renderFrontmatter(name: string, description: string): string {
-  return [
-    "---",
-    `name: ${name}`,
-    `description: ${description || `API reference for ${name}`}`,
-    "---",
-  ].join("\n");
+function renderFrontmatter(
+  name: string,
+  description: string,
+  license: string,
+): string {
+  const lines = ["---", `name: ${name}`];
+
+  // Build a trigger-rich description for agent discovery
+  const desc = description || `API reference for ${name}`;
+  lines.push(`description: ${quoteYaml(desc)}`);
+
+  if (license) {
+    lines.push(`license: ${license}`);
+  }
+
+  lines.push("---");
+  return lines.join("\n");
+}
+
+/** Quote YAML string values that contain special characters */
+function quoteYaml(value: string): string {
+  if (/[:#{}[\],&*?|>!%@`"']/.test(value) || value.includes("\n")) {
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
+}
+
+function renderWhenToUse(skill: ExtractedSkill): string {
+  const triggers: string[] = [];
+
+  if (skill.functions.length > 0) {
+    const names = skill.functions.slice(0, 5).map((f) => `\`${f.name}()\``);
+    triggers.push(`- Working with ${names.join(", ")}${skill.functions.length > 5 ? ", and more" : ""}`);
+  }
+
+  if (skill.classes.length > 0) {
+    const names = skill.classes.slice(0, 3).map((c) => `\`${c.name}\``);
+    triggers.push(`- Using ${names.join(", ")} classes`);
+  }
+
+  if (skill.types.length > 0) {
+    triggers.push(`- Implementing types/interfaces from this package`);
+  }
+
+  if (triggers.length === 0) return "";
+
+  return "## When to Use\n\n" + triggers.join("\n");
+}
+
+function renderQuickReference(skill: ExtractedSkill): string {
+  const items: string[] = [];
+
+  if (skill.functions.length > 0) {
+    items.push(`**${skill.functions.length} functions** — ${skill.functions.map((f) => `\`${f.name}\``).join(", ")}`);
+  }
+  if (skill.classes.length > 0) {
+    items.push(`**${skill.classes.length} classes** — ${skill.classes.map((c) => `\`${c.name}\``).join(", ")}`);
+  }
+  if (skill.types.length > 0) {
+    items.push(`**${skill.types.length} types** — ${skill.types.map((t) => `\`${t.name}\``).join(", ")}`);
+  }
+  if (skill.enums.length > 0) {
+    items.push(`**${skill.enums.length} enums** — ${skill.enums.map((e) => `\`${e.name}\``).join(", ")}`);
+  }
+
+  if (items.length === 0) return "";
+
+  return "## Quick Reference\n\n" + items.join("\n");
 }
 
 function renderFunctions(
