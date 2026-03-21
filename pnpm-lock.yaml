@@ -35,16 +35,6 @@ importers:
 
   packages/core: {}
 
-  packages/llms-txt:
-    dependencies:
-      '@to-skills/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      typedoc:
-        specifier: ^0.28.17
-        version: 0.28.17(typescript@5.9.3)
-
   packages/typedoc:
     dependencies:
       '@to-skills/core':

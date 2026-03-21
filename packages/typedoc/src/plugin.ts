@@ -1,10 +1,12 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { Application, Converter, type Context, ParameterType } from "typedoc";
-import { renderSkills, writeSkills } from "@to-skills/core";
+import { renderSkills, writeSkills, renderLlmsTxt } from "@to-skills/core";
 import { extractSkills } from "./extractor.js";
 
 export function load(app: Application): void {
+  // --- Skills options ---
+
   app.options.addDeclaration({
     name: "skillsOutDir",
     help: "[Skills] Output directory for generated skill files",
@@ -54,24 +56,45 @@ export function load(app: Application): void {
     defaultValue: "",
   });
 
+  // --- llms.txt options ---
+
+  app.options.addDeclaration({
+    name: "llmsTxt",
+    help: "[Skills] Generate llms.txt and llms-full.txt alongside skills",
+    type: ParameterType.Boolean,
+    defaultValue: false,
+  });
+
+  app.options.addDeclaration({
+    name: "llmsTxtOutDir",
+    help: "[Skills] Output directory for llms.txt files (default: repo root)",
+    type: ParameterType.String,
+    defaultValue: ".",
+  });
+
+  // --- Main handler ---
+
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
     const project = context.project;
+    const perPackage = app.options.getValue("skillsPerPackage") as boolean;
+    const skills = extractSkills(project, perPackage);
+
+    const pkg = readPackageJson();
+
+    // Generate SKILL.md files
     const outDir = app.options.getValue("skillsOutDir") as string;
     const license =
-      (app.options.getValue("skillsLicense") as string) || readLicenseFromPackageJson();
+      (app.options.getValue("skillsLicense") as string) || pkg.license || "";
 
-    const opts = {
+    const rendered = renderSkills(skills, {
       outDir,
       includeExamples: app.options.getValue("skillsIncludeExamples") as boolean,
       includeSignatures: app.options.getValue("skillsIncludeSignatures") as boolean,
       maxTokens: app.options.getValue("skillsMaxTokens") as number,
       namePrefix: app.options.getValue("skillsNamePrefix") as string,
       license,
-    };
+    });
 
-    const perPackage = app.options.getValue("skillsPerPackage") as boolean;
-    const skills = extractSkills(project, perPackage);
-    const rendered = renderSkills(skills, opts);
     writeSkills(rendered, { outDir });
 
     for (const skill of rendered) {
@@ -79,15 +102,34 @@ export function load(app: Application): void {
       app.logger.info(`[skills] ${skill.filename}${tokens}`);
     }
     app.logger.info(`[skills] Generated ${rendered.length} skill(s) in ${outDir}/`);
+
+    // Generate llms.txt / llms-full.txt (if enabled)
+    const llmsEnabled = app.options.getValue("llmsTxt") as boolean;
+    if (llmsEnabled) {
+      const llmsOutDir = app.options.getValue("llmsTxtOutDir") as string;
+      const result = renderLlmsTxt(skills, {
+        projectName: pkg.name || project.name,
+        projectDescription: pkg.description || "",
+      });
+
+      mkdirSync(llmsOutDir, { recursive: true });
+
+      const summaryPath = join(llmsOutDir, "llms.txt");
+      writeFileSync(summaryPath, result.summary, "utf-8");
+      app.logger.info(`[llms-txt] ${summaryPath} (~${result.summaryTokens} tokens)`);
+
+      const fullPath = join(llmsOutDir, "llms-full.txt");
+      writeFileSync(fullPath, result.full, "utf-8");
+      app.logger.info(`[llms-txt] ${fullPath} (~${result.fullTokens} tokens)`);
+    }
   });
 }
 
-function readLicenseFromPackageJson(): string {
+function readPackageJson(): { name?: string; description?: string; license?: string } {
   try {
     const raw = readFileSync(join(process.cwd(), "package.json"), "utf-8");
-    const pkg = JSON.parse(raw) as { license?: string };
-    return pkg.license ?? "";
+    return JSON.parse(raw) as { name?: string; description?: string; license?: string };
   } catch {
-    return "";
+    return {};
   }
 }
