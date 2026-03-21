@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
 import { Application, Converter, type Context, ParameterType } from "typedoc";
 import { renderSkills, writeSkills, renderLlmsTxt } from "@to-skills/core";
 import { extractSkills } from "./extractor.js";
@@ -77,9 +77,14 @@ export function load(app: Application): void {
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
     const project = context.project;
     const perPackage = app.options.getValue("skillsPerPackage") as boolean;
-    const skills = extractSkills(project, perPackage);
-
     const pkg = readPackageJson();
+
+    // Extract with package metadata for richer skills
+    const skills = extractSkills(project, perPackage, {
+      keywords: pkg.keywords,
+      repository: normalizeRepoUrl(pkg.repository),
+      author: typeof pkg.author === "string" ? pkg.author : pkg.author?.name,
+    });
 
     // Generate SKILL.md files
     const outDir = app.options.getValue("skillsOutDir") as string;
@@ -125,11 +130,29 @@ export function load(app: Application): void {
   });
 }
 
-function readPackageJson(): { name?: string; description?: string; license?: string } {
+interface PackageJson {
+  name?: string;
+  description?: string;
+  license?: string;
+  keywords?: string[];
+  repository?: string | { type?: string; url?: string };
+  author?: string | { name?: string };
+}
+
+function readPackageJson(): PackageJson {
   try {
     const raw = readFileSync(join(process.cwd(), "package.json"), "utf-8");
-    return JSON.parse(raw) as { name?: string; description?: string; license?: string };
+    return JSON.parse(raw) as PackageJson;
   } catch {
     return {};
   }
+}
+
+function normalizeRepoUrl(repo: PackageJson["repository"]): string | undefined {
+  if (!repo) return undefined;
+  if (typeof repo === "string") return repo;
+  const url = repo.url;
+  if (!url) return undefined;
+  // Normalize git+https://...git to https://...
+  return url.replace(/^git\+/, "").replace(/\.git$/, "");
 }

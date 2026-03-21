@@ -76,6 +76,13 @@ export function renderSkill(
     sections.push("## Examples\n\n" + skill.examples.join("\n\n"));
   }
 
+  // Additional documentation (from projectDocuments, README sections, etc.)
+  if (skill.documents && skill.documents.length > 0) {
+    for (const doc of skill.documents) {
+      sections.push(`## ${doc.title}\n\n${doc.content}`);
+    }
+  }
+
   // Secondary: Types and Enums (supporting definitions)
   if (skill.types.length > 0) {
     sections.push(renderTypes(skill.types));
@@ -84,6 +91,10 @@ export function renderSkill(
   if (skill.enums.length > 0) {
     sections.push(renderEnums(skill.enums));
   }
+
+  // Links
+  const links = renderLinks(skill);
+  if (links) sections.push(links);
 
   const raw = sections.join("\n\n");
   const content = truncateToTokenBudget(raw, opts.maxTokens);
@@ -122,6 +133,17 @@ function buildDescription(skill: ExtractedSkill): string {
 
   if (triggers.length > 0) {
     parts.push(`Use when working with ${triggers.join(", ")}.`);
+  }
+
+  // Enrich with keywords from package.json
+  if (skill.keywords && skill.keywords.length > 0) {
+    // Filter out generic keywords, keep domain-specific ones
+    const useful = skill.keywords.filter(
+      (k) => !["typescript", "javascript", "node", "nodejs", "npm", "library"].includes(k.toLowerCase()),
+    );
+    if (useful.length > 0) {
+      parts.push(`Keywords: ${useful.join(", ")}.`);
+    }
   }
 
   const full = parts.join(" ");
@@ -165,6 +187,24 @@ function quoteYaml(value: string): string {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
   return value;
+}
+
+// ---------------------------------------------------------------------------
+// Links section
+// ---------------------------------------------------------------------------
+
+function renderLinks(skill: ExtractedSkill): string {
+  const links: string[] = [];
+
+  if (skill.repository) {
+    links.push(`- [Repository](${skill.repository})`);
+  }
+  if (skill.author) {
+    links.push(`- Author: ${skill.author}`);
+  }
+
+  if (links.length === 0) return "";
+  return "## Links\n\n" + links.join("\n");
 }
 
 // ---------------------------------------------------------------------------

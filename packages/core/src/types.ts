@@ -6,6 +6,14 @@ export interface ExtractedSkill {
   description: string;
   /** License identifier (e.g. "MIT", "Apache-2.0") */
   license?: string;
+  /** Keywords from package.json — used to enrich trigger descriptions */
+  keywords?: string[];
+  /** Repository URL */
+  repository?: string;
+  /** Author name */
+  author?: string;
+  /** Additional documentation content (from projectDocuments, README, etc.) */
+  documents?: ExtractedDocument[];
   /** Exported functions */
   functions: ExtractedFunction[];
   /** Exported classes */
@@ -62,6 +70,13 @@ export interface ExtractedProperty {
   type: string;
   description: string;
   optional: boolean;
+}
+
+export interface ExtractedDocument {
+  /** Document title */
+  title: string;
+  /** Document content (markdown) */
+  content: string;
 }
 
 /** A rendered skill file ready to write */

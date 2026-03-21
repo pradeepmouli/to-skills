@@ -6,6 +6,7 @@ export type {
   ExtractedEnum,
   ExtractedParameter,
   ExtractedProperty,
+  ExtractedDocument,
   RenderedSkill,
   SkillRenderOptions,
 } from "./types.js";

@@ -14,32 +14,50 @@ import type {
   ExtractedEnum,
   ExtractedParameter,
   ExtractedProperty,
+  ExtractedDocument,
 } from "@to-skills/core";
+
+/** Package metadata to enrich extracted skills */
+export interface PackageMetadata {
+  keywords?: string[];
+  repository?: string;
+  author?: string;
+}
 
 /** Extract structured API info from the TypeDoc reflection tree */
 export function extractSkills(
   project: ProjectReflection,
   perPackage: boolean,
+  metadata?: PackageMetadata,
 ): ExtractedSkill[] {
   const children = project.children ?? [];
+  const documents = extractDocuments(project);
 
   const modules = children.filter(
     (c) => c.kind === ReflectionKind.Module || c.kind === ReflectionKind.Namespace,
   );
 
   if (modules.length > 0 && perPackage) {
-    return modules.map(extractModule);
+    return modules.map((mod) => extractModule(mod, metadata, documents));
   }
 
-  return [extractModule(project as unknown as DeclarationReflection)];
+  return [extractModule(project as unknown as DeclarationReflection, metadata, documents)];
 }
 
-function extractModule(mod: DeclarationReflection | ProjectReflection): ExtractedSkill {
+function extractModule(
+  mod: DeclarationReflection | ProjectReflection,
+  metadata?: PackageMetadata,
+  documents?: ExtractedDocument[],
+): ExtractedSkill {
   const children = (mod as DeclarationReflection).children ?? [];
 
   return {
     name: mod.name,
     description: getCommentText(mod.comment),
+    keywords: metadata?.keywords,
+    repository: metadata?.repository,
+    author: metadata?.author,
+    documents,
     functions: children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction),
     classes: children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass),
     types: children
@@ -158,6 +176,24 @@ function getExamples(comment: Comment | undefined): string[] {
         .trim(),
     )
     .filter(Boolean);
+}
+
+/** Extract projectDocuments from the TypeDoc reflection tree */
+function extractDocuments(project: ProjectReflection): ExtractedDocument[] {
+  const docs: ExtractedDocument[] = [];
+
+  // TypeDoc 0.28+ stores documents on reflections
+  const projectDocs = (project as unknown as { documents?: Array<{ name: string; content?: Array<{ text: string }> }> }).documents;
+  if (projectDocs) {
+    for (const doc of projectDocs) {
+      const content = doc.content?.map((part) => part.text).join("").trim();
+      if (content) {
+        docs.push({ title: doc.name, content });
+      }
+    }
+  }
+
+  return docs;
 }
 
 function getTagMap(comment: Comment | undefined): Record<string, string> {

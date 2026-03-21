@@ -1,6 +1,6 @@
 {
   "name": "@to-skills/typedoc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TypeDoc plugin that generates AI agent skills (SKILL.md) from TypeScript API documentation",
   "type": "module",
   "exports": {
