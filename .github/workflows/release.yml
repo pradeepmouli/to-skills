@@ -1,0 +1,98 @@
+# Release Workflow with Changesets
+#
+# Uses Changesets to automate versioning and publishing to npm.
+# Supports npm Trusted Publishers (OIDC) for secure, token-free publishing.
+#
+# How it works:
+# 1. On push to master, Changesets creates a "Version Packages" PR
+# 2. When that PR is merged, packages are automatically published to npm
+# 3. GitHub releases are created automatically
+#
+# Setup — npm Trusted Publishers (OIDC):
+# 1. Enable "Trusted Publishers" on your npm package settings page
+# 2. Add GitHub Actions as trusted publisher (repo + workflow: release.yml)
+# 3. No NPM_TOKEN needed!
+#
+# Fallback: set NPM_TOKEN in repository secrets for token-based auth.
+
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Create releases and tags
+      pull-requests: write  # Create version PRs
+      id-token: write       # Required for OIDC trusted publishers
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install npm v11 (OIDC fix)
+        run: npm install -g npm@11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset:version
+          publish: pnpm changeset:publish
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Enable auto-merge on version PR
+        if: steps.changesets.outputs.hasChangesets == 'true'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:changeset-release/master`
+            });
+            if (pulls.length === 0) return;
+            const pr = pulls[0];
+            await github.graphql(`
+              mutation($id: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) {
+                  pullRequest { number }
+                }
+              }
+            `, { id: pr.node_id });
+            console.log(`Auto-merge enabled on PR #${pr.number}`);

@@ -1,0 +1,31 @@
+{
+  "name": "@to-skills/core",
+  "version": "0.1.0",
+  "description": "Shared types, SKILL.md renderer, and token budgeting for to-skills plugins",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "type-check": "tsgo --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/core"
+  }
+}

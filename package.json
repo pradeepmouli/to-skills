@@ -1,0 +1,63 @@
+{
+  "name": "to-skills",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generate structured AI agent skills (SKILL.md) from documentation sources — TypeDoc, Docusaurus, OpenAPI, and more",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "vitest",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "type-check": "pnpm -r run type-check",
+    "clean": "pnpm -r run clean",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "pnpm run build && changeset publish",
+    "audit": "pnpm audit --audit-level moderate",
+    "outdated": "pnpm outdated -r",
+    "update:deps": "pnpm update -r --latest",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged",
+    "pre-push": "pnpm run type-check"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "oxfmt",
+      "oxlint --fix"
+    ],
+    "*.{json,md}": [
+      "oxfmt --no-error-on-unmatched-pattern"
+    ]
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.4",
+    "@types/node": "^25.5.0",
+    "lint-staged": "^15.5.1",
+    "oxlint": "^0.16.6",
+    "simple-git-hooks": "^2.12.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.6.2",
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git"
+  }
+}

@@ -1,0 +1,156 @@
+name: Security Audit
+
+on:
+  # Run on every push to main and PRs
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Run weekly on Monday at 3am UTC
+  schedule:
+    - cron: '0 3 * * 1'
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run security audit
+        id: audit
+        run: |
+          # Run audit and capture output
+          pnpm audit --audit-level moderate --json > audit-report.json || audit_exit_code=$?
+          audit_exit_code=${audit_exit_code:-0}
+
+          # If pnpm audit failed for reasons other than "vulnerabilities found",
+          # fail the step instead of silently ignoring the error.
+          if [ "$audit_exit_code" -ge 2 ]; then
+            echo "::error::pnpm audit failed with exit code $audit_exit_code"
+            exit "$audit_exit_code"
+          fi
+
+          # Check if there are vulnerabilities
+          VULNERABILITIES=$(cat audit-report.json | grep -c "\"type\": \"auditAdvisory\"" || true)
+
+          if [ "$VULNERABILITIES" -gt 0 ]; then
+            echo "found_vulnerabilities=true" >> $GITHUB_OUTPUT
+            echo "vulnerability_count=$VULNERABILITIES" >> $GITHUB_OUTPUT
+          else
+            echo "found_vulnerabilities=false" >> $GITHUB_OUTPUT
+            echo "vulnerability_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Display audit results
+        if: steps.audit.outputs.found_vulnerabilities == 'true'
+        run: |
+          echo "⚠️ Found ${{ steps.audit.outputs.vulnerability_count }} security vulnerabilities"
+          pnpm audit --audit-level moderate
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.audit.outputs.found_vulnerabilities == 'true'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const auditReport = JSON.parse(fs.readFileSync('audit-report.json', 'utf8'));
+
+            const comment = `## ⚠️ Security Audit Warning
+
+            Found ${{ steps.audit.outputs.vulnerability_count }} security vulnerabilities in dependencies.
+
+            Please review the audit results and update vulnerable packages before merging.
+
+            Run \`pnpm audit\` locally for detailed information.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+      - name: Fail if critical vulnerabilities found
+        if: steps.audit.outputs.found_vulnerabilities == 'true'
+        run: |
+          echo "::error::Security vulnerabilities detected. Please address them before merging."
+          exit 1
+
+  outdated:
+    name: Check Outdated Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only run on schedule, not on every PR
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "# Outdated Dependencies Report" > outdated-report.md
+          echo "" >> outdated-report.md
+          pnpm outdated -r --format json > outdated.json || true
+
+          if [ -s outdated.json ]; then
+            echo "Found outdated dependencies:"
+            cat outdated.json
+            echo "✅ Renovate/Dependabot will create PRs for outdated packages"
+          else
+            echo "All dependencies are up to date!"
+          fi
+
+      - name: Upload outdated report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: outdated-dependencies-report
+          path: outdated.json
+          retention-days: 7

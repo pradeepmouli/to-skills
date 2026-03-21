@@ -1,0 +1,81 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "schedule:weekly"],
+  "packageRules": [
+    {
+      "description": "Auto-merge minor and patch updates",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "groupName": "TypeScript and related",
+      "matchPackageNames": ["typescript"],
+      "matchPackagePatterns": ["^@types/"]
+    },
+    {
+      "groupName": "Testing frameworks",
+      "matchPackageNames": ["vitest"],
+      "matchPackagePatterns": ["^@vitest/", "^@testing-library/"]
+    },
+    {
+      "groupName": "Code quality tools",
+      "matchPackageNames": ["oxlint", "oxfmt", "lint-staged"]
+    },
+    {
+      "groupName": "Build tools",
+      "matchPackageNames": ["tsx", "tsconfig", "vite", "tsgo"]
+    },
+    {
+      "groupName": "Changesets",
+      "matchPackageNames": ["@changesets/cli"],
+      "matchPackagePatterns": ["^@changesets/"]
+    },
+    {
+      "groupName": "pnpm",
+      "matchManagers": ["pnpm"],
+      "matchPackageNames": ["pnpm"],
+      "matchFiles": ["package.json"]
+    },
+    {
+      "groupName": "Runtime dependencies",
+      "matchPackagePatterns": ["^(?!@types/)"],
+      "matchDepTypes": ["dependencies"]
+    },
+    {
+      "description": "Update GitHub Actions",
+      "matchDatasources": ["github-tags"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Separate major updates for breaking changes",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "major-update"]
+    }
+  ],
+  "schedule": ["before 6am on Monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies"],
+  "reviewers": [],
+  "rebaseWhen": "conflicted",
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore(deps):",
+  "rangeStrategy": "auto",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 3am on the first day of the month"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security", "dependencies"],
+    "automerge": false
+  },
+  "timezone": "UTC",
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Updates Dashboard"
+}

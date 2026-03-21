@@ -1,0 +1,113 @@
+name: Auto-generate Changeset
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Change type (auto = detect from commits)'
+        required: false
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  changeset:
+    name: Generate changeset
+    runs-on: ubuntu-latest
+    # Skip bot commits (prevents loop), version PRs, and dependency PRs
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.head_ref, 'changeset-release/') &&
+      !startsWith(github.head_ref, 'changeset/') &&
+      !startsWith(github.head_ref, 'dependabot/') &&
+      !startsWith(github.head_ref, 'renovate/')
+
+    steps:
+      - name: Resolve branch name
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "name=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.branch.outputs.name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for existing changeset
+        id: check
+        run: |
+          COUNT=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | wc -l | tr -d ' ')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Existing changesets: $COUNT"
+
+      - name: Generate and commit changeset
+        if: steps.check.outputs.count == '0'
+        run: |
+          # Determine base for commit comparison
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=$(git merge-base origin/master HEAD)
+          else
+            BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "master")
+          fi
+
+          COMMITS=$(git log ${BASE}..HEAD --pretty=format:"%s" --no-merges)
+          echo "Commits since base:"
+          echo "$COMMITS"
+
+          # Detect change type
+          TYPE="${{ inputs.type }}"
+          if [ -z "$TYPE" ] || [ "$TYPE" = "auto" ]; then
+            if echo "$COMMITS" | grep -qiE "^(feat|feature)(\(.+\))?!:|BREAKING.CHANGE"; then
+              TYPE="major"
+            elif echo "$COMMITS" | grep -qiE "^(feat|feature)(\(.+\))?:"; then
+              TYPE="minor"
+            else
+              TYPE="patch"
+            fi
+          fi
+          echo "Change type: $TYPE"
+
+          # Build package frontmatter from non-private workspace packages
+          FRONTMATTER=""
+          for pkg_json in packages/*/package.json; do
+            [ -f "$pkg_json" ] || continue
+            PRIVATE=$(jq -r '.private // false' "$pkg_json" 2>/dev/null || echo 'false')
+            NAME=$(jq -r '.name // ""' "$pkg_json" 2>/dev/null || echo '')
+            if [ "$PRIVATE" != "true" ] && [ -n "$NAME" ] && [ "$NAME" != "null" ]; then
+              FRONTMATTER="${FRONTMATTER}  \"${NAME}\": ${TYPE}\n"
+            fi
+          done
+
+          if [ -z "$FRONTMATTER" ]; then
+            echo "No publishable packages found — skipping changeset"
+            exit 0
+          fi
+
+          # Build summary from commits (up to 5, cleaned)
+          SUMMARY=$(echo "$COMMITS" | head -5 | sed 's/^/- /' | tr -d '\r')
+
+          # Write changeset file
+          TIMESTAMP=$(date +%s)
+          printf -- '---\n%b---\n\n%s\n' "$FRONTMATTER" "$SUMMARY" > ".changeset/${TIMESTAMP}.md"
+
+          echo "Created .changeset/${TIMESTAMP}.md:"
+          cat ".changeset/${TIMESTAMP}.md"
+
+          # Commit directly to branch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".changeset/${TIMESTAMP}.md"
+          git commit -m "chore: add auto-generated changeset (${TYPE})"
+          git push origin HEAD:${{ steps.branch.outputs.name }}

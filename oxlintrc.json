@@ -1,0 +1,32 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlintrc.json",
+  "rules": {
+    "typescript": {
+      "no-explicit-any": "warn",
+      "no-unused-vars": "error",
+      "consistent-type-imports": "error"
+    },
+    "import": {
+      "no-duplicates": "error"
+    },
+    "unicorn": {
+      "filename-case": "off"
+    }
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "*.config.ts",
+    "*.config.js",
+    ".github",
+    ".gemini",
+    ".specify",
+    ".codex",
+    ".claude",
+    ".agents",
+    ".changeset",
+    ".vscode"
+  ]
+}
