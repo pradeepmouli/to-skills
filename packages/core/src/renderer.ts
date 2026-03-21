@@ -7,7 +7,10 @@ import type {
   RenderedSkill,
   SkillRenderOptions,
 } from "./types.js";
-import { truncateToTokenBudget } from "./tokens.js";
+import { estimateTokens, truncateToTokenBudget } from "./tokens.js";
+
+/** agentskills.io spec: max 1024 chars for description */
+const DESCRIPTION_MAX = 1024;
 
 const DEFAULT_OPTIONS: SkillRenderOptions = {
   outDir: "skills",
@@ -37,9 +40,10 @@ export function renderSkill(
 
   const sections: string[] = [];
 
-  // Frontmatter
+  // Frontmatter — description is truncated and enriched with trigger phrases
+  const description = buildDescription(skill);
   sections.push(
-    renderFrontmatter(skillName, skill.description, opts.license || skill.license || ""),
+    renderFrontmatter(skillName, description, opts.license || skill.license || ""),
   );
 
   // Title
@@ -50,44 +54,95 @@ export function renderSkill(
     sections.push(skill.description);
   }
 
-  // When to Use
-  sections.push(renderWhenToUse(skill));
+  // When to Use — derived from API surface
+  const whenToUse = renderWhenToUse(skill);
+  if (whenToUse) sections.push(whenToUse);
 
-  // Quick Reference (summary of exported API surface)
-  sections.push(renderQuickReference(skill));
+  // Quick Reference — summary of exported surface
+  const quickRef = renderQuickReference(skill);
+  if (quickRef) sections.push(quickRef);
 
-  // Functions
+  // Primary API: Functions and Classes first (what agents can call)
   if (skill.functions.length > 0) {
     sections.push(renderFunctions(skill.functions, opts));
   }
 
-  // Classes
   if (skill.classes.length > 0) {
     sections.push(renderClasses(skill.classes, opts));
   }
 
-  // Types
-  if (skill.types.length > 0) {
-    sections.push(renderTypes(skill.types));
-  }
-
-  // Enums
-  if (skill.enums.length > 0) {
-    sections.push(renderEnums(skill.enums));
-  }
-
-  // Examples
+  // Examples (high value — before type definitions)
   if (opts.includeExamples && skill.examples.length > 0) {
     sections.push("## Examples\n\n" + skill.examples.join("\n\n"));
   }
 
-  const content = truncateToTokenBudget(sections.join("\n\n"), opts.maxTokens);
+  // Secondary: Types and Enums (supporting definitions)
+  if (skill.types.length > 0) {
+    sections.push(renderTypes(skill.types));
+  }
+
+  if (skill.enums.length > 0) {
+    sections.push(renderEnums(skill.enums));
+  }
+
+  const raw = sections.join("\n\n");
+  const content = truncateToTokenBudget(raw, opts.maxTokens);
 
   return {
     filename: `${skillName}/SKILL.md`,
     content,
+    tokens: estimateTokens(content),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Description builder — enriches with trigger phrases for agent discovery
+// ---------------------------------------------------------------------------
+
+function buildDescription(skill: ExtractedSkill): string {
+  const parts: string[] = [];
+
+  // Base description
+  if (skill.description) {
+    parts.push(skill.description);
+  } else {
+    parts.push(`API reference for ${skill.name}`);
+  }
+
+  // Add trigger phrases from API surface
+  const triggers: string[] = [];
+  if (skill.functions.length > 0) {
+    const names = skill.functions.slice(0, 5).map((f) => f.name);
+    triggers.push(names.join(", "));
+  }
+  if (skill.classes.length > 0) {
+    const names = skill.classes.slice(0, 3).map((c) => c.name);
+    triggers.push(names.join(", "));
+  }
+
+  if (triggers.length > 0) {
+    parts.push(`Use when working with ${triggers.join(", ")}.`);
+  }
+
+  const full = parts.join(" ");
+  return truncateDescription(full, DESCRIPTION_MAX);
+}
+
+/** Truncate description to max chars, keeping sentence boundary */
+function truncateDescription(desc: string, max: number): string {
+  if (desc.length <= max) return desc;
+
+  const firstSentence = desc.match(/^[^.!?]+[.!?]/)?.[0];
+  if (firstSentence && firstSentence.length <= max) {
+    return firstSentence;
+  }
+
+  return desc.slice(0, max - 3) + "...";
+}
+
+// ---------------------------------------------------------------------------
+// Frontmatter
+// ---------------------------------------------------------------------------
 
 function renderFrontmatter(
   name: string,
@@ -95,10 +150,7 @@ function renderFrontmatter(
   license: string,
 ): string {
   const lines = ["---", `name: ${name}`];
-
-  // Build a trigger-rich description for agent discovery
-  const desc = description || `API reference for ${name}`;
-  lines.push(`description: ${quoteYaml(desc)}`);
+  lines.push(`description: ${quoteYaml(description)}`);
 
   if (license) {
     lines.push(`license: ${license}`);
@@ -108,7 +160,6 @@ function renderFrontmatter(
   return lines.join("\n");
 }
 
-/** Quote YAML string values that contain special characters */
 function quoteYaml(value: string): string {
   if (/[:#{}[\],&*?|>!%@`"']/.test(value) || value.includes("\n")) {
     return `"${value.replace(/"/g, '\\"')}"`;
@@ -116,21 +167,36 @@ function quoteYaml(value: string): string {
   return value;
 }
 
+// ---------------------------------------------------------------------------
+// When to Use — richer triggers from API surface
+// ---------------------------------------------------------------------------
+
 function renderWhenToUse(skill: ExtractedSkill): string {
   const triggers: string[] = [];
 
   if (skill.functions.length > 0) {
     const names = skill.functions.slice(0, 5).map((f) => `\`${f.name}()\``);
-    triggers.push(`- Working with ${names.join(", ")}${skill.functions.length > 5 ? ", and more" : ""}`);
+    triggers.push(
+      `- Calling ${names.join(", ")}${skill.functions.length > 5 ? `, and ${skill.functions.length - 5} more` : ""}`,
+    );
   }
 
   if (skill.classes.length > 0) {
     const names = skill.classes.slice(0, 3).map((c) => `\`${c.name}\``);
-    triggers.push(`- Using ${names.join(", ")} classes`);
+    triggers.push(`- Instantiating or extending ${names.join(", ")}`);
   }
 
   if (skill.types.length > 0) {
-    triggers.push(`- Implementing types/interfaces from this package`);
+    const names = skill.types.slice(0, 5).map((t) => `\`${t.name}\``);
+    triggers.push(`- Typing with ${names.join(", ")}`);
+  }
+
+  // Extract @see / @remarks triggers from function tags
+  for (const fn of skill.functions) {
+    if (fn.tags["see"]) {
+      triggers.push(`- See also: ${fn.tags["see"]}`);
+      break; // one is enough
+    }
   }
 
   if (triggers.length === 0) return "";
@@ -138,20 +204,32 @@ function renderWhenToUse(skill: ExtractedSkill): string {
   return "## When to Use\n\n" + triggers.join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// Quick Reference
+// ---------------------------------------------------------------------------
+
 function renderQuickReference(skill: ExtractedSkill): string {
   const items: string[] = [];
 
   if (skill.functions.length > 0) {
-    items.push(`**${skill.functions.length} functions** — ${skill.functions.map((f) => `\`${f.name}\``).join(", ")}`);
+    items.push(
+      `**${skill.functions.length} functions** — ${skill.functions.map((f) => `\`${f.name}\``).join(", ")}`,
+    );
   }
   if (skill.classes.length > 0) {
-    items.push(`**${skill.classes.length} classes** — ${skill.classes.map((c) => `\`${c.name}\``).join(", ")}`);
+    items.push(
+      `**${skill.classes.length} classes** — ${skill.classes.map((c) => `\`${c.name}\``).join(", ")}`,
+    );
   }
   if (skill.types.length > 0) {
-    items.push(`**${skill.types.length} types** — ${skill.types.map((t) => `\`${t.name}\``).join(", ")}`);
+    items.push(
+      `**${skill.types.length} types** — ${skill.types.map((t) => `\`${t.name}\``).join(", ")}`,
+    );
   }
   if (skill.enums.length > 0) {
-    items.push(`**${skill.enums.length} enums** — ${skill.enums.map((e) => `\`${e.name}\``).join(", ")}`);
+    items.push(
+      `**${skill.enums.length} enums** — ${skill.enums.map((e) => `\`${e.name}\``).join(", ")}`,
+    );
   }
 
   if (items.length === 0) return "";
@@ -159,10 +237,11 @@ function renderQuickReference(skill: ExtractedSkill): string {
   return "## Quick Reference\n\n" + items.join("\n");
 }
 
-function renderFunctions(
-  fns: ExtractedFunction[],
-  opts: SkillRenderOptions,
-): string {
+// ---------------------------------------------------------------------------
+// Section renderers
+// ---------------------------------------------------------------------------
+
+function renderFunctions(fns: ExtractedFunction[], opts: SkillRenderOptions): string {
   const lines = ["## Functions\n"];
 
   for (const fn of fns) {
@@ -198,10 +277,7 @@ function renderFunctions(
   return lines.join("\n");
 }
 
-function renderClasses(
-  classes: ExtractedClass[],
-  opts: SkillRenderOptions,
-): string {
+function renderClasses(classes: ExtractedClass[], opts: SkillRenderOptions): string {
   const lines = ["## Classes\n"];
 
   for (const cls of classes) {
@@ -266,6 +342,10 @@ function renderEnums(enums: ExtractedEnum[]): string {
 
   return lines.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
 
 /** Convert a package name to a valid skill name (lowercase, hyphens only) */
 function toSkillName(name: string): string {

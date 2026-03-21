@@ -70,6 +70,8 @@ export interface RenderedSkill {
   filename: string;
   /** Full SKILL.md content with frontmatter */
   content: string;
+  /** Estimated token count */
+  tokens?: number;
 }
 
 /** Options controlling skill rendering */

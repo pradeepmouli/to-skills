@@ -74,9 +74,11 @@ export function load(app: Application): void {
     const rendered = renderSkills(skills, opts);
     writeSkills(rendered, { outDir });
 
-    app.logger.info(
-      `[skills] Generated ${rendered.length} skill file(s) in ${outDir}/`,
-    );
+    for (const skill of rendered) {
+      const tokens = skill.tokens ? ` (~${skill.tokens} tokens)` : "";
+      app.logger.info(`[skills] ${skill.filename}${tokens}`);
+    }
+    app.logger.info(`[skills] Generated ${rendered.length} skill(s) in ${outDir}/`);
   });
 }
 
