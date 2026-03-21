@@ -1,6 +1,6 @@
 {
   "name": "@to-skills/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared types, SKILL.md renderer, and token budgeting for to-skills plugins",
   "type": "module",
   "exports": {
