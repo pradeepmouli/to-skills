@@ -19,6 +19,8 @@ import type {
 
 /** Package metadata to enrich extracted skills */
 export interface PackageMetadata {
+  /** Package name from package.json (preferred over TypeDoc project name) */
+  name?: string;
   keywords?: string[];
   repository?: string;
   author?: string;
@@ -52,7 +54,7 @@ function extractModule(
   const children = (mod as DeclarationReflection).children ?? [];
 
   return {
-    name: mod.name,
+    name: metadata?.name || mod.name,
     description: getCommentText(mod.comment),
     keywords: metadata?.keywords,
     repository: metadata?.repository,

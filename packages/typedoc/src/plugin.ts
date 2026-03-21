@@ -81,6 +81,7 @@ export function load(app: Application): void {
 
     // Extract with package metadata for richer skills
     const skills = extractSkills(project, perPackage, {
+      name: pkg.name,
       keywords: pkg.keywords,
       repository: normalizeRepoUrl(pkg.repository),
       author: typeof pkg.author === "string" ? pkg.author : pkg.author?.name,

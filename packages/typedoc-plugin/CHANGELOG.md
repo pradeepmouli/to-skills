@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.2.2
+
+### Patch Changes
+
+- Fix skill name derivation — prefer package.json name over TypeDoc project name, fix CI build order
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.3.1
+
 ## 0.2.1
 
 ### Patch Changes

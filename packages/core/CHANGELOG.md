@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.3.1
+
+### Patch Changes
+
+- Fix skill name derivation — prefer package.json name over TypeDoc project name, fix CI build order
+
 ## 0.3.0
 
 ### Minor Changes
