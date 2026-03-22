@@ -1,5 +1,18 @@
 # @to-skills/typedoc
 
+## 0.5.0
+
+### Minor Changes
+
+- Fix monorepo support: accumulate skills across converter runs
+
+  - Accumulate extracted skills across multiple converter invocations
+    (fixes entryPointStrategy: "packages" where TypeDoc runs per-package)
+  - Write all skills once after rendering completes (postRenderAsyncJobs)
+  - Deduplicate skills by name (merge modules from same package)
+  - Resolve package names from nearest package.json via source file paths
+  - llms.txt now generates correctly for monorepos
+
 ## 0.4.2
 
 ### Patch Changes

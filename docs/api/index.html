@@ -1,0 +1,129 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>to-skills - v0.0.0</title><meta name="description" content="Documentation for to-skills"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">to-skills - v0.0.0</a><div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>to-skills - v0.0.0</h1></div><div class="tsd-panel tsd-typography"><h1 id="to-skills" class="tsd-anchor-link">to-skills<a href="#to-skills" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p>Generate structured AI agent skills (<a href="https://agentskills.io">SKILL.md</a>) and <a href="https://llmstxt.org">llms.txt</a> from your documentation sources.</p>
+<p>Install the TypeDoc plugin and your API docs become discoverable agent skills — compatible with Claude Code, Cursor, Copilot, and <a href="https://github.com/VoltAgent/awesome-agent-skills">500+ other agents</a>.</p>
+<h2 id="quick-start" class="tsd-anchor-link">Quick Start<a href="#quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="bash"><span class="hl-0"># Install (auto-discovered by TypeDoc — zero config)</span><br/><span class="hl-1">pnpm</span><span class="hl-2"> </span><span class="hl-3">add</span><span class="hl-2"> </span><span class="hl-4">-D</span><span class="hl-2"> </span><span class="hl-3">typedoc-plugin-to-skills</span><br/><br/><span class="hl-0"># Generate skills alongside your normal docs</span><br/><span class="hl-1">pnpm</span><span class="hl-2"> </span><span class="hl-3">typedoc</span>
+</code><button type="button">Copy</button></pre>
+
+<p>That's it. TypeDoc finds the plugin automatically. Skills are written to <code>skills/&lt;package-name&gt;/SKILL.md</code>, ready for discovery via:</p>
+<pre><code class="bash"><span class="hl-1">npx</span><span class="hl-2"> </span><span class="hl-3">skills</span><span class="hl-2"> </span><span class="hl-3">add</span><span class="hl-2"> </span><span class="hl-3">your-org/your-repo</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="what-it-generates" class="tsd-anchor-link">What It Generates<a href="#what-it-generates" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="skillmd-agent-skills" class="tsd-anchor-link"><a href="http://SKILL.md">SKILL.md</a> (Agent Skills)<a href="#skillmd-agent-skills" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Structured files following the <a href="https://agentskills.io/specification">agentskills.io specification</a> with:</p>
+<ul>
+<li>YAML frontmatter (name, description, license)</li>
+<li>&quot;When to Use&quot; triggers derived from your API surface</li>
+<li>Quick reference of all exports</li>
+<li>Full function signatures, parameters, return types</li>
+<li>Class members, types, enums</li>
+<li>Usage examples from <code>@example</code> JSDoc tags</li>
+<li>Token-budgeted output (default 4000 tokens per skill)</li>
+</ul>
+<h3 id="llmstxt-opt-in" class="tsd-anchor-link">llms.txt (opt-in)<a href="#llmstxt-opt-in" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Summary index and full API dump following the <a href="https://llmstxt.org">llmstxt.org</a> specification:</p>
+<pre><code class="bash"><span class="hl-0"># Enable in typedoc.json</span><br/><span class="hl-2">{ </span><span class="hl-1">&quot;llmsTxt&quot;</span><span class="hl-1">:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2"> </span><span class="hl-3">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Generates both <code>llms.txt</code> (summary with truncated descriptions) and <code>llms-full.txt</code> (complete API content).</p>
+<h2 id="packages" class="tsd-anchor-link">Packages<a href="#packages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="media/core"><code>@to-skills/core</code></a></td>
+<td>Shared types, <a href="http://SKILL.md">SKILL.md</a> renderer, llms.txt renderer, token budgeting</td>
+</tr>
+<tr>
+<td><a href="media/typedoc"><code>@to-skills/typedoc</code></a></td>
+<td>TypeDoc plugin — extracts from the reflection tree</td>
+</tr>
+<tr>
+<td><a href="media/typedoc-plugin"><code>typedoc-plugin-to-skills</code></a></td>
+<td>Auto-discovery wrapper (just install, no config)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration" class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Add options to your <code>typedoc.json</code>:</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;plugin&quot;</span><span class="hl-2">: [</span><span class="hl-3">&quot;typedoc-plugin-to-skills&quot;</span><span class="hl-2">],</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsOutDir&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;skills&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsPerPackage&quot;</span><span class="hl-2">: </span><span class="hl-4">true</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsIncludeExamples&quot;</span><span class="hl-2">: </span><span class="hl-4">true</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsIncludeSignatures&quot;</span><span class="hl-2">: </span><span class="hl-4">true</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsMaxTokens&quot;</span><span class="hl-2">: </span><span class="hl-6">4000</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;skillsLicense&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;MIT&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;llmsTxt&quot;</span><span class="hl-2">: </span><span class="hl-4">false</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">&quot;llmsTxtOutDir&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;.&quot;</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>skillsOutDir</code></td>
+<td><code>&quot;skills&quot;</code></td>
+<td>Output directory for <a href="http://SKILL.md">SKILL.md</a> files</td>
+</tr>
+<tr>
+<td><code>skillsPerPackage</code></td>
+<td><code>true</code></td>
+<td>One skill per package in monorepos</td>
+</tr>
+<tr>
+<td><code>skillsIncludeExamples</code></td>
+<td><code>true</code></td>
+<td>Include <code>@example</code> JSDoc tags</td>
+</tr>
+<tr>
+<td><code>skillsIncludeSignatures</code></td>
+<td><code>true</code></td>
+<td>Include type signatures</td>
+</tr>
+<tr>
+<td><code>skillsMaxTokens</code></td>
+<td><code>4000</code></td>
+<td>Max token budget per skill</td>
+</tr>
+<tr>
+<td><code>skillsNamePrefix</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>Custom prefix for skill names</td>
+</tr>
+<tr>
+<td><code>skillsLicense</code></td>
+<td>auto</td>
+<td>License (reads from package.json)</td>
+</tr>
+<tr>
+<td><code>llmsTxt</code></td>
+<td><code>false</code></td>
+<td>Generate llms.txt and llms-full.txt</td>
+</tr>
+<tr>
+<td><code>llmsTxtOutDir</code></td>
+<td><code>&quot;.&quot;</code></td>
+<td>Output directory for llms.txt files</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-it-works" class="tsd-anchor-link">How It Works<a href="#how-it-works" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ol>
+<li>TypeDoc parses your TypeScript source into a reflection tree</li>
+<li><code>@to-skills/typedoc</code> extracts functions, classes, types, enums with their JSDoc</li>
+<li><code>@to-skills/core</code> renders structured <a href="http://SKILL.md">SKILL.md</a> files with frontmatter</li>
+<li>Skills are written to <code>skills/&lt;name&gt;/SKILL.md</code> for discovery by <a href="https://skills.sh">skills.sh</a></li>
+</ol>
+<h2 id="ecosystem" class="tsd-anchor-link">Ecosystem<a href="#ecosystem" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li><strong><a href="https://agentskills.io">agentskills.io</a></strong> — the <a href="http://SKILL.md">SKILL.md</a> specification</li>
+<li><strong><a href="https://skills.sh">skills.sh</a></strong> — skill registry and CLI (<code>npx skills add</code>)</li>
+<li><strong><a href="https://llmstxt.org">llmstxt.org</a></strong> — the llms.txt specification</li>
+</ul>
+<h2 id="license" class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>MIT</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#to-skills"><span>to-<wbr/>skills</span></a><ul><li><a href="#quick-start"><span>Quick <wbr/>Start</span></a></li><li><a href="#what-it-generates"><span>What <wbr/>It <wbr/>Generates</span></a></li><li><ul><li><a href="#skillmd-agent-skills"><span>SKILL.md (<wbr/>Agent <wbr/>Skills)</span></a></li><li><a href="#llmstxt-opt-in"><span>llms.txt (opt-<wbr/>in)</span></a></li></ul></li><li><a href="#packages"><span>Packages</span></a></li><li><a href="#configuration"><span>Configuration</span></a></li><li><a href="#how-it-works"><span>How <wbr/>It <wbr/>Works</span></a></li><li><a href="#ecosystem"><span>Ecosystem</span></a></li><li><a href="#license"><span>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="modules.html">to-skills - v0.0.0</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer></footer><div class="overlay"></div></body></html>

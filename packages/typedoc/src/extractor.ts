@@ -1,3 +1,5 @@
+import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
   type ProjectReflection,
   DeclarationReflection,
@@ -40,13 +42,81 @@ export function extractSkills(
   );
 
   if (modules.length > 0 && perPackage) {
-    // Per-package: use each module's own name, not the root package name
-    const perModuleMeta = metadata ? { ...metadata, name: undefined } : undefined;
-    return modules.map((mod) => extractModule(mod, perModuleMeta, documents));
+    // Group modules by their resolved package name, then merge into one skill per package
+    const grouped = groupModulesByPackage(modules);
+    return Array.from(grouped.entries()).map(([pkgName, mods]) => {
+      const perPkgMeta = metadata ? { ...metadata, name: pkgName || undefined } : { name: pkgName || undefined };
+      return mergeModules(mods, perPkgMeta, documents);
+    });
   }
 
   // Single package: root package.json name takes priority
   return [extractModule(project as unknown as DeclarationReflection, metadata, documents)];
+}
+
+/** Group modules by their resolved npm package name */
+function groupModulesByPackage(
+  modules: DeclarationReflection[],
+): Map<string, DeclarationReflection[]> {
+  const groups = new Map<string, DeclarationReflection[]>();
+  for (const mod of modules) {
+    const pkgName = resolvePackageName(mod) || mod.name || "(root)";
+    const existing = groups.get(pkgName);
+    if (existing) {
+      existing.push(mod);
+    } else {
+      groups.set(pkgName, [mod]);
+    }
+  }
+  return groups;
+}
+
+/** Merge multiple modules (submodules of one package) into a single skill */
+function mergeModules(
+  mods: DeclarationReflection[],
+  metadata?: PackageMetadata,
+  documents?: ExtractedDocument[],
+): ExtractedSkill {
+  const allFunctions: ExtractedFunction[] = [];
+  const allClasses: ExtractedClass[] = [];
+  const allTypes: ExtractedType[] = [];
+  const allEnums: ExtractedEnum[] = [];
+  const allExamples: string[] = [];
+  let description = "";
+
+  for (const mod of mods) {
+    const children = mod.children ?? [];
+    allFunctions.push(...children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction));
+    allClasses.push(...children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass));
+    allTypes.push(
+      ...children
+        .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
+        .map(extractType),
+    );
+    allEnums.push(...children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum));
+    allExamples.push(...getExamples(mod.comment));
+
+    // Use the first non-empty description
+    if (!description) {
+      description = getCommentText(mod.comment);
+    }
+  }
+
+  const resolvedName = metadata?.name || mods[0]?.name || "";
+
+  return {
+    name: resolvedName,
+    description,
+    keywords: metadata?.keywords,
+    repository: metadata?.repository,
+    author: metadata?.author,
+    documents,
+    functions: allFunctions,
+    classes: allClasses,
+    types: allTypes,
+    enums: allEnums,
+    examples: allExamples,
+  };
 }
 
 function extractModule(
@@ -56,8 +126,11 @@ function extractModule(
 ): ExtractedSkill {
   const children = (mod as DeclarationReflection).children ?? [];
 
+  // Resolve the best name: metadata > source package.json > reflection name
+  const resolvedName = metadata?.name || resolvePackageName(mod) || mod.name;
+
   return {
-    name: metadata?.name || mod.name,
+    name: resolvedName,
     description: getCommentText(mod.comment),
     keywords: metadata?.keywords,
     repository: metadata?.repository,
@@ -199,6 +272,63 @@ function extractDocuments(project: ProjectReflection): ExtractedDocument[] {
   }
 
   return docs;
+}
+
+/**
+ * Resolve the npm package name from a module's source files.
+ * Walks up from the first source file to find the nearest package.json.
+ * This handles entryPointStrategy: "packages" where TypeDoc uses internal
+ * module names instead of npm package names.
+ */
+function resolvePackageName(
+  mod: DeclarationReflection | ProjectReflection,
+): string | undefined {
+  // Get source file path from the module or its first child
+  const sources = (mod as DeclarationReflection).sources;
+  const firstSource = sources?.[0]?.fullFileName ?? sources?.[0]?.fileName;
+
+  if (!firstSource) {
+    // Try children's sources
+    const children = (mod as DeclarationReflection).children ?? [];
+    for (const child of children) {
+      const childSource = child.sources?.[0]?.fullFileName ?? child.sources?.[0]?.fileName;
+      if (childSource) {
+        return findPackageName(childSource);
+      }
+    }
+    return undefined;
+  }
+
+  return findPackageName(firstSource);
+}
+
+/** Walk up from a file path to find the nearest package.json name */
+function findPackageName(filePath: string): string | undefined {
+  let dir = dirname(filePath);
+  const root = dirname(dir); // safety: don't go above project
+
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = join(dir, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name?: string; private?: boolean };
+        // Skip private workspace roots — keep looking for the actual package
+        if (pkg.name && !pkg.private) {
+          return pkg.name;
+        }
+        // If it's private but has a name and we're not at the workspace root, use it
+        if (pkg.name && dir.includes("packages")) {
+          return pkg.name;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break; // filesystem root
+    dir = parent;
+  }
+  return undefined;
 }
 
 function getTagMap(comment: Comment | undefined): Record<string, string> {

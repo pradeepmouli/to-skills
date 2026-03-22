@@ -1,11 +1,12 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { Application, Converter, type Context, ParameterType } from "typedoc";
+import { Application, Converter, Renderer, type Context, ParameterType } from "typedoc";
+import type { ExtractedSkill, RenderedSkill } from "@to-skills/core";
 import { renderSkills, writeSkills, renderLlmsTxt } from "@to-skills/core";
 import { extractSkills } from "./extractor.js";
 
 export function load(app: Application): void {
-  // --- Skills options ---
+  // --- Options ---
 
   app.options.addDeclaration({
     name: "skillsOutDir",
@@ -56,8 +57,6 @@ export function load(app: Application): void {
     defaultValue: "",
   });
 
-  // --- llms.txt options ---
-
   app.options.addDeclaration({
     name: "llmsTxt",
     help: "[Skills] Generate llms.txt and llms-full.txt alongside skills",
@@ -72,14 +71,17 @@ export function load(app: Application): void {
     defaultValue: ".",
   });
 
-  // --- Main handler ---
+  // --- Accumulator for entryPointStrategy: "packages" ---
+  // TypeDoc runs the converter once per package. We accumulate extracted
+  // skills and write them all after rendering completes.
+
+  const accumulatedSkills: ExtractedSkill[] = [];
+  const pkg = readPackageJson();
 
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
     const project = context.project;
     const perPackage = app.options.getValue("skillsPerPackage") as boolean;
-    const pkg = readPackageJson();
 
-    // Extract with package metadata for richer skills
     const skills = extractSkills(project, perPackage, {
       name: pkg.name,
       keywords: pkg.keywords,
@@ -87,12 +89,21 @@ export function load(app: Application): void {
       author: typeof pkg.author === "string" ? pkg.author : pkg.author?.name,
     });
 
-    // Generate SKILL.md files
+    accumulatedSkills.push(...skills);
+  });
+
+  // Write all skills once after rendering is complete
+  app.renderer.postRenderAsyncJobs.push(async () => {
+    if (accumulatedSkills.length === 0) return;
+
     const outDir = app.options.getValue("skillsOutDir") as string;
     const license =
       (app.options.getValue("skillsLicense") as string) || pkg.license || "";
 
-    const rendered = renderSkills(skills, {
+    // Deduplicate by name (last wins if same name appears twice)
+    const deduped = deduplicateSkills(accumulatedSkills);
+
+    const rendered = renderSkills(deduped, {
       outDir,
       includeExamples: app.options.getValue("skillsIncludeExamples") as boolean,
       includeSignatures: app.options.getValue("skillsIncludeSignatures") as boolean,
@@ -112,14 +123,16 @@ export function load(app: Application): void {
       }
     }
     const totalFiles = rendered.reduce((n, s) => n + 1 + s.references.length, 0);
-    app.logger.info(`[skills] Generated ${rendered.length} skill(s), ${totalFiles} file(s) in ${outDir}/`);
+    app.logger.info(
+      `[skills] Generated ${rendered.length} skill(s), ${totalFiles} file(s) in ${outDir}/`,
+    );
 
-    // Generate llms.txt / llms-full.txt (if enabled)
+    // Generate llms.txt (if enabled)
     const llmsEnabled = app.options.getValue("llmsTxt") as boolean;
     if (llmsEnabled) {
       const llmsOutDir = app.options.getValue("llmsTxtOutDir") as string;
-      const result = renderLlmsTxt(skills, {
-        projectName: pkg.name || project.name,
+      const result = renderLlmsTxt(deduped, {
+        projectName: pkg.name || "project",
         projectDescription: pkg.description || "",
       });
 
@@ -134,6 +147,38 @@ export function load(app: Application): void {
       app.logger.info(`[llms-txt] ${fullPath} (~${result.fullTokens} tokens)`);
     }
   });
+}
+
+/** Deduplicate skills by name — merge skills with the same resolved name */
+function deduplicateSkills(skills: ExtractedSkill[]): ExtractedSkill[] {
+  const byName = new Map<string, ExtractedSkill>();
+
+  for (const skill of skills) {
+    const existing = byName.get(skill.name);
+    if (existing) {
+      // Merge into existing
+      existing.functions.push(...skill.functions);
+      existing.classes.push(...skill.classes);
+      existing.types.push(...skill.types);
+      existing.enums.push(...skill.enums);
+      existing.examples.push(...skill.examples);
+      if (!existing.description && skill.description) {
+        existing.description = skill.description;
+      }
+    } else {
+      // Clone to avoid mutation issues
+      byName.set(skill.name, {
+        ...skill,
+        functions: [...skill.functions],
+        classes: [...skill.classes],
+        types: [...skill.types],
+        enums: [...skill.enums],
+        examples: [...skill.examples],
+      });
+    }
+  }
+
+  return Array.from(byName.values());
 }
 
 interface PackageJson {
@@ -159,6 +204,5 @@ function normalizeRepoUrl(repo: PackageJson["repository"]): string | undefined {
   if (typeof repo === "string") return repo;
   const url = repo.url;
   if (!url) return undefined;
-  // Normalize git+https://...git to https://...
   return url.replace(/^git\+/, "").replace(/\.git$/, "");
 }
