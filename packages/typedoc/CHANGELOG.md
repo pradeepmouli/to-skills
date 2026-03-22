@@ -1,5 +1,15 @@
 # @to-skills/typedoc
 
+## 0.4.1
+
+### Patch Changes
+
+- Fix monorepo skill naming — use per-module name instead of root package.json name
+
+  In monorepos with entryPointStrategy: "packages", each module now gets
+  its correct package name (e.g. @lspeasy/core) instead of the workspace
+  root name (e.g. lspeasy).
+
 ## 0.4.0
 
 ### Minor Changes

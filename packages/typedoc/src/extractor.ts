@@ -40,9 +40,12 @@ export function extractSkills(
   );
 
   if (modules.length > 0 && perPackage) {
-    return modules.map((mod) => extractModule(mod, metadata, documents));
+    // Per-package: use each module's own name, not the root package name
+    const perModuleMeta = metadata ? { ...metadata, name: undefined } : undefined;
+    return modules.map((mod) => extractModule(mod, perModuleMeta, documents));
   }
 
+  // Single package: root package.json name takes priority
   return [extractModule(project as unknown as DeclarationReflection, metadata, documents)];
 }
 
