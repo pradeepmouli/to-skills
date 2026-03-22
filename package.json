@@ -2,7 +2,7 @@
   "name": "to-skills",
   "version": "0.0.0",
   "private": true,
-  "description": "Generate structured AI agent skills (SKILL.md) from documentation sources — TypeDoc, Docusaurus, OpenAPI, and more",
+  "description": "Generate structured AI agent skills (SKILL.md) from documentation sources \u2014 TypeDoc, Docusaurus, OpenAPI, and more",
   "type": "module",
   "workspaces": [
     "packages/*"
@@ -24,7 +24,9 @@
     "audit": "pnpm audit --audit-level moderate",
     "outdated": "pnpm outdated -r",
     "update:deps": "pnpm update -r --latest",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "docs": "typedoc --out docs/html --plugin typedoc-plugin-to-skills",
+    "docs:md": "typedoc"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",
