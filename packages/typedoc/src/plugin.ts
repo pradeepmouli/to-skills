@@ -104,10 +104,15 @@ export function load(app: Application): void {
     writeSkills(rendered, { outDir });
 
     for (const skill of rendered) {
-      const tokens = skill.tokens ? ` (~${skill.tokens} tokens)` : "";
-      app.logger.info(`[skills] ${skill.filename}${tokens}`);
+      const st = skill.skill.tokens ? ` (~${skill.skill.tokens} tokens)` : "";
+      app.logger.info(`[skills] ${skill.skill.filename}${st}`);
+      for (const ref of skill.references) {
+        const rt = ref.tokens ? ` (~${ref.tokens} tokens)` : "";
+        app.logger.info(`[skills]   └─ ${ref.filename}${rt}`);
+      }
     }
-    app.logger.info(`[skills] Generated ${rendered.length} skill(s) in ${outDir}/`);
+    const totalFiles = rendered.reduce((n, s) => n + 1 + s.references.length, 0);
+    app.logger.info(`[skills] Generated ${rendered.length} skill(s), ${totalFiles} file(s) in ${outDir}/`);
 
     // Generate llms.txt / llms-full.txt (if enabled)
     const llmsEnabled = app.options.getValue("llmsTxt") as boolean;

@@ -79,15 +79,26 @@ export interface ExtractedDocument {
   content: string;
 }
 
-/** A rendered skill file ready to write */
-export interface RenderedSkill {
+/** A single rendered file */
+export interface RenderedFile {
   /** File path relative to output dir */
   filename: string;
-  /** Full SKILL.md content with frontmatter */
+  /** File content */
   content: string;
   /** Estimated token count */
   tokens?: number;
 }
+
+/** A rendered skill with progressive disclosure structure */
+export interface RenderedSkill {
+  /** The SKILL.md discovery file (lean — frontmatter, overview, quick ref) */
+  skill: RenderedFile;
+  /** Reference files loaded on demand (functions, classes, types, etc.) */
+  references: RenderedFile[];
+}
+
+/** @deprecated Use RenderedFile instead */
+export type RenderedSkillLegacy = RenderedFile;
 
 /** Options controlling skill rendering */
 export interface SkillRenderOptions {

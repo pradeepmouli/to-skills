@@ -1,5 +1,26 @@
 # typedoc-plugin-to-skills
 
+## 0.3.0
+
+### Minor Changes
+
+- Progressive disclosure: SKILL.md is now a lean discovery document, with full API details in references/
+
+  Skills now generate a file tree instead of a single monolithic file:
+
+  - `SKILL.md` — frontmatter, overview, when-to-use, quick reference (~500 tokens)
+  - `references/functions.md` — full function signatures, params, examples
+  - `references/classes.md` — class details with constructors, methods, properties
+  - `references/types.md` — type definitions and enums
+  - `references/examples.md` — usage examples
+
+  Agents load SKILL.md first (cheap), then fetch references on demand.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.4.0
+
 ## 0.2.2
 
 ### Patch Changes

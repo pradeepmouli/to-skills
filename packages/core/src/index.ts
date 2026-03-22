@@ -7,6 +7,7 @@ export type {
   ExtractedParameter,
   ExtractedProperty,
   ExtractedDocument,
+  RenderedFile,
   RenderedSkill,
   SkillRenderOptions,
 } from "./types.js";

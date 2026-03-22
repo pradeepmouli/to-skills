@@ -1,6 +1,6 @@
 {
   "name": "typedoc-plugin-to-skills",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "TypeDoc plugin that generates AI agent skills (SKILL.md) and llms.txt — auto-discovered by TypeDoc",
   "type": "module",
   "exports": {
