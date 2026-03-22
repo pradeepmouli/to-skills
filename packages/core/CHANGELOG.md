@@ -1,5 +1,14 @@
 # @to-skills/core
 
+## 0.4.1
+
+### Patch Changes
+
+- Fix skill name generation for PascalCase/camelCase module names
+
+  toSkillName now converts camelCase/PascalCase to kebab-case before
+  lowercasing. JsonSchema → json-schema, ZodBuilder → zod-builder.
+
 ## 0.4.0
 
 ### Minor Changes

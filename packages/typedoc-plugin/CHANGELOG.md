@@ -1,5 +1,17 @@
 # typedoc-plugin-to-skills
 
+## 0.3.2
+
+### Patch Changes
+
+- Fix skill name generation for PascalCase/camelCase module names
+
+  toSkillName now converts camelCase/PascalCase to kebab-case before
+  lowercasing. JsonSchema → json-schema, ZodBuilder → zod-builder.
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.4.2
+
 ## 0.3.1
 
 ### Patch Changes

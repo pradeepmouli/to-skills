@@ -367,12 +367,14 @@ function renderQuickReference(skill: ExtractedSkill): string {
 
 function toSkillName(name: string): string {
   return name
-    .replace(/^@/, "")
-    .replace(/\//g, "-")
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
+    .replace(/^@/, "")                    // strip npm scope @
+    .replace(/\//g, "-")                  // scope separator → hyphen
+    .replace(/([a-z])([A-Z])/g, "$1-$2") // camelCase → kebab-case
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2") // XMLParser → xml-parser
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")         // strip invalid chars
+    .replace(/-+/g, "-")                  // collapse hyphens
+    .replace(/^-|-$/g, "");              // trim leading/trailing
 }
 
 function toFilename(title: string): string {
