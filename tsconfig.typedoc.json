@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [],
+  "references": [
+    { "path": "packages/core/tsconfig.json" },
+    { "path": "packages/typedoc/tsconfig.json" },
+    { "path": "packages/typedoc-plugin/tsconfig.json" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "entryPoints": ["packages/core/src/index.ts", "packages/typedoc/src/index.ts"],
+  "tsconfig": "packages/core/tsconfig.json",
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-to-skills"],
+  "skipErrorChecking": true,
+  "includeVersion": true,
+  "readme": "README.md",
+  "treatWarningsAsErrors": false,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "llmsTxt": true,
+  "skillsPerPackage": true
+}
