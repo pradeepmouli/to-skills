@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { Application, Converter, Renderer, type Context, ParameterType } from "typedoc";
-import type { ExtractedSkill, RenderedSkill } from "@to-skills/core";
+import { Application, Converter, type Context, ParameterType } from "typedoc";
+import type { ExtractedSkill } from "@to-skills/core";
 import { renderSkills, writeSkills, renderLlmsTxt } from "@to-skills/core";
 import { extractSkills } from "./extractor.js";
 
@@ -71,16 +71,19 @@ export function load(app: Application): void {
     defaultValue: ".",
   });
 
-  // --- Accumulator for entryPointStrategy: "packages" ---
-  // TypeDoc runs the converter once per package. We accumulate extracted
-  // skills and write them all after rendering completes.
-
-  const accumulatedSkills: ExtractedSkill[] = [];
+  // --- State ---
+  // Accumulate skills across converter runs for llms.txt (project-wide).
+  // Skills files are written immediately per converter run (per-package scope).
+  const allSkills: ExtractedSkill[] = [];
   const pkg = readPackageJson();
 
+  // --- Per-package: extract + write skills immediately ---
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
     const project = context.project;
     const perPackage = app.options.getValue("skillsPerPackage") as boolean;
+    const outDir = app.options.getValue("skillsOutDir") as string;
+    const license =
+      (app.options.getValue("skillsLicense") as string) || pkg.license || "";
 
     const skills = extractSkills(project, perPackage, {
       name: pkg.name,
@@ -89,21 +92,12 @@ export function load(app: Application): void {
       author: typeof pkg.author === "string" ? pkg.author : pkg.author?.name,
     });
 
-    accumulatedSkills.push(...skills);
-  });
+    // Accumulate for llms.txt
+    allSkills.push(...skills);
 
-  // Write all skills once after rendering is complete
-  app.renderer.postRenderAsyncJobs.push(async () => {
-    if (accumulatedSkills.length === 0) return;
-
-    const outDir = app.options.getValue("skillsOutDir") as string;
-    const license =
-      (app.options.getValue("skillsLicense") as string) || pkg.license || "";
-
-    // Deduplicate by name (last wins if same name appears twice)
-    const deduped = deduplicateSkills(accumulatedSkills);
-
-    const rendered = renderSkills(deduped, {
+    // Render and write this package's skills immediately
+    // Each skill writes to skills/<package-name>/ — doesn't touch other packages
+    const rendered = renderSkills(skills, {
       outDir,
       includeExamples: app.options.getValue("skillsIncludeExamples") as boolean,
       includeSignatures: app.options.getValue("skillsIncludeSignatures") as boolean,
@@ -122,63 +116,29 @@ export function load(app: Application): void {
         app.logger.info(`[skills]   └─ ${ref.filename}${rt}`);
       }
     }
-    const totalFiles = rendered.reduce((n, s) => n + 1 + s.references.length, 0);
-    app.logger.info(
-      `[skills] Generated ${rendered.length} skill(s), ${totalFiles} file(s) in ${outDir}/`,
-    );
-
-    // Generate llms.txt (if enabled)
-    const llmsEnabled = app.options.getValue("llmsTxt") as boolean;
-    if (llmsEnabled) {
-      const llmsOutDir = app.options.getValue("llmsTxtOutDir") as string;
-      const result = renderLlmsTxt(deduped, {
-        projectName: pkg.name || "project",
-        projectDescription: pkg.description || "",
-      });
-
-      mkdirSync(llmsOutDir, { recursive: true });
-
-      const summaryPath = join(llmsOutDir, "llms.txt");
-      writeFileSync(summaryPath, result.summary, "utf-8");
-      app.logger.info(`[llms-txt] ${summaryPath} (~${result.summaryTokens} tokens)`);
-
-      const fullPath = join(llmsOutDir, "llms-full.txt");
-      writeFileSync(fullPath, result.full, "utf-8");
-      app.logger.info(`[llms-txt] ${fullPath} (~${result.fullTokens} tokens)`);
-    }
   });
-}
 
-/** Deduplicate skills by name — merge skills with the same resolved name */
-function deduplicateSkills(skills: ExtractedSkill[]): ExtractedSkill[] {
-  const byName = new Map<string, ExtractedSkill>();
+  // --- Project-wide: write llms.txt once after all packages ---
+  app.renderer.postRenderAsyncJobs.push(async () => {
+    const llmsEnabled = app.options.getValue("llmsTxt") as boolean;
+    if (!llmsEnabled || allSkills.length === 0) return;
 
-  for (const skill of skills) {
-    const existing = byName.get(skill.name);
-    if (existing) {
-      // Merge into existing
-      existing.functions.push(...skill.functions);
-      existing.classes.push(...skill.classes);
-      existing.types.push(...skill.types);
-      existing.enums.push(...skill.enums);
-      existing.examples.push(...skill.examples);
-      if (!existing.description && skill.description) {
-        existing.description = skill.description;
-      }
-    } else {
-      // Clone to avoid mutation issues
-      byName.set(skill.name, {
-        ...skill,
-        functions: [...skill.functions],
-        classes: [...skill.classes],
-        types: [...skill.types],
-        enums: [...skill.enums],
-        examples: [...skill.examples],
-      });
-    }
-  }
+    const llmsOutDir = app.options.getValue("llmsTxtOutDir") as string;
+    const result = renderLlmsTxt(allSkills, {
+      projectName: pkg.name || "project",
+      projectDescription: pkg.description || "",
+    });
 
-  return Array.from(byName.values());
+    mkdirSync(llmsOutDir, { recursive: true });
+
+    const summaryPath = join(llmsOutDir, "llms.txt");
+    writeFileSync(summaryPath, result.summary, "utf-8");
+    app.logger.info(`[llms-txt] ${summaryPath} (~${result.summaryTokens} tokens)`);
+
+    const fullPath = join(llmsOutDir, "llms-full.txt");
+    writeFileSync(fullPath, result.full, "utf-8");
+    app.logger.info(`[llms-txt] ${fullPath} (~${result.fullTokens} tokens)`);
+  });
 }
 
 interface PackageJson {
