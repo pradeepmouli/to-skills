@@ -1,0 +1,97 @@
+installed: []
+settings:
+  auto_execute_hooks: true
+hooks:
+  before_specify:
+  - extension: workflows
+    command: speckit.issuesync.before-specify
+    enabled: true
+    optional: true
+    prompt: Sync linked issue before specify?
+    description: Update linked issue for workflow boundary before_specify
+    condition: null
+  after_specify:
+  - extension: workflows
+    command: speckit.issuesync.after-specify
+    enabled: true
+    optional: true
+    prompt: Sync linked issue after specify?
+    description: Update linked issue for workflow boundary after_specify
+    condition: null
+  before_plan:
+  - extension: workflows
+    command: speckit.issuesync.before-plan
+    enabled: true
+    optional: true
+    prompt: Sync linked issue before plan?
+    description: Update linked issue for workflow boundary before_plan
+    condition: null
+  after_plan:
+  - extension: workflows
+    command: speckit.issuesync.after-plan
+    enabled: true
+    optional: true
+    prompt: Sync linked issue after plan?
+    description: Update linked issue for workflow boundary after_plan
+    condition: null
+  before_tasks:
+  - extension: workflows
+    command: speckit.issuesync.before-tasks
+    enabled: true
+    optional: true
+    prompt: Sync linked issue before tasks?
+    description: Update linked issue for workflow boundary before_tasks
+    condition: null
+  after_tasks:
+  - extension: workflows
+    command: speckit.issuesync.after-tasks
+    enabled: true
+    optional: true
+    prompt: Sync linked issue after tasks?
+    description: Update linked issue for workflow boundary after_tasks
+    condition: null
+  before_implement:
+  - extension: workflows
+    command: speckit.issuesync.before-implement
+    enabled: true
+    optional: true
+    prompt: Sync linked issue before implement?
+    description: Update linked issue for workflow boundary before_implement
+    condition: null
+  after_implement:
+  - extension: workflows
+    command: speckit.issuesync.after-implement
+    enabled: true
+    optional: true
+    prompt: Sync linked issue after implement?
+    description: Update linked issue for workflow boundary after_implement
+    condition: null
+  - extension: verify
+    command: speckit.verify.run
+    enabled: true
+    optional: true
+    prompt: Run verify to validate implementation against specification?
+    description: Post-implementation verification gate
+    condition: null
+  - extension: review
+    command: speckit.review.run
+    enabled: true
+    optional: true
+    prompt: Run PR review on implemented changes?
+    description: Comprehensive review after implementation
+    condition: null
+  - extension: sync
+    command: speckit.sync.analyze
+    enabled: true
+    optional: true
+    prompt: Check for spec drift after implementation?
+    description: ''
+    condition: null
+  before_commit:
+  - extension: workflows
+    command: speckit.workflows.review
+    enabled: true
+    optional: true
+    prompt: Confirm review is approved before committing?
+    description: Ensure review is complete before git commit
+    condition: null

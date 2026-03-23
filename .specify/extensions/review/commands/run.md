@@ -1,14 +1,10 @@
 ---
-description: "Comprehensive code review using specialized agents \u2014 orchestrates\
-  \ code, comments, tests, errors, types, and simplify agents sequentially."
+description: Comprehensive code review using specialized agents — orchestrates code, comments, tests, errors, types, and simplify agents sequentially.
 scripts:
   sh: scripts/bash/detect-changed-files.sh
   ps: scripts/powershell/detect-changed-files.ps1
 ---
 
-
-<!-- Extension: review -->
-<!-- Config: .specify/extensions/review/ -->
 # Comprehensive PR Review
 
 Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
