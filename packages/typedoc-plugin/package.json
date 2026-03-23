@@ -1,6 +1,6 @@
 {
   "name": "typedoc-plugin-to-skills",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "TypeDoc plugin that generates AI agent skills (SKILL.md) and llms.txt — auto-discovered by TypeDoc",
   "type": "module",
   "exports": {
@@ -29,8 +29,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "type-check": "tsc --noEmit",
+    "build": "tsgo -p tsconfig.build.json",
+    "type-check": "tsgo --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {

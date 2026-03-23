@@ -1,5 +1,14 @@
 # @to-skills/typedoc
 
+## 0.5.1
+
+### Patch Changes
+
+- Restore tsgo as build compiler, add types: ["node"] to tsconfig
+
+- Updated dependencies []:
+  - @to-skills/core@0.4.2
+
 ## 0.5.0
 
 ### Minor Changes

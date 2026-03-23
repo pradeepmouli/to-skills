@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.4.1
+
+### Patch Changes
+
+- Restore tsgo as build compiler, add types: ["node"] to tsconfig
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.5.1
+
 ## 0.4.0
 
 ### Minor Changes

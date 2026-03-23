@@ -1,0 +1,463 @@
+# When an issue is labeled 'ready-to-spec':
+#   1. Detect issue type (feature, bug, enhancement, refactor, hotfix, deprecate, modify)
+#   2. Checkout repo, run the spec-kit create script to create branch + spec structure
+#   3. Push the branch and create a draft PR
+#   4. Append agent instructions to the issue referencing the branch and PR
+#   5. Assign the configured agent to the issue
+#
+# The agent receives a ready-made branch with spec templates — it just needs
+# to write the spec, run /speckit.clarify, and post questions to the PR.
+#
+# Routing:
+#   - Feature / needs-spec / Phase title  → create-new-feature.sh  → /speckit.specify
+#   - Bug                                 → create-bugfix.sh       → /speckit.workflows.bugfix
+#   - Enhancement                         → create-enhance.sh      → /speckit.workflows.enhance
+#   - Refactor                            → create-refactor.sh     → /speckit.workflows.refactor
+#   - Hotfix                              → create-hotfix.sh       → /speckit.workflows.hotfix
+#   - Deprecation                         → create-deprecate.sh    → /speckit.workflows.deprecate
+#   - Modification                        → create-modification.sh → /speckit.workflows.modify
+#
+# Install: specify-extend --github-integration
+# Configure: Set SPEC_READY_AGENT env var to change assigned agent (default: copilot)
+
+name: Spec Ready — Route to Workflow
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+env:
+  SPEC_READY_AGENT: ${{ vars.SPEC_READY_AGENT || 'copilot' }}
+
+jobs:
+  route-issue:
+    if: github.event.label.name == 'ready-to-spec'
+    runs-on: ubuntu-latest
+    steps:
+      # --- Step 1: Classify the issue ---
+      - name: Classify issue type
+        id: classify
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name.toLowerCase());
+            const title = issue.title || '';
+            const issueType = issue.issue_type?.name || '';
+
+            const isBug = issueType === 'Bug' || labels.includes('bug');
+            const isHotfix = labels.includes('hotfix') || labels.includes('production') || labels.includes('critical');
+            const isEnhancement = labels.includes('enhancement') || issueType === 'Enhancement';
+            const isRefactor = labels.includes('refactor') || labels.includes('tech-debt');
+            const isDeprecation = labels.includes('deprecation') || labels.includes('sunset');
+            const isModification = labels.includes('modification') || labels.includes('change-request');
+            const isFeature = issueType === 'Feature' || labels.includes('feature') || labels.includes('needs-spec') || title.startsWith('Phase ');
+
+            const isUnsupported = (labels.includes('question') || labels.includes('support') || labels.includes('documentation') || issueType === 'Task')
+              && !isBug && !isHotfix && !isEnhancement && !isRefactor && !isDeprecation && !isModification && !isFeature;
+
+            if (isUnsupported) {
+              core.setOutput('skip', 'true');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number,
+                body: `### Skipped: unsupported issue type\n\nThe \`ready-to-spec\` label was added, but this issue type is not supported.\nSupported: **feature**, **bug**, **hotfix**, **enhancement**, **refactor**, **deprecation**, **modification**.`,
+              });
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, name: 'ready-to-spec',
+              });
+              return;
+            }
+
+            // Determine workflow type, create script, and command
+            let workflow, label, command, createScript;
+            if (isHotfix)            { workflow = 'hotfix';   label = 'Hotfix';               command = '/speckit.workflows.hotfix';     createScript = 'create-hotfix.sh'; }
+            else if (isBug)          { workflow = 'bugfix';   label = 'Bug Fix';              command = '/speckit.workflows.bugfix';     createScript = 'create-bugfix.sh'; }
+            else if (isRefactor)     { workflow = 'refactor'; label = 'Refactor';             command = '/speckit.workflows.refactor';   createScript = 'create-refactor.sh'; }
+            else if (isDeprecation)  { workflow = 'deprecate';label = 'Deprecation';          command = '/speckit.workflows.deprecate';  createScript = 'create-deprecate.sh'; }
+            else if (isModification) { workflow = 'modify';   label = 'Modification';         command = '/speckit.workflows.modify';     createScript = 'create-modification.sh'; }
+            else if (isEnhancement)  { workflow = 'enhance';  label = 'Enhancement';          command = '/speckit.workflows.enhance';    createScript = 'create-enhance.sh'; }
+            else                     { workflow = 'feature';  label = 'Feature Specification';command = '/speckit.specify';              createScript = 'create-new-feature.sh'; }
+
+            core.setOutput('skip', 'false');
+            core.setOutput('workflow', workflow);
+            core.setOutput('label', label);
+            core.setOutput('command', command);
+            core.setOutput('create_script', createScript);
+            core.setOutput('issue_title', issue.title);
+            core.setOutput('issue_number', String(issue.number));
+            core.setOutput('issue_url', issue.html_url);
+
+      # --- Step 1b: Verify dependencies are completed ---
+      - name: Check dependencies
+        if: steps.classify.outputs.skip != 'true'
+        id: deps
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Query the blockedBy relationships via GraphQL API
+            const { node } = await github.graphql(`
+              query($issueId: ID!) {
+                node(id: $issueId) {
+                  ... on Issue {
+                    blockedBy(first: 50) {
+                      nodes {
+                        number
+                        title
+                        state
+                        repository { name owner { login } }
+                        labels(first: 20) { nodes { name } }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { issueId: issue.node_id });
+
+            const blockers = node?.blockedBy?.nodes || [];
+
+            if (blockers.length === 0) {
+              core.setOutput('blocked', 'false');
+              core.info('No blockedBy relationships found');
+              return;
+            }
+
+            core.info(`Found ${blockers.length} blockedBy relationship(s)`);
+
+            const incomplete = [];
+            for (const dep of blockers) {
+              const depLabels = dep.labels.nodes.map(l => l.name);
+              const isComplete = dep.state === 'CLOSED'
+                || depLabels.includes('implementation-complete')
+                || depLabels.includes('done');
+
+              if (!isComplete) {
+                const depOwner = dep.repository.owner.login;
+                const depRepo = dep.repository.name;
+                incomplete.push(`${depOwner}/${depRepo}#${dep.number} (${dep.title})`);
+              }
+            }
+
+            if (incomplete.length > 0) {
+              core.setOutput('blocked', 'true');
+
+              // Apply blocked label
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: issue.number, labels: ['blocked'],
+              });
+
+              // Remove ready-to-spec label
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number: issue.number, name: 'ready-to-spec',
+                });
+              } catch (e) { /* label may not exist */ }
+
+              // Comment with blocking info
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: [
+                  '### Blocked: Dependencies not complete',
+                  '',
+                  'This issue cannot begin spec work until the following dependencies are resolved:',
+                  '',
+                  ...incomplete.map(d => `- [ ] ${d}`),
+                  '',
+                  'Once all dependencies are complete, re-apply the `ready-to-spec` label to proceed.',
+                ].join('\n'),
+              });
+
+              core.warning(`Blocked by ${incomplete.length} incomplete dependencies`);
+            } else {
+              core.setOutput('blocked', 'false');
+              core.info(`All ${blockers.length} dependencies are complete`);
+            }
+
+      # --- Step 2: Checkout and create the branch ---
+      - name: Checkout repository
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Create branch via spec-kit
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true'
+        id: create
+        env:
+          WORKFLOW: ${{ steps.classify.outputs.workflow }}
+          CREATE_SCRIPT: ${{ steps.classify.outputs.create_script }}
+          ISSUE_TITLE: ${{ steps.classify.outputs.issue_title }}
+        run: |
+          # Determine script location
+          # Try submodule path first, fall back to local path
+          if [ "$WORKFLOW" = "feature" ]; then
+            SCRIPT="speckit-shared/.specify/scripts/bash/${CREATE_SCRIPT}"
+            [ ! -f "$SCRIPT" ] && SCRIPT=".specify/scripts/bash/${CREATE_SCRIPT}"
+          else
+            SCRIPT="speckit-shared/.specify/extensions/workflows/scripts/bash/${CREATE_SCRIPT}"
+            [ ! -f "$SCRIPT" ] && SCRIPT=".specify/extensions/workflows/scripts/bash/${CREATE_SCRIPT}"
+          fi
+
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::error::Create script not found at submodule or local path"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          chmod +x "$SCRIPT"
+
+          # Run the create script in JSON mode
+          OUTPUT=$("$SCRIPT" --json "$ISSUE_TITLE" 2>&1) || {
+            echo "::warning::Create script failed: $OUTPUT"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          echo "json=$OUTPUT" >> "$GITHUB_OUTPUT"
+
+          # Extract branch name from JSON output
+          BRANCH_NAME=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['BRANCH_NAME'])" 2>/dev/null) || {
+            echo "::warning::Could not parse branch name from: $OUTPUT"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          echo "branch=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "Branch created: $BRANCH_NAME"
+
+      # --- Step 3: Commit scaffolding and push ---
+      - name: Commit and push branch
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true' && steps.create.outputs.skip != 'true'
+        env:
+          BRANCH: ${{ steps.create.outputs.branch }}
+          ISSUE_TITLE: ${{ steps.classify.outputs.issue_title }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to commit" || \
+            git commit -m "spec: scaffold for ${ISSUE_TITLE}"
+          git push origin "$BRANCH"
+
+      # --- Step 4: Link branch to issue ---
+      - name: Link branch to issue
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true' && steps.create.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const branch = '${{ steps.create.outputs.branch }}';
+
+            // Link the branch to the issue via the GraphQL API
+            // This makes the branch appear in the issue's "Development" sidebar
+            try {
+              const repoResult = await github.graphql(`
+                query($owner: String!, $name: String!) {
+                  repository(owner: $owner, name: $name) { id }
+                }
+              `, { owner: context.repo.owner, name: context.repo.repo });
+
+              await github.graphql(`
+                mutation($issueId: ID!, $branchName: String!, $repositoryId: ID!) {
+                  createLinkedBranch(input: {
+                    issueId: "${issue.node_id}",
+                    name: $branchName,
+                    oid: "${context.sha}",
+                    repositoryId: $repositoryId
+                  }) {
+                    linkedBranch { id }
+                  }
+                }
+              `, {
+                issueId: issue.node_id,
+                branchName: branch,
+                repositoryId: repoResult.repository.id,
+              });
+              core.info(`Linked branch ${branch} to issue #${issue.number}`);
+            } catch (e) {
+              core.warning(`Could not link branch to issue: ${e.message}`);
+            }
+
+      # --- Step 5: Update issue with branch info and instructions ---
+      - name: Update issue and comment
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true' && steps.create.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const workflow = '${{ steps.classify.outputs.workflow }}';
+            const label = '${{ steps.classify.outputs.label }}';
+            const command = '${{ steps.classify.outputs.command }}';
+            const branch = '${{ steps.create.outputs.branch }}';
+            const issueUrl = '${{ steps.classify.outputs.issue_url }}';
+
+            // --- Append agent instructions to the issue body ---
+
+            const instructions = [
+              ``,
+              `---`,
+              ``,
+              `## Copilot Instructions`,
+              ``,
+              `This is a **${label.toLowerCase()}**. The branch \`${branch}\` has been created with spec templates.`,
+              ``,
+              `### 1. Write the spec`,
+              `Check out branch \`${branch}\` and write the spec using the templates already created.`,
+              `Use the issue description above as the primary input.`,
+              ``,
+              `Run:`,
+              '```',
+              `git checkout ${branch}`,
+              `${command} ${issueUrl}`,
+              '```',
+              ``,
+              `### 2. Run /speckit.clarify`,
+              `After writing the spec, run \`/speckit.clarify\` to surface ambiguities, missing details, and open questions.`,
+              ``,
+              `### 3. Create a PR and post ALL clarification questions as review comments`,
+              `Create a PR from \`${branch}\`, then post EVERY question from clarify as a **separate PR review comment**.`,
+              `Post each comment on the most relevant line of the spec file.`,
+              ``,
+              `Format each comment as:`,
+              '```',
+              `**[NEEDS CLARIFICATION]**: <question>`,
+              ``,
+              `**Context**: <relevant spec section>`,
+              `**Impact**: What depends on the answer`,
+              `**Options**:`,
+              `- A: <option and implications>`,
+              `- B: <option and implications>`,
+              `**Default**: <which option to proceed with if no response>`,
+              '```',
+              ``,
+              `Do NOT proceed past planning until all clarification questions are posted and reviewed.`,
+              ``,
+              `### 4. Update this issue when done`,
+              `- Remove label: \`ready-to-spec\``,
+              `- Add label: \`in-progress\``,
+              `- Comment with the PR link and number of clarification questions pending`,
+            ].join('\n');
+
+            const currentBody = issue.body || '';
+            if (!currentBody.includes('## Copilot Instructions')) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: currentBody + instructions,
+              });
+            }
+
+            // --- Comment on the issue ---
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: [
+                `### ${label} — branch ready`,
+                ``,
+                `| | |`,
+                `|---|---|`,
+                `| **Branch** | \`${branch}\` |`,
+                `| **Workflow** | \`${command}\` |`,
+                ``,
+                `The branch and spec structure have been created. Assign **Copilot** to this issue to start.`,
+                ``,
+                `**Manual alternative**: \`git checkout ${branch} && ${command} ${issueUrl}\``,
+              ].join('\n'),
+            });
+
+      # --- Fallback: script failed, use instruction-only mode ---
+      - name: Fallback - append instructions without branch
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true' && steps.create.outputs.skip == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const AGENT = process.env.SPEC_READY_AGENT || 'copilot';
+            const workflow = '${{ steps.classify.outputs.workflow }}';
+            const label = '${{ steps.classify.outputs.label }}';
+            const command = '${{ steps.classify.outputs.command }}';
+            const issueUrl = '${{ steps.classify.outputs.issue_url }}';
+
+            const instructions = [
+              ``,
+              `---`,
+              ``,
+              `## Copilot Instructions`,
+              ``,
+              `This is a **${label.toLowerCase()}**. Branch creation was skipped (create script not available).`,
+              ``,
+              `### 1. Run the workflow`,
+              `Execute in the repo:`,
+              '```',
+              `${command} ${issueUrl}`,
+              '```',
+              `This will create the branch, spec structure, and templates.`,
+              ``,
+              `### 2. Run /speckit.clarify`,
+              `After the spec is created, run \`/speckit.clarify\` to surface ambiguities and open questions.`,
+              ``,
+              `### 3. Create a PR and post ALL clarification questions`,
+              `Create a PR, then post EVERY question from clarify as a **separate PR review comment**.`,
+              `Do NOT proceed past planning until questions are posted.`,
+              ``,
+              `### 4. Update this issue`,
+              `- Remove label: \`ready-to-spec\`, add: \`in-progress\``,
+              `- Comment with PR link and number of clarification questions`,
+            ].join('\n');
+
+            const currentBody = issue.body || '';
+            if (!currentBody.includes('## Copilot Instructions')) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: currentBody + instructions,
+              });
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `### ${label} — ready for Copilot\n\nAssign **Copilot** to this issue to start. The spec templates are ready.\n\n**Manual alternative**: Run \`${command} ${issueUrl}\``,
+            });
+
+      # --- Step 6: Update project board status to "Specifying" ---
+      - name: Update project status
+        if: steps.classify.outputs.skip != 'true' && steps.deps.outputs.blocked != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Apply spec-in-progress label (triggers project-phase-sync)
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: issue.number,
+              labels: ['spec-in-progress'],
+            });
+
+            // Remove ready-to-spec label
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: issue.number, name: 'ready-to-spec',
+              });
+            } catch (e) { /* may already be removed */ }
+
+            core.info('Transitioned to spec-in-progress');

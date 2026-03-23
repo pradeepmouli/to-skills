@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.4.2
+
+### Patch Changes
+
+- Restore tsgo as build compiler, add types: ["node"] to tsconfig
+
 ## 0.4.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@to-skills/core",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Shared types, SKILL.md renderer, and token budgeting for to-skills plugins",
   "type": "module",
   "exports": {
@@ -18,8 +18,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "type-check": "tsc --noEmit",
+    "build": "tsgo -p tsconfig.build.json",
+    "type-check": "tsgo --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "funding": {
