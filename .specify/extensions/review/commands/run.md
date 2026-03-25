@@ -31,6 +31,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **errors** - Check error handling for silent failures
    - **types** - Analyze type design and invariants (if new types added)
    - **code** - General code review for project guidelines
+   - **slop** - Detect AI-generated patterns, `as any`, over-documentation, premature abstractions
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
@@ -52,6 +53,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If comments/docs added** (if enabled): `/speckit.review.comments`
    - **If error handling changed** (if enabled): `/speckit.review.errors`
    - **If types added/modified** (if enabled): `/speckit.review.types`
+   - **Always applicable** (if enabled): `/speckit.review.slop` (AI pattern detection)
    - **After passing review** (if enabled): `/speckit.review.simplify` (polish and refine)
    - If an agent is disabled by config, note it in the final summary (e.g., "simplify: skipped (disabled in config)").
 
