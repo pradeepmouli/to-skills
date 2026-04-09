@@ -1,8 +1,35 @@
 {
   "name": "typedoc-plugin-to-skills",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "TypeDoc plugin that generates AI agent skills (SKILL.md) and llms.txt — auto-discovered by TypeDoc",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "documentation",
+    "llm",
+    "llms-txt",
+    "skill-md",
+    "to-skills",
+    "typedoc",
+    "typedoc-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/typedoc-plugin"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -11,23 +38,6 @@
       }
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "keywords": [
-    "typedoc",
-    "typedoc-plugin",
-    "agent-skills",
-    "skill-md",
-    "llms-txt",
-    "ai",
-    "llm",
-    "documentation",
-    "to-skills"
-  ],
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "scripts": {
     "build": "tsgo -p tsconfig.build.json",
     "type-check": "tsgo --noEmit",
@@ -38,15 +48,5 @@
   },
   "peerDependencies": {
     "typedoc": ">=0.28.0"
-  },
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/pradeepmouli"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pradeepmouli/to-skills.git",
-    "directory": "packages/typedoc-plugin"
   }
 }

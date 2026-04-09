@@ -1,8 +1,33 @@
 {
   "name": "@to-skills/typedoc",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "TypeDoc plugin that generates AI agent skills (SKILL.md) from TypeScript API documentation",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "documentation",
+    "llm",
+    "skill-md",
+    "typedoc",
+    "typedoc-plugin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/typedoc"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -11,21 +36,6 @@
       }
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "keywords": [
-    "typedoc",
-    "typedoc-plugin",
-    "agent-skills",
-    "skill-md",
-    "ai",
-    "llm",
-    "documentation"
-  ],
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "scripts": {
     "build": "tsgo -p tsconfig.build.json",
     "type-check": "tsgo --noEmit",
@@ -34,20 +44,10 @@
   "dependencies": {
     "@to-skills/core": "workspace:*"
   },
-  "peerDependencies": {
-    "typedoc": ">=0.28.0"
-  },
   "devDependencies": {
     "typedoc": "^0.28.17"
   },
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/pradeepmouli"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pradeepmouli/to-skills.git",
-    "directory": "packages/typedoc"
+  "peerDependencies": {
+    "typedoc": ">=0.28.0"
   }
 }

@@ -1,5 +1,20 @@
 # typedoc-plugin-to-skills
 
+## 0.4.2
+
+### Patch Changes
+
+- Improve extraction coverage and rendering quality
+  - Extract and render interface properties in types reference (previously empty for interfaces)
+  - Extract and render variables/constants (previously silently dropped)
+  - Extract and render function overloads (previously only first signature)
+  - Render @deprecated, @since, @throws, @see tags in function references
+  - Extract @returns prose descriptions
+  - Extract class inheritance (extends/implements)
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.6.0
+
 ## 0.4.1
 
 ### Patch Changes
@@ -14,7 +29,6 @@
 ### Minor Changes
 
 - Fix monorepo support: accumulate skills across converter runs
-
   - Accumulate extracted skills across multiple converter invocations
     (fixes entryPointStrategy: "packages" where TypeDoc runs per-package)
   - Write all skills once after rendering completes (postRenderAsyncJobs)
@@ -59,7 +73,6 @@
 - Progressive disclosure: SKILL.md is now a lean discovery document, with full API details in references/
 
   Skills now generate a file tree instead of a single monolithic file:
-
   - `SKILL.md` — frontmatter, overview, when-to-use, quick reference (~500 tokens)
   - `references/functions.md` — full function signatures, params, examples
   - `references/classes.md` — class details with constructors, methods, properties
@@ -87,7 +100,6 @@
 ### Patch Changes
 
 - Enrich skills with package.json metadata and TypeDoc projectDocuments
-
   - Extract keywords, repository URL, author from package.json
   - Keywords incorporated into skill description triggers
   - Repository and author rendered as Links section
