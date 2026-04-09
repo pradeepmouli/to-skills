@@ -1,6 +1,6 @@
 # to-skills
 
-> Generate structured AI agent skills (SKILL.md) from documentation sources — TypeDoc, Docusaurus, OpenAPI, and more
+> Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
 
 ### renderSkills
 
@@ -99,6 +99,8 @@ Extracted API surface for a single package/module
 ### ExtractedParameter
 
 ### ExtractedProperty
+
+### ExtractedVariable
 
 ### ExtractedDocument
 

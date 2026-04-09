@@ -175,17 +175,17 @@ function renderFunctionsRef(fns: ExtractedFunction[], opts: SkillRenderOptions):
     }
 
     // Render important tags
-    if (fn.tags.deprecated) {
-      lines.push(`> **Deprecated:** ${fn.tags.deprecated}`);
+    if (fn.tags['deprecated']) {
+      lines.push(`> **Deprecated:** ${fn.tags['deprecated']}`);
     }
-    if (fn.tags.since) {
-      lines.push(`**Since:** \`${fn.tags.since}\``);
+    if (fn.tags['since']) {
+      lines.push(`**Since:** \`${fn.tags['since']}\``);
     }
-    if (fn.tags.throws) {
-      lines.push(`**Throws:** ${fn.tags.throws}`);
+    if (fn.tags['throws']) {
+      lines.push(`**Throws:** ${fn.tags['throws']}`);
     }
-    if (fn.tags.see) {
-      lines.push(`**See:** ${fn.tags.see}`);
+    if (fn.tags['see']) {
+      lines.push(`**See:** ${fn.tags['see']}`);
     }
 
     if (opts.includeSignatures && fn.overloads && fn.overloads.length > 0) {

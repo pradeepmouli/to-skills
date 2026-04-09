@@ -1,6 +1,6 @@
 # to-skills
 
-> Generate structured AI agent skills (SKILL.md) from documentation sources — TypeDoc, Docusaurus, OpenAPI, and more
+> Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
 
 ### API
 
@@ -23,6 +23,7 @@ Not exact, but good enough for budgeting skill file sizes.
 - `ExtractedEnum`
 - `ExtractedParameter`
 - `ExtractedProperty`
+- `ExtractedVariable`
 - `ExtractedDocument`
 - `RenderedFile`: A single rendered file
 - `RenderedSkill`: A rendered skill with progressive disclosure structure
