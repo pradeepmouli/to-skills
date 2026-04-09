@@ -1,6 +1,6 @@
 # to-skills
 
-Generate structured AI agent skills ([SKILL.md](https://agentskills.io)) and [llms.txt](https://llmstxt.org) from your documentation sources.
+Generate structured AI agent skills ([SKILL.md](https://agentskills.io)) and [llms.txt](https://llmstxt.org) from your TypeScript API documentation.
 
 Install the TypeDoc plugin and your API docs become discoverable agent skills — compatible with Claude Code, Cursor, Copilot, and [500+ other agents](https://github.com/VoltAgent/awesome-agent-skills).
 
@@ -47,11 +47,11 @@ Generates both `llms.txt` (summary with truncated descriptions) and `llms-full.t
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| [`@to-skills/core`](packages/core) | Shared types, SKILL.md renderer, llms.txt renderer, token budgeting |
-| [`@to-skills/typedoc`](packages/typedoc) | TypeDoc plugin — extracts from the reflection tree |
-| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper (just install, no config) |
+| Package                                               | Description                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------- |
+| [`@to-skills/core`](packages/core)                    | Shared types, SKILL.md renderer, llms.txt renderer, token budgeting |
+| [`@to-skills/typedoc`](packages/typedoc)              | TypeDoc plugin — extracts from the reflection tree                  |
+| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper (just install, no config)                    |
 
 ## Configuration
 
@@ -71,17 +71,17 @@ Add options to your `typedoc.json`:
 }
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `skillsOutDir` | `"skills"` | Output directory for SKILL.md files |
-| `skillsPerPackage` | `true` | One skill per package in monorepos |
-| `skillsIncludeExamples` | `true` | Include `@example` JSDoc tags |
-| `skillsIncludeSignatures` | `true` | Include type signatures |
-| `skillsMaxTokens` | `4000` | Max token budget per skill |
-| `skillsNamePrefix` | `""` | Custom prefix for skill names |
-| `skillsLicense` | auto | License (reads from package.json) |
-| `llmsTxt` | `false` | Generate llms.txt and llms-full.txt |
-| `llmsTxtOutDir` | `"."` | Output directory for llms.txt files |
+| Option                    | Default    | Description                         |
+| ------------------------- | ---------- | ----------------------------------- |
+| `skillsOutDir`            | `"skills"` | Output directory for SKILL.md files |
+| `skillsPerPackage`        | `true`     | One skill per package in monorepos  |
+| `skillsIncludeExamples`   | `true`     | Include `@example` JSDoc tags       |
+| `skillsIncludeSignatures` | `true`     | Include type signatures             |
+| `skillsMaxTokens`         | `4000`     | Max token budget per skill          |
+| `skillsNamePrefix`        | `""`       | Custom prefix for skill names       |
+| `skillsLicense`           | auto       | License (reads from package.json)   |
+| `llmsTxt`                 | `false`    | Generate llms.txt and llms-full.txt |
+| `llmsTxtOutDir`           | `"."`      | Output directory for llms.txt files |
 
 ## How It Works
 

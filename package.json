@@ -2,11 +2,17 @@
   "name": "to-skills",
   "version": "0.0.0",
   "private": true,
-  "description": "Generate structured AI agent skills (SKILL.md) from documentation sources — TypeDoc, Docusaurus, OpenAPI, and more",
-  "type": "module",
+  "description": "Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation",
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git"
+  },
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "vitest",
@@ -28,19 +34,6 @@
     "docs": "typedoc --out docs/html --plugin typedoc-plugin-to-skills",
     "docs:md": "typedoc"
   },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged",
-    "pre-push": "pnpm run type-check"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
-      "oxfmt",
-      "oxlint --fix"
-    ],
-    "*.{json,md}": [
-      "oxfmt --no-error-on-unmatched-pattern"
-    ]
-  },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.29.4",
@@ -54,15 +47,22 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged",
+    "pre-push": "pnpm run type-check"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "oxfmt",
+      "oxlint --fix"
+    ],
+    "*.{json,md}": [
+      "oxfmt --no-error-on-unmatched-pattern"
+    ]
+  },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=10.0.0"
   },
-  "packageManager": "pnpm@10.6.2",
-  "license": "MIT",
-  "author": "Pradeep Mouli",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pradeepmouli/to-skills.git"
-  }
+  "packageManager": "pnpm@10.6.2"
 }
