@@ -22,6 +22,8 @@ export interface ExtractedSkill {
   types: ExtractedType[];
   /** Exported enums */
   enums: ExtractedEnum[];
+  /** Exported variables and constants */
+  variables: ExtractedVariable[];
   /** Usage examples from @example tags or doc pages */
   examples: string[];
 }
@@ -56,6 +58,13 @@ export interface ExtractedEnum {
   name: string;
   description: string;
   members: Array<{ name: string; value: string; description: string }>;
+}
+
+export interface ExtractedVariable {
+  name: string;
+  type: string;
+  description: string;
+  isConst: boolean;
 }
 
 export interface ExtractedParameter {

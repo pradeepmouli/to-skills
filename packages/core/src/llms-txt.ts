@@ -1,5 +1,5 @@
-import type { ExtractedSkill } from "./types.js";
-import { estimateTokens } from "./tokens.js";
+import type { ExtractedSkill } from './types.js';
+import { estimateTokens } from './tokens.js';
 
 /** Max description length in llms.txt summary */
 const SUMMARY_DESC_MAX = 150;
@@ -12,7 +12,7 @@ const SECTION_ORDER: Record<string, number> = {
   Interfaces: 10,
   Types: 11,
   Enums: 12,
-  Other: 20,
+  Other: 20
 };
 
 export interface LlmsTxtOptions {
@@ -34,10 +34,7 @@ export interface LlmsTxtResult {
 }
 
 /** Render llms.txt and llms-full.txt from extracted skills */
-export function renderLlmsTxt(
-  skills: ExtractedSkill[],
-  options: LlmsTxtOptions,
-): LlmsTxtResult {
+export function renderLlmsTxt(skills: ExtractedSkill[], options: LlmsTxtOptions): LlmsTxtResult {
   const summary = renderSummary(skills, options);
   const full = renderFull(skills, options);
 
@@ -45,7 +42,7 @@ export function renderLlmsTxt(
     summary,
     full,
     summaryTokens: estimateTokens(summary),
-    fullTokens: estimateTokens(full),
+    fullTokens: estimateTokens(full)
   };
 }
 
@@ -73,7 +70,7 @@ function renderSummary(skills: ExtractedSkill[], options: LlmsTxtOptions): strin
     renderSummarySections(skills[0]!, lines);
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 function renderSummarySections(skill: ExtractedSkill, lines: string[]): void {
@@ -83,38 +80,44 @@ function renderSummarySections(skill: ExtractedSkill, lines: string[]): void {
   // Functions
   for (const fn of skill.functions) {
     const desc = truncateDescription(fn.description);
-    primary.push(`- \`${fn.name}\`${desc ? `: ${desc}` : ""}`);
+    primary.push(`- \`${fn.name}\`${desc ? `: ${desc}` : ''}`);
   }
 
   // Classes
   for (const cls of skill.classes) {
     const desc = truncateDescription(cls.description);
-    primary.push(`- \`${cls.name}\`${desc ? `: ${desc}` : ""}`);
+    primary.push(`- \`${cls.name}\`${desc ? `: ${desc}` : ''}`);
+  }
+
+  // Variables
+  for (const v of skill.variables ?? []) {
+    const desc = truncateDescription(v.description);
+    primary.push(`- \`${v.name}\`${desc ? `: ${desc}` : ''}`);
   }
 
   // Types/Interfaces
   for (const t of skill.types) {
     const desc = truncateDescription(t.description);
-    optional.push(`- \`${t.name}\`${desc ? `: ${desc}` : ""}`);
+    optional.push(`- \`${t.name}\`${desc ? `: ${desc}` : ''}`);
   }
 
   // Enums
   for (const e of skill.enums) {
     const desc = truncateDescription(e.description);
-    optional.push(`- \`${e.name}\`${desc ? `: ${desc}` : ""}`);
+    optional.push(`- \`${e.name}\`${desc ? `: ${desc}` : ''}`);
   }
 
   if (primary.length > 0) {
-    lines.push("### API\n");
+    lines.push('### API\n');
     lines.push(...primary);
-    lines.push("");
+    lines.push('');
   }
 
   if (optional.length > 0) {
-    lines.push("## Optional\n");
-    lines.push("### Types\n");
+    lines.push('## Optional\n');
+    lines.push('### Types\n');
     lines.push(...optional);
-    lines.push("");
+    lines.push('');
   }
 }
 
@@ -141,24 +144,24 @@ function renderFull(skills: ExtractedSkill[], options: LlmsTxtOptions): string {
       lines.push(`### ${fn.name}\n`);
       if (fn.description) lines.push(`${fn.description}\n`);
       if (fn.signature) {
-        lines.push("```ts", fn.signature, "```\n");
+        lines.push('```ts', fn.signature, '```\n');
       }
       if (fn.parameters.length > 0) {
-        lines.push("**Parameters:**");
+        lines.push('**Parameters:**');
         for (const p of fn.parameters) {
-          const opt = p.optional ? " (optional)" : "";
-          lines.push(`- \`${p.name}: ${p.type}\`${opt} — ${p.description || ""}`);
+          const opt = p.optional ? ' (optional)' : '';
+          lines.push(`- \`${p.name}: ${p.type}\`${opt} — ${p.description || ''}`);
         }
-        lines.push("");
+        lines.push('');
       }
-      if (fn.returnType && fn.returnType !== "void") {
+      if (fn.returnType && fn.returnType !== 'void') {
         lines.push(`**Returns:** \`${fn.returnType}\`\n`);
       }
       if (fn.examples.length > 0) {
         for (const ex of fn.examples) {
           lines.push(ex);
         }
-        lines.push("");
+        lines.push('');
       }
     }
 
@@ -167,21 +170,21 @@ function renderFull(skills: ExtractedSkill[], options: LlmsTxtOptions): string {
       lines.push(`### ${cls.name}\n`);
       if (cls.description) lines.push(`${cls.description}\n`);
       if (cls.constructorSignature) {
-        lines.push("```ts", cls.constructorSignature, "```\n");
+        lines.push('```ts', cls.constructorSignature, '```\n');
       }
       if (cls.properties.length > 0) {
-        lines.push("**Properties:**");
+        lines.push('**Properties:**');
         for (const p of cls.properties) {
-          lines.push(`- \`${p.name}: ${p.type}\` — ${p.description || ""}`);
+          lines.push(`- \`${p.name}: ${p.type}\` — ${p.description || ''}`);
         }
-        lines.push("");
+        lines.push('');
       }
       if (cls.methods.length > 0) {
-        lines.push("**Methods:**");
+        lines.push('**Methods:**');
         for (const m of cls.methods) {
-          lines.push(`- \`${m.signature}\` — ${m.description || ""}`);
+          lines.push(`- \`${m.signature}\` — ${m.description || ''}`);
         }
-        lines.push("");
+        lines.push('');
       }
     }
 
@@ -190,7 +193,7 @@ function renderFull(skills: ExtractedSkill[], options: LlmsTxtOptions): string {
       lines.push(`### ${t.name}\n`);
       if (t.description) lines.push(`${t.description}\n`);
       if (t.definition) {
-        lines.push("```ts", `type ${t.name} = ${t.definition}`, "```\n");
+        lines.push('```ts', `type ${t.name} = ${t.definition}`, '```\n');
       }
     }
 
@@ -199,17 +202,25 @@ function renderFull(skills: ExtractedSkill[], options: LlmsTxtOptions): string {
       lines.push(`### ${e.name}\n`);
       if (e.description) lines.push(`${e.description}\n`);
       for (const m of e.members) {
-        lines.push(`- \`${m.name}\` = \`${m.value}\` — ${m.description || ""}`);
+        lines.push(`- \`${m.name}\` = \`${m.value}\` — ${m.description || ''}`);
       }
-      lines.push("");
+      lines.push('');
+    }
+
+    // Variables
+    for (const v of skill.variables ?? []) {
+      lines.push(`### ${v.name}\n`);
+      if (v.description) lines.push(`${v.description}\n`);
+      const keyword = v.isConst ? 'const' : 'let';
+      lines.push('```ts', `${keyword} ${v.name}: ${v.type}`, '```\n');
     }
 
     if (skills.length > 1) {
-      lines.push("---\n");
+      lines.push('---\n');
     }
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -222,5 +233,5 @@ function truncateDescription(desc: string): string {
   if (firstSentence && firstSentence.length <= SUMMARY_DESC_MAX) {
     return firstSentence;
   }
-  return desc.slice(0, SUMMARY_DESC_MAX - 3) + "...";
+  return desc.slice(0, SUMMARY_DESC_MAX - 3) + '...';
 }

@@ -9,6 +9,7 @@ const minimalSkill: ExtractedSkill = {
   classes: [],
   types: [],
   enums: [],
+  variables: [],
   examples: []
 };
 

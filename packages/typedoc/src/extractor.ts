@@ -14,6 +14,7 @@ import type {
   ExtractedClass,
   ExtractedType,
   ExtractedEnum,
+  ExtractedVariable,
   ExtractedParameter,
   ExtractedProperty,
   ExtractedDocument
@@ -83,6 +84,7 @@ function mergeModules(
   const allClasses: ExtractedClass[] = [];
   const allTypes: ExtractedType[] = [];
   const allEnums: ExtractedEnum[] = [];
+  const allVariables: ExtractedVariable[] = [];
   const allExamples: string[] = [];
   let description = '';
 
@@ -98,6 +100,9 @@ function mergeModules(
         .map(extractType)
     );
     allEnums.push(...children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum));
+    allVariables.push(
+      ...children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable)
+    );
     allExamples.push(...getExamples(mod.comment));
 
     // Use the first non-empty description
@@ -119,6 +124,7 @@ function mergeModules(
     classes: allClasses,
     types: allTypes,
     enums: allEnums,
+    variables: allVariables,
     examples: allExamples
   };
 }
@@ -146,6 +152,7 @@ function extractModule(
       .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
       .map(extractType),
     enums: children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum),
+    variables: children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable),
     examples: getExamples(mod.comment)
   };
 }
@@ -213,6 +220,15 @@ function extractEnum(decl: DeclarationReflection): ExtractedEnum {
       value: m.type?.toString() ?? '',
       description: getCommentText(m.comment)
     }))
+  };
+}
+
+function extractVariable(decl: DeclarationReflection): ExtractedVariable {
+  return {
+    name: decl.name,
+    type: decl.type?.toString() ?? 'unknown',
+    description: getCommentText(decl.comment),
+    isConst: decl.flags.isConst
   };
 }
 

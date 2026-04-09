@@ -4,6 +4,7 @@ import type {
   ExtractedClass,
   ExtractedType,
   ExtractedEnum,
+  ExtractedVariable,
   RenderedFile,
   RenderedSkill,
   SkillRenderOptions
@@ -68,6 +69,15 @@ export function renderSkill(
     const content = renderTypesRef(skill.types, skill.enums);
     references.push({
       filename: `${basePath}/references/types.md`,
+      content: truncateToTokenBudget(content, opts.maxTokens),
+      tokens: estimateTokens(content)
+    });
+  }
+
+  if (skill.variables && skill.variables.length > 0) {
+    const content = renderVariablesRef(skill.variables);
+    references.push({
+      filename: `${basePath}/references/variables.md`,
       content: truncateToTokenBudget(content, opts.maxTokens),
       tokens: estimateTokens(content)
     });
@@ -254,6 +264,20 @@ function renderTypesRef(types: ExtractedType[], enums: ExtractedEnum[]): string 
   return lines.join('\n');
 }
 
+function renderVariablesRef(variables: ExtractedVariable[]): string {
+  const lines = ['# Variables & Constants\n'];
+
+  for (const v of variables) {
+    lines.push(`## \`${v.name}\``);
+    if (v.description) lines.push(v.description);
+    const keyword = v.isConst ? 'const' : 'let';
+    lines.push('```ts', `${keyword} ${v.name}: ${v.type}`, '```');
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 // ===========================================================================
 // Shared helpers
 // ===========================================================================
@@ -348,6 +372,10 @@ function renderWhenToUse(skill: ExtractedSkill): string {
     const names = skill.types.slice(0, 5).map((t) => `\`${t.name}\``);
     triggers.push(`- Typing with ${names.join(', ')}`);
   }
+  if (skill.variables && skill.variables.length > 0) {
+    const names = skill.variables.slice(0, 5).map((v) => `\`${v.name}\``);
+    triggers.push(`- Using constants/variables ${names.join(', ')}`);
+  }
   for (const fn of skill.functions) {
     if (fn.tags['see']) {
       triggers.push(`- See also: ${fn.tags['see']}`);
@@ -380,6 +408,11 @@ function renderQuickReference(skill: ExtractedSkill): string {
   if (skill.enums.length > 0) {
     items.push(
       `**${skill.enums.length} enums** — ${skill.enums.map((e) => `\`${e.name}\``).join(', ')}`
+    );
+  }
+  if (skill.variables && skill.variables.length > 0) {
+    items.push(
+      `**${skill.variables.length} variables** — ${skill.variables.map((v) => `\`${v.name}\``).join(', ')}`
     );
   }
 
