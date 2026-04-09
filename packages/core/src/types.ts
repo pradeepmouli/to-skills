@@ -34,6 +34,8 @@ export interface ExtractedFunction {
   signature: string;
   parameters: ExtractedParameter[];
   returnType: string;
+  /** Prose description from @returns JSDoc tag */
+  returnsDescription?: string;
   examples: string[];
   tags: Record<string, string>;
   /** Additional overload signatures (if function has multiple signatures) */
@@ -47,6 +49,10 @@ export interface ExtractedClass {
   methods: ExtractedFunction[];
   properties: ExtractedProperty[];
   examples: string[];
+  /** Base class name (from `extends`) */
+  extends?: string;
+  /** Implemented interface names (from `implements`) */
+  implements?: string[];
 }
 
 export interface ExtractedType {

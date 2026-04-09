@@ -437,6 +437,143 @@ describe('renderSkill — function overloads in functions.md', () => {
   });
 });
 
+describe('renderSkill — @returns description in functions.md', () => {
+  it('appends returnsDescription after return type', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fetchUser',
+          description: 'Fetches a user',
+          signature: 'fetchUser(id: string): Promise<User>',
+          parameters: [{ name: 'id', type: 'string', description: 'User ID', optional: false }],
+          returnType: 'Promise<User>',
+          returnsDescription: 'The resolved user object',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain('**Returns:** `Promise<User>` — The resolved user object');
+  });
+
+  it('omits description when returnsDescription is undefined', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'greet',
+          description: 'Says hello',
+          signature: 'greet(name: string): string',
+          parameters: [],
+          returnType: 'string',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('**Returns:** `string`');
+    expect(fns!.content).not.toContain('— ');
+  });
+});
+
+describe('renderSkill — class inheritance in classes.md', () => {
+  it('renders extends line when class has a base class', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'SpecialError',
+          description: 'A special error',
+          constructorSignature: 'constructor(message: string)',
+          methods: [],
+          properties: [],
+          examples: [],
+          extends: 'Error'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls).toBeDefined();
+    expect(cls!.content).toContain('*extends `Error`*');
+  });
+
+  it('renders implements line when class implements interfaces', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'MyRepo',
+          description: 'A repository',
+          constructorSignature: 'constructor()',
+          methods: [],
+          properties: [],
+          examples: [],
+          implements: ['IRepository', 'IDisposable']
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls).toBeDefined();
+    expect(cls!.content).toContain('*implements `IRepository`, `IDisposable`*');
+  });
+
+  it('renders both extends and implements when both are set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'ConcreteStore',
+          description: 'Concrete implementation',
+          constructorSignature: 'constructor()',
+          methods: [],
+          properties: [],
+          examples: [],
+          extends: 'BaseStore',
+          implements: ['IStore']
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls!.content).toContain('*extends `BaseStore`*');
+    expect(cls!.content).toContain('*implements `IStore`*');
+  });
+
+  it('omits extends/implements lines when neither is set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'Plain',
+          description: 'A plain class',
+          constructorSignature: 'constructor()',
+          methods: [],
+          properties: [],
+          examples: []
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls!.content).not.toContain('*extends');
+    expect(cls!.content).not.toContain('*implements');
+  });
+});
+
 describe('renderSkill — variables in SKILL.md', () => {
   it('shows variables in Quick Reference', () => {
     const skill: ExtractedSkill = {

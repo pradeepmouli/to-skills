@@ -167,6 +167,7 @@ function extractFunction(decl: DeclarationReflection): ExtractedFunction {
     signature: formatSignature(decl.name, sig),
     parameters: (sig?.parameters ?? []).map(extractParameter),
     returnType: sig?.type?.toString() ?? 'void',
+    returnsDescription: getReturnsDescription(sig?.comment ?? decl.comment),
     examples: getExamples(sig?.comment ?? decl.comment),
     tags: getTagMap(sig?.comment ?? decl.comment),
     overloads: overloads.length > 0 ? overloads : undefined
@@ -183,6 +184,9 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     .filter((c) => c.kind === ReflectionKind.Property && !c.flags.isPrivate)
     .map(extractProperty);
 
+  const extendedTypes = decl.extendedTypes?.map((t) => t.toString());
+  const implementedTypes = decl.implementedTypes?.map((t) => t.toString());
+
   return {
     name: decl.name,
     description: getCommentText(decl.comment),
@@ -191,7 +195,9 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
       : '',
     methods,
     properties,
-    examples: getExamples(decl.comment)
+    examples: getExamples(decl.comment),
+    extends: extendedTypes?.[0],
+    implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined
   };
 }
 
@@ -275,6 +281,17 @@ function getCommentText(comment: Comment | undefined): string {
     .map((part) => part.text)
     .join('')
     .trim();
+}
+
+function getReturnsDescription(comment: Comment | undefined): string | undefined {
+  if (!comment) return undefined;
+  const returnsTag = comment.getTag('@returns');
+  if (!returnsTag) return undefined;
+  const text = returnsTag.content
+    .map((part) => part.text)
+    .join('')
+    .trim();
+  return text || undefined;
 }
 
 function getExamples(comment: Comment | undefined): string[] {

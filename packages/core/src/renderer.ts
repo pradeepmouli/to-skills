@@ -170,7 +170,8 @@ function renderFunctionsRef(fns: ExtractedFunction[], opts: SkillRenderOptions):
     }
 
     if (fn.returnType && fn.returnType !== 'void') {
-      lines.push(`**Returns:** \`${fn.returnType}\``);
+      const desc = fn.returnsDescription ? ` — ${fn.returnsDescription}` : '';
+      lines.push(`**Returns:** \`${fn.returnType}\`${desc}`);
     }
 
     // Render important tags
@@ -212,6 +213,13 @@ function renderClassesRef(classes: ExtractedClass[], opts: SkillRenderOptions): 
   for (const cls of classes) {
     lines.push(`## \`${cls.name}\``);
     if (cls.description) lines.push(cls.description);
+
+    if (cls.extends) {
+      lines.push(`*extends \`${cls.extends}\`*`);
+    }
+    if (cls.implements && cls.implements.length > 0) {
+      lines.push(`*implements ${cls.implements.map((i) => `\`${i}\``).join(', ')}*`);
+    }
 
     if (opts.includeSignatures && cls.constructorSignature) {
       lines.push('```ts', cls.constructorSignature, '```');
