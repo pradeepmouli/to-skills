@@ -1,28 +1,22 @@
-# Contributing to Procxy
+# Contributing to to-skills
 
-Thank you for your interest in contributing to Procxy! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to to-skills! This document covers how to get set up and submit changes. For coding standards and conventions, see [AGENTS.md](./AGENTS.md).
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
-- [Coding Standards](#coding-standards)
 - [Testing](#testing)
 - [Submitting Changes](#submitting-changes)
 - [Release Process](#release-process)
-
-## Code of Conduct
-
-This project follows a code of conduct that all contributors are expected to adhere to. Be respectful, inclusive, and professional in all interactions.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ (we recommend using [nvm](https://github.com/nvm-sh/nvm))
-- pnpm 8+ (install via `npm install -g pnpm`)
+- Node.js 20+
+- pnpm 10.6+ (install via `npm install -g pnpm`)
 - Git
 
 ### Fork and Clone
@@ -31,14 +25,14 @@ This project follows a code of conduct that all contributors are expected to adh
 2. Clone your fork locally:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/procxy.git
-cd procxy
+git clone https://github.com/YOUR_USERNAME/to-skills.git
+cd to-skills
 ```
 
 3. Add the upstream repository:
 
 ```bash
-git remote add upstream https://github.com/ORIGINAL_OWNER/procxy.git
+git remote add upstream https://github.com/pradeepmouli/to-skills.git
 ```
 
 ## Development Setup
@@ -49,31 +43,37 @@ git remote add upstream https://github.com/ORIGINAL_OWNER/procxy.git
 pnpm install
 ```
 
-2. Run tests to verify setup:
-
-```bash
-pnpm test
-```
-
-3. Build the project:
+2. Build all packages:
 
 ```bash
 pnpm build
 ```
 
+3. Run tests to verify setup:
+
+```bash
+pnpm test
+```
+
 ### Development Workflow
 
 ```bash
+# Build (uses tsgo)
+pnpm build
+
+# Run tests (vitest)
+pnpm test
+
 # Run tests in watch mode
 pnpm test --watch
 
 # Type check without building
 pnpm type-check
 
-# Lint code
+# Lint (oxlint)
 pnpm lint
 
-# Format code
+# Format (oxfmt)
 pnpm format
 
 # Run all checks before committing
@@ -82,128 +82,34 @@ pnpm type-check && pnpm lint && pnpm test
 
 ## Project Structure
 
-```
-procxy/
-├── src/
-│   ├── index.ts              # Main entry point, public API
-│   ├── parent/
-│   │   ├── procxy.ts         # Parent-side proxy implementation
-│   │   └── ipc-client.ts     # IPC client for parent process
-│   ├── child/
-│   │   └── agent.ts          # Child process agent
-│   ├── shared/
-│   │   ├── protocol.ts       # IPC protocol definitions
-│   │   ├── serialization.ts  # JSON serialization utilities
-│   │   ├── errors.ts         # Error classes
-│   │   └── module-resolver.ts # Module resolution logic
-│   └── types/
-│       ├── procxy.ts         # Procxy<T> mapped type
-│       └── options.ts        # Configuration types
-├── tests/
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   └── fixtures/             # Test fixtures
-├── specs/
-│   └── 001-procxy-core-library/
-│       ├── spec.md           # Technical specification
-│       ├── plan.md           # Implementation plan
-│       └── tasks.md          # Task breakdown
-└── examples/                 # Usage examples
+to-skills is a pnpm monorepo with three packages:
 
 ```
-
-### Key Files
-
-- **src/index.ts** - Main entry point, exports public API
-- **src/parent/procxy.ts** - Core proxy implementation
-- **src/child/agent.ts** - Child process agent that receives IPC messages
-- **src/shared/protocol.ts** - IPC message protocol definitions
-- **src/types/procxy.ts** - Mapped type that transforms class types
-
-## Coding Standards
-
-This project follows strict coding standards. Please review [AGENTS.md](./AGENTS.md) for comprehensive guidelines.
-
-### Key Principles
-
-1. **TypeScript First** - Use explicit types, avoid `any`
-2. **Naming Conventions**:
-   - `camelCase` for variables and functions
-   - `PascalCase` for classes, types, interfaces, and file names
-   - `kebab-case` for non-module scripts
-3. **Modern JavaScript** - Use ES2022+ features (async/await, optional chaining, nullish coalescing)
-4. **Error Handling** - Always handle errors explicitly with try/catch
-5. **Documentation** - Add JSDoc comments to all public APIs
-
-### Style Guide
-
-```typescript
-// ✅ Good
-class Calculator {
-  /**
-   * Adds two numbers together.
-   *
-   * @param a - First number
-   * @param b - Second number
-   * @returns The sum of a and b
-   */
-  add(a: number, b: number): number {
-    return a + b;
-  }
-}
-
-// ❌ Bad - missing types, no JSDoc
-class Calculator {
-  add(a, b) {
-    return a + b;
-  }
-}
+to-skills/
+├── packages/
+│   ├── core/               # Shared types, renderers, token budgeting, writer
+│   │   └── src/
+│   │       ├── types/      # ExtractedSkill hierarchy and shared interfaces
+│   │       ├── renderers/  # SKILL.md and llms.txt renderers
+│   │       └── writer.ts   # File output writer
+│   ├── typedoc/            # TypeDoc plugin (hooks and reflection tree walking)
+│   │   └── src/
+│   │       ├── plugin.ts   # TypeDoc lifecycle hooks
+│   │       └── extractor.ts # Reflection tree walker
+│   └── typedoc-plugin/     # Auto-discovery wrapper (npm: typedoc-plugin-to-skills)
+├── AGENTS.md               # Coding standards and conventions
+└── CONTRIBUTING.md         # This file
 ```
 
-### Code Formatting
+### Package Roles
 
-We use **oxfmt** for formatting. Run `pnpm format` before committing.
-
-Configuration: See `.oxfmt.json` or `package.json` config.
-
-### Linting
-
-We use **oxlint** for linting. Run `pnpm lint` to check for issues.
+- **packages/core** — Framework-agnostic types (`ExtractedSkill` hierarchy), renderers (SKILL.md, llms.txt), token budgeting utilities, and the file writer
+- **packages/typedoc** — TypeDoc plugin that hooks into the TypeDoc lifecycle (`plugin.ts`) and walks the reflection tree to extract skill metadata (`extractor.ts`)
+- **packages/typedoc-plugin** — Thin auto-discovery wrapper published to npm as `typedoc-plugin-to-skills`
 
 ## Testing
 
-All code changes must include tests.
-
-### Test Structure
-
-- **Unit tests** (`tests/unit/`): Test individual functions/classes in isolation
-- **Integration tests** (`tests/integration/`): Test complete workflows end-to-end
-
-### Writing Tests
-
-Use **Vitest** for all tests:
-
-```typescript
-import { describe, it, expect } from 'vitest';
-import { procxy } from '../src/index';
-
-describe('Calculator', () => {
-  it('should add two numbers', async () => {
-    await using calc = await procxy(Calculator, './tests/fixtures/calculator.js');
-    const result = await calc.add(2, 3);
-    expect(result).toBe(5);
-  });
-});
-```
-
-### Test Requirements
-
-- All new features must have tests
-- Bug fixes must include regression tests
-- Aim for >90% code coverage
-- Tests must pass before PR is merged
-
-### Running Tests
+All code changes must include tests. Tests are written with **Vitest**.
 
 ```bash
 # Run all tests
@@ -212,15 +118,15 @@ pnpm test
 # Run tests in watch mode
 pnpm test --watch
 
-# Run specific test file
-pnpm test tests/unit/parent-proxy.test.ts
-
 # Run tests with coverage
 pnpm test:coverage
-
-# View coverage report
-open coverage/index.html
 ```
+
+Test requirements:
+
+- New features must have tests
+- Bug fixes must include regression tests
+- Tests must pass before a PR is merged
 
 ## Submitting Changes
 
@@ -230,111 +136,81 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
 ```
 
-**Types:**
+**Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `style`
 
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, no logic change)
-- `refactor`: Code refactoring (no functionality change)
-- `perf`: Performance improvements
-- `test`: Adding or updating tests
-- `chore`: Build process or tooling changes
+**Scopes:** `core`, `typedoc`, `typedoc-plugin`, or omit for repo-wide changes
 
 **Examples:**
 
-```bash
-feat(proxy): add support for optional parameters
-fix(ipc): handle child process crash gracefully
-docs(readme): update installation instructions
-test(integration): add EventEmitter forwarding tests
+```
+feat(core): add token budget enforcement to SKILL.md renderer
+fix(typedoc): handle missing @skill tag gracefully
+docs: rewrite CONTRIBUTING.md for to-skills
+test(core): add llms.txt renderer edge case coverage
 ```
 
 ### Pull Request Process
 
-1. **Create a branch**:
+1. Create a branch:
 
 ```bash
 git checkout -b feat/your-feature-name
 ```
 
-2. **Make your changes**:
-   - Write code following coding standards
-   - Add tests for new functionality
-   - Update documentation if needed
+2. Make your changes following the standards in [AGENTS.md](./AGENTS.md)
 
-3. **Run quality checks**:
+3. Run quality checks:
 
 ```bash
-pnpm type-check
-pnpm lint
-pnpm format
-pnpm test
+pnpm type-check && pnpm lint && pnpm format && pnpm test
 ```
 
-4. **Commit your changes**:
+4. Commit your changes:
 
 ```bash
-git add .
+git add <files>
 git commit -m "feat(scope): description"
 ```
 
-5. **Push to your fork**:
+5. Push to your fork:
 
 ```bash
 git push origin feat/your-feature-name
 ```
 
-6. **Open a Pull Request**:
-   - Go to the repository on GitHub
-   - Click "New Pull Request"
-   - Select your branch
-   - Fill out the PR template
-   - Link related issues
+6. Open a Pull Request against `master` on [github.com/pradeepmouli/to-skills](https://github.com/pradeepmouli/to-skills)
 
 ### PR Guidelines
 
-- Keep PRs focused on a single feature/fix
-- Include tests and documentation
+- Keep PRs focused on a single feature or fix
+- Include tests and update documentation as needed
 - Ensure all CI checks pass
 - Respond to review feedback promptly
-- Squash commits before merging (if requested)
 
 ## Release Process
 
-Releases are managed by maintainers using semantic versioning:
+Releases are managed using [Changesets](https://github.com/changesets/changesets):
 
-- **Major** (1.0.0 → 2.0.0): Breaking changes
-- **Minor** (1.0.0 → 1.1.0): New features (backward compatible)
-- **Patch** (1.0.0 → 1.0.1): Bug fixes
+1. After making changes, run:
 
-### Version Bumping
+```bash
+pnpm changeset
+```
 
-We use [Changesets](https://github.com/changesets/changesets) for version management:
-
-1. Run `pnpm changeset` after making changes
-2. Select the version bump type (major/minor/patch)
+2. Select the affected packages and version bump type (major/minor/patch)
 3. Write a description of the changes
-4. Commit the changeset file
+4. Commit the generated changeset file
 
-Maintainers will release when ready.
+Maintainers will publish releases when ready.
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/ORIGINAL_OWNER/procxy/discussions)
-- **Bug Reports**: Open an [Issue](https://github.com/ORIGINAL_OWNER/procxy/issues)
-- **Feature Requests**: Open an [Issue](https://github.com/ORIGINAL_OWNER/procxy/issues) with the `enhancement` label
+- **Questions**: Open a [Discussion](https://github.com/pradeepmouli/to-skills/discussions)
+- **Bug Reports**: Open an [Issue](https://github.com/pradeepmouli/to-skills/issues)
+- **Feature Requests**: Open an [Issue](https://github.com/pradeepmouli/to-skills/issues) with the `enhancement` label
 
 ## License
 
-By contributing to Procxy, you agree that your contributions will be licensed under the MIT License.
-
----
-
-Thank you for contributing to Procxy! 🚀
+By contributing to to-skills, you agree that your contributions will be licensed under the MIT License.
