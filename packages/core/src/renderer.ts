@@ -173,6 +173,27 @@ function renderFunctionsRef(fns: ExtractedFunction[], opts: SkillRenderOptions):
       lines.push(`**Returns:** \`${fn.returnType}\``);
     }
 
+    // Render important tags
+    if (fn.tags.deprecated) {
+      lines.push(`> **Deprecated:** ${fn.tags.deprecated}`);
+    }
+    if (fn.tags.since) {
+      lines.push(`**Since:** \`${fn.tags.since}\``);
+    }
+    if (fn.tags.throws) {
+      lines.push(`**Throws:** ${fn.tags.throws}`);
+    }
+    if (fn.tags.see) {
+      lines.push(`**See:** ${fn.tags.see}`);
+    }
+
+    if (opts.includeSignatures && fn.overloads && fn.overloads.length > 0) {
+      lines.push('**Overloads:**');
+      for (const overload of fn.overloads) {
+        lines.push('```ts', overload, '```');
+      }
+    }
+
     if (opts.includeExamples && fn.examples.length > 0) {
       for (const ex of fn.examples) {
         lines.push(ex);

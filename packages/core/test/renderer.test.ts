@@ -298,6 +298,72 @@ describe('renderSkill — references (progressive disclosure)', () => {
   });
 });
 
+describe('renderSkill — function tags in functions.md', () => {
+  const makeSkillWithTags = (tags: Record<string, string>): ExtractedSkill => ({
+    ...minimalSkill,
+    functions: [
+      {
+        name: 'legacyFn',
+        description: 'A legacy function',
+        signature: 'legacyFn(): void',
+        parameters: [],
+        returnType: 'void',
+        examples: [],
+        tags
+      }
+    ]
+  });
+
+  it('renders @deprecated as a blockquote', () => {
+    const { references } = renderSkill(makeSkillWithTags({ deprecated: 'Use newFn() instead' }));
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('> **Deprecated:** Use newFn() instead');
+  });
+
+  it('renders @since as inline code', () => {
+    const { references } = renderSkill(makeSkillWithTags({ since: '2.0.0' }));
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('**Since:** `2.0.0`');
+  });
+
+  it('renders @throws', () => {
+    const { references } = renderSkill(makeSkillWithTags({ throws: 'TypeError if input is null' }));
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('**Throws:** TypeError if input is null');
+  });
+
+  it('renders @see', () => {
+    const { references } = renderSkill(makeSkillWithTags({ see: 'newFn' }));
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('**See:** newFn');
+  });
+
+  it('renders multiple tags together', () => {
+    const { references } = renderSkill(
+      makeSkillWithTags({
+        deprecated: 'Use newFn() instead',
+        since: '1.0.0',
+        throws: 'RangeError on overflow',
+        see: 'newFn'
+      })
+    );
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).toContain('> **Deprecated:** Use newFn() instead');
+    expect(fns!.content).toContain('**Since:** `1.0.0`');
+    expect(fns!.content).toContain('**Throws:** RangeError on overflow');
+    expect(fns!.content).toContain('**See:** newFn');
+  });
+
+  it('omits tag lines when tags are empty', () => {
+    const { references } = renderSkill(makeSkillWithTags({}));
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns!.content).not.toContain('Deprecated');
+    expect(fns!.content).not.toContain('Since');
+    expect(fns!.content).not.toContain('Throws');
+    expect(fns!.content).not.toContain('**See:**');
+  });
+});
+
 describe('renderSkill — variables in SKILL.md', () => {
   it('shows variables in Quick Reference', () => {
     const skill: ExtractedSkill = {
