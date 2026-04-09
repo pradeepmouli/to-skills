@@ -159,6 +159,8 @@ function extractModule(
 
 function extractFunction(decl: DeclarationReflection): ExtractedFunction {
   const sig = decl.signatures?.[0];
+  const overloads = (decl.signatures ?? []).slice(1).map((s) => formatSignature(decl.name, s));
+
   return {
     name: decl.name,
     description: getCommentText(sig?.comment ?? decl.comment),
@@ -166,7 +168,8 @@ function extractFunction(decl: DeclarationReflection): ExtractedFunction {
     parameters: (sig?.parameters ?? []).map(extractParameter),
     returnType: sig?.type?.toString() ?? 'void',
     examples: getExamples(sig?.comment ?? decl.comment),
-    tags: getTagMap(sig?.comment ?? decl.comment)
+    tags: getTagMap(sig?.comment ?? decl.comment),
+    overloads: overloads.length > 0 ? overloads : undefined
   };
 }
 

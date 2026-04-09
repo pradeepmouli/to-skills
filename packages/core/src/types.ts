@@ -36,6 +36,8 @@ export interface ExtractedFunction {
   returnType: string;
   examples: string[];
   tags: Record<string, string>;
+  /** Additional overload signatures (if function has multiple signatures) */
+  overloads?: string[];
 }
 
 export interface ExtractedClass {

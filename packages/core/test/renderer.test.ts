@@ -364,6 +364,79 @@ describe('renderSkill — function tags in functions.md', () => {
   });
 });
 
+describe('renderSkill — function overloads in functions.md', () => {
+  it('renders function overloads when includeSignatures is true', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'parse',
+          description: 'Parse input',
+          signature: 'parse(input: string): string',
+          parameters: [{ name: 'input', type: 'string', description: '', optional: false }],
+          returnType: 'string',
+          examples: [],
+          tags: {},
+          overloads: ['parse(input: number): number', 'parse(input: boolean): boolean']
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill, { includeSignatures: true });
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain('**Overloads:**');
+    expect(fns!.content).toContain('parse(input: number): number');
+    expect(fns!.content).toContain('parse(input: boolean): boolean');
+  });
+
+  it('omits overloads when includeSignatures is false', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'parse',
+          description: 'Parse input',
+          signature: 'parse(input: string): string',
+          parameters: [],
+          returnType: 'string',
+          examples: [],
+          tags: {},
+          overloads: ['parse(input: number): number']
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill, { includeSignatures: false });
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).not.toContain('**Overloads:**');
+    expect(fns!.content).not.toContain('parse(input: number): number');
+  });
+
+  it('does not render Overloads section when overloads is undefined', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'greet',
+          description: 'Says hello',
+          signature: 'greet(name: string): string',
+          parameters: [],
+          returnType: 'string',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill, { includeSignatures: true });
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).not.toContain('**Overloads:**');
+  });
+});
+
 describe('renderSkill — variables in SKILL.md', () => {
   it('shows variables in Quick Reference', () => {
     const skill: ExtractedSkill = {
