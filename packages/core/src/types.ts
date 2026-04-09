@@ -49,6 +49,7 @@ export interface ExtractedType {
   name: string;
   description: string;
   definition: string;
+  properties?: ExtractedProperty[];
 }
 
 export interface ExtractedEnum {

@@ -1,13 +1,13 @@
-import { readFileSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   type ProjectReflection,
   DeclarationReflection,
   ReflectionKind,
   type SignatureReflection,
   type ParameterReflection,
-  type Comment,
-} from "typedoc";
+  type Comment
+} from 'typedoc';
 import type {
   ExtractedSkill,
   ExtractedFunction,
@@ -16,8 +16,8 @@ import type {
   ExtractedEnum,
   ExtractedParameter,
   ExtractedProperty,
-  ExtractedDocument,
-} from "@to-skills/core";
+  ExtractedDocument
+} from '@to-skills/core';
 
 /** Package metadata to enrich extracted skills */
 export interface PackageMetadata {
@@ -32,20 +32,22 @@ export interface PackageMetadata {
 export function extractSkills(
   project: ProjectReflection,
   perPackage: boolean,
-  metadata?: PackageMetadata,
+  metadata?: PackageMetadata
 ): ExtractedSkill[] {
   const children = project.children ?? [];
   const documents = extractDocuments(project);
 
   const modules = children.filter(
-    (c) => c.kind === ReflectionKind.Module || c.kind === ReflectionKind.Namespace,
+    (c) => c.kind === ReflectionKind.Module || c.kind === ReflectionKind.Namespace
   );
 
   if (modules.length > 0 && perPackage) {
     // Group modules by their resolved package name, then merge into one skill per package
     const grouped = groupModulesByPackage(modules);
     return Array.from(grouped.entries()).map(([pkgName, mods]) => {
-      const perPkgMeta = metadata ? { ...metadata, name: pkgName || undefined } : { name: pkgName || undefined };
+      const perPkgMeta = metadata
+        ? { ...metadata, name: pkgName || undefined }
+        : { name: pkgName || undefined };
       return mergeModules(mods, perPkgMeta, documents);
     });
   }
@@ -56,11 +58,11 @@ export function extractSkills(
 
 /** Group modules by their resolved npm package name */
 function groupModulesByPackage(
-  modules: DeclarationReflection[],
+  modules: DeclarationReflection[]
 ): Map<string, DeclarationReflection[]> {
   const groups = new Map<string, DeclarationReflection[]>();
   for (const mod of modules) {
-    const pkgName = resolvePackageName(mod) || mod.name || "(root)";
+    const pkgName = resolvePackageName(mod) || mod.name || '(root)';
     const existing = groups.get(pkgName);
     if (existing) {
       existing.push(mod);
@@ -75,23 +77,25 @@ function groupModulesByPackage(
 function mergeModules(
   mods: DeclarationReflection[],
   metadata?: PackageMetadata,
-  documents?: ExtractedDocument[],
+  documents?: ExtractedDocument[]
 ): ExtractedSkill {
   const allFunctions: ExtractedFunction[] = [];
   const allClasses: ExtractedClass[] = [];
   const allTypes: ExtractedType[] = [];
   const allEnums: ExtractedEnum[] = [];
   const allExamples: string[] = [];
-  let description = "";
+  let description = '';
 
   for (const mod of mods) {
     const children = mod.children ?? [];
-    allFunctions.push(...children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction));
+    allFunctions.push(
+      ...children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction)
+    );
     allClasses.push(...children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass));
     allTypes.push(
       ...children
         .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
-        .map(extractType),
+        .map(extractType)
     );
     allEnums.push(...children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum));
     allExamples.push(...getExamples(mod.comment));
@@ -102,7 +106,7 @@ function mergeModules(
     }
   }
 
-  const resolvedName = metadata?.name || mods[0]?.name || "";
+  const resolvedName = metadata?.name || mods[0]?.name || '';
 
   return {
     name: resolvedName,
@@ -115,14 +119,14 @@ function mergeModules(
     classes: allClasses,
     types: allTypes,
     enums: allEnums,
-    examples: allExamples,
+    examples: allExamples
   };
 }
 
 function extractModule(
   mod: DeclarationReflection | ProjectReflection,
   metadata?: PackageMetadata,
-  documents?: ExtractedDocument[],
+  documents?: ExtractedDocument[]
 ): ExtractedSkill {
   const children = (mod as DeclarationReflection).children ?? [];
 
@@ -142,7 +146,7 @@ function extractModule(
       .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
       .map(extractType),
     enums: children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum),
-    examples: getExamples(mod.comment),
+    examples: getExamples(mod.comment)
   };
 }
 
@@ -153,9 +157,9 @@ function extractFunction(decl: DeclarationReflection): ExtractedFunction {
     description: getCommentText(sig?.comment ?? decl.comment),
     signature: formatSignature(decl.name, sig),
     parameters: (sig?.parameters ?? []).map(extractParameter),
-    returnType: sig?.type?.toString() ?? "void",
+    returnType: sig?.type?.toString() ?? 'void',
     examples: getExamples(sig?.comment ?? decl.comment),
-    tags: getTagMap(sig?.comment ?? decl.comment),
+    tags: getTagMap(sig?.comment ?? decl.comment)
   };
 }
 
@@ -173,19 +177,30 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     name: decl.name,
     description: getCommentText(decl.comment),
     constructorSignature: ctor?.signatures?.[0]
-      ? formatSignature("constructor", ctor.signatures[0])
-      : "",
+      ? formatSignature('constructor', ctor.signatures[0])
+      : '',
     methods,
     properties,
-    examples: getExamples(decl.comment),
+    examples: getExamples(decl.comment)
   };
 }
 
 function extractType(decl: DeclarationReflection): ExtractedType {
+  // For interfaces, extract properties from children
+  const properties: ExtractedProperty[] = [];
+  if (decl.kind === ReflectionKind.Interface && decl.children) {
+    for (const child of decl.children) {
+      if (child.kind === ReflectionKind.Property || child.kind === ReflectionKind.Accessor) {
+        properties.push(extractProperty(child));
+      }
+    }
+  }
+
   return {
     name: decl.name,
     description: getCommentText(decl.comment),
-    definition: decl.type?.toString() ?? "",
+    definition: decl.type?.toString() ?? '',
+    properties: properties.length > 0 ? properties : undefined
   };
 }
 
@@ -195,28 +210,28 @@ function extractEnum(decl: DeclarationReflection): ExtractedEnum {
     description: getCommentText(decl.comment),
     members: (decl.children ?? []).map((m) => ({
       name: m.name,
-      value: m.type?.toString() ?? "",
-      description: getCommentText(m.comment),
-    })),
+      value: m.type?.toString() ?? '',
+      description: getCommentText(m.comment)
+    }))
   };
 }
 
 function extractParameter(param: ParameterReflection): ExtractedParameter {
   return {
     name: param.name,
-    type: param.type?.toString() ?? "unknown",
+    type: param.type?.toString() ?? 'unknown',
     description: getCommentText(param.comment),
     optional: param.flags.isOptional,
-    defaultValue: param.defaultValue,
+    defaultValue: param.defaultValue
   };
 }
 
 function extractProperty(decl: DeclarationReflection): ExtractedProperty {
   return {
     name: decl.name,
-    type: decl.type?.toString() ?? "unknown",
+    type: decl.type?.toString() ?? 'unknown',
     description: getCommentText(decl.comment),
-    optional: decl.flags.isOptional,
+    optional: decl.flags.isOptional
   };
 }
 
@@ -224,34 +239,34 @@ function formatSignature(name: string, sig: SignatureReflection | undefined): st
   if (!sig) return `${name}()`;
   const params = (sig.parameters ?? [])
     .map((p) => {
-      const opt = p.flags.isOptional ? "?" : "";
-      return `${p.name}${opt}: ${p.type?.toString() ?? "unknown"}`;
+      const opt = p.flags.isOptional ? '?' : '';
+      return `${p.name}${opt}: ${p.type?.toString() ?? 'unknown'}`;
     })
-    .join(", ");
+    .join(', ');
   const typeParams = sig.typeParameters?.length
-    ? `<${sig.typeParameters.map((t) => t.name).join(", ")}>`
-    : "";
-  const ret = sig.type?.toString() ?? "void";
+    ? `<${sig.typeParameters.map((t) => t.name).join(', ')}>`
+    : '';
+  const ret = sig.type?.toString() ?? 'void';
   return `${name}${typeParams}(${params}): ${ret}`;
 }
 
 function getCommentText(comment: Comment | undefined): string {
-  if (!comment) return "";
+  if (!comment) return '';
   return comment.summary
     .map((part) => part.text)
-    .join("")
+    .join('')
     .trim();
 }
 
 function getExamples(comment: Comment | undefined): string[] {
   if (!comment) return [];
   return comment
-    .getTags("@example")
+    .getTags('@example')
     .map((tag) =>
       tag.content
         .map((part) => part.text)
-        .join("")
-        .trim(),
+        .join('')
+        .trim()
     )
     .filter(Boolean);
 }
@@ -261,10 +276,15 @@ function extractDocuments(project: ProjectReflection): ExtractedDocument[] {
   const docs: ExtractedDocument[] = [];
 
   // TypeDoc 0.28+ stores documents on reflections
-  const projectDocs = (project as unknown as { documents?: Array<{ name: string; content?: Array<{ text: string }> }> }).documents;
+  const projectDocs = (
+    project as unknown as { documents?: Array<{ name: string; content?: Array<{ text: string }> }> }
+  ).documents;
   if (projectDocs) {
     for (const doc of projectDocs) {
-      const content = doc.content?.map((part) => part.text).join("").trim();
+      const content = doc.content
+        ?.map((part) => part.text)
+        .join('')
+        .trim();
       if (content) {
         docs.push({ title: doc.name, content });
       }
@@ -280,9 +300,7 @@ function extractDocuments(project: ProjectReflection): ExtractedDocument[] {
  * This handles entryPointStrategy: "packages" where TypeDoc uses internal
  * module names instead of npm package names.
  */
-function resolvePackageName(
-  mod: DeclarationReflection | ProjectReflection,
-): string | undefined {
+function resolvePackageName(mod: DeclarationReflection | ProjectReflection): string | undefined {
   // Get source file path from the module or its first child
   const sources = (mod as DeclarationReflection).sources;
   const firstSource = sources?.[0]?.fullFileName ?? sources?.[0]?.fileName;
@@ -308,16 +326,19 @@ function findPackageName(filePath: string): string | undefined {
   const root = dirname(dir); // safety: don't go above project
 
   for (let i = 0; i < 10; i++) {
-    const pkgPath = join(dir, "package.json");
+    const pkgPath = join(dir, 'package.json');
     if (existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name?: string; private?: boolean };
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+          name?: string;
+          private?: boolean;
+        };
         // Skip private workspace roots — keep looking for the actual package
         if (pkg.name && !pkg.private) {
           return pkg.name;
         }
         // If it's private but has a name and we're not at the workspace root, use it
-        if (pkg.name && dir.includes("packages")) {
+        if (pkg.name && dir.includes('packages')) {
           return pkg.name;
         }
       } catch {
@@ -335,11 +356,11 @@ function getTagMap(comment: Comment | undefined): Record<string, string> {
   if (!comment) return {};
   const tags: Record<string, string> = {};
   for (const tag of comment.blockTags) {
-    const key = tag.tag.replace(/^@/, "");
-    if (key !== "example" && key !== "param" && key !== "returns") {
+    const key = tag.tag.replace(/^@/, '');
+    if (key !== 'example' && key !== 'param' && key !== 'returns') {
       tags[key] = tag.content
         .map((part) => part.text)
-        .join("")
+        .join('')
         .trim();
     }
   }
