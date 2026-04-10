@@ -1117,3 +1117,260 @@ describe('renderSkill — Quick Reference with sourceModule', () => {
     expect(s.content).toContain('`Config`');
   });
 });
+
+describe('renderSkill — @remarks in functions.md', () => {
+  it('renders remarks after description in functions.md', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'parseConfig',
+          description: 'Parses configuration',
+          signature: 'parseConfig(path: string): Config',
+          parameters: [],
+          returnType: 'Config',
+          examples: [],
+          tags: {},
+          remarks: 'Expert tip: always validate the schema before parsing large files.'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain(
+      'Expert tip: always validate the schema before parsing large files.'
+    );
+  });
+
+  it('omits remarks block when remarks is undefined', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'greet',
+          description: 'Says hello',
+          signature: 'greet(): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    // Content should not have double blank line that remarks would introduce
+    expect(fns!.content).not.toMatch(/Expert tip/);
+  });
+});
+
+describe('renderSkill — @category grouping', () => {
+  it('groups functions by category in functions.md (overrides sourceModule)', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'createUser',
+          description: 'Creates a user',
+          signature: 'createUser(name: string): User',
+          parameters: [],
+          returnType: 'User',
+          examples: [],
+          tags: {},
+          sourceModule: 'users',
+          category: 'User Management'
+        },
+        {
+          name: 'deleteUser',
+          description: 'Deletes a user',
+          signature: 'deleteUser(id: string): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          sourceModule: 'users',
+          category: 'User Management'
+        },
+        {
+          name: 'createPost',
+          description: 'Creates a post',
+          signature: 'createPost(title: string): Post',
+          parameters: [],
+          returnType: 'Post',
+          examples: [],
+          tags: {},
+          sourceModule: 'posts',
+          category: 'Content'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain('## User Management');
+    expect(fns!.content).toContain('## Content');
+    expect(fns!.content).toContain('### `createUser`');
+    expect(fns!.content).toContain('### `deleteUser`');
+    expect(fns!.content).toContain('### `createPost`');
+  });
+
+  it('groups by category in Quick Reference when category is set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'createUser',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          category: 'User Management'
+        },
+        {
+          name: 'createPost',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          category: 'Content'
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('**User Management:**');
+    expect(s.content).toContain('**Content:**');
+    expect(s.content).toContain('`createUser`');
+    expect(s.content).toContain('`createPost`');
+  });
+
+  it('falls back to sourceModule when no @category', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'helper',
+          description: 'A helper',
+          signature: 'helper(): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          sourceModule: 'utils'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain('## utils');
+    expect(fns!.content).toContain('### `helper`');
+  });
+});
+
+describe('renderSkill — @useWhen/@avoidWhen in SKILL.md', () => {
+  it('renders @useWhen items in When to Use section', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Validating user input before saving', 'Checking schema compliance']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## When to Use');
+    expect(s.content).toContain('- Validating user input before saving');
+    expect(s.content).toContain('- Checking schema compliance');
+  });
+
+  it('renders @avoidWhen with "Avoid when:" header', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      avoidWhen: ['Performance is critical', 'Simple truthy checks suffice']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('**Avoid when:**');
+    expect(s.content).toContain('- Performance is critical');
+    expect(s.content).toContain('- Simple truthy checks suffice');
+  });
+
+  it('renders both @useWhen and @avoidWhen together', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Need strict validation'],
+      avoidWhen: ['Already validated upstream']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const content = s.content;
+    expect(content).toContain('- Need strict validation');
+    expect(content).toContain('**Avoid when:**');
+    expect(content).toContain('- Already validated upstream');
+    // useWhen should appear before avoidWhen
+    expect(content.indexOf('Need strict validation')).toBeLessThan(content.indexOf('Avoid when'));
+  });
+
+  it('omits Avoid when section when avoidWhen is empty/absent', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Always use this']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).not.toContain('**Avoid when:**');
+  });
+});
+
+describe('renderSkill — @pitfalls in SKILL.md', () => {
+  it('renders Pitfalls section when pitfalls are present', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      pitfalls: ['Forgetting to await async calls', 'Not handling null returns']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Pitfalls');
+    expect(s.content).toContain('- Forgetting to await async calls');
+    expect(s.content).toContain('- Not handling null returns');
+  });
+
+  it('omits Pitfalls section when pitfalls is empty/absent', () => {
+    const { skill: s } = renderSkill(minimalSkill);
+    expect(s.content).not.toContain('## Pitfalls');
+  });
+
+  it('renders Pitfalls after When to Use and before Quick Reference', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      pitfalls: ['Watch out for this']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const content = s.content;
+    const whenIdx = content.indexOf('## When to Use');
+    const pitfallsIdx = content.indexOf('## Pitfalls');
+    const quickRefIdx = content.indexOf('## Quick Reference');
+    expect(whenIdx).toBeLessThan(pitfallsIdx);
+    expect(pitfallsIdx).toBeLessThan(quickRefIdx);
+  });
+});

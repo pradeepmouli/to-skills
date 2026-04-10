@@ -140,6 +140,9 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
   const whenToUse = renderWhenToUse(skill);
   if (whenToUse) sections.push(whenToUse);
 
+  const pitfalls = renderPitfalls(skill);
+  if (pitfalls) sections.push(pitfalls);
+
   const quickRef = renderQuickReference(skill);
   if (quickRef) sections.push(quickRef);
 
@@ -158,10 +161,16 @@ function descSuffix(description: string | undefined): string {
   return description ? ` — ${description}` : '';
 }
 
-function groupByModule<T extends { sourceModule?: string }>(items: T[]): Map<string, T[]> {
+function getGroupKey<T extends { category?: string; sourceModule?: string }>(item: T): string {
+  return item.category || item.sourceModule || '';
+}
+
+function groupByCategory<T extends { category?: string; sourceModule?: string }>(
+  items: T[]
+): Map<string, T[]> {
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    const key = item.sourceModule || '';
+    const key = getGroupKey(item);
     const existing = groups.get(key);
     if (existing) existing.push(item);
     else groups.set(key, [item]);
@@ -169,9 +178,13 @@ function groupByModule<T extends { sourceModule?: string }>(items: T[]): Map<str
   return groups;
 }
 
-function hasModuleInfo<T extends { sourceModule?: string }>(items: T[]): boolean {
-  return items.some((item) => !!item.sourceModule);
+function hasGroupInfo<T extends { category?: string; sourceModule?: string }>(items: T[]): boolean {
+  return items.some((item) => !!item.category || !!item.sourceModule);
 }
+
+// Keep old names as aliases for backward compatibility within this file
+const groupByModule = groupByCategory;
+const hasModuleInfo = hasGroupInfo;
 
 function renderFunctionBody(
   fn: ExtractedFunction,
@@ -179,6 +192,11 @@ function renderFunctionBody(
   lines: string[]
 ): void {
   if (fn.description) lines.push(fn.description);
+
+  if (fn.remarks) {
+    lines.push('');
+    lines.push(fn.remarks);
+  }
 
   if (opts.includeSignatures && fn.signature) {
     lines.push('```ts', fn.signature, '```');
@@ -488,26 +506,44 @@ function renderWhenToUse(skill: ExtractedSkill): string {
     }
   }
 
-  const categories: string[] = [];
-  if (skill.functions.length > 0) categories.push(`${skill.functions.length} functions`);
-  if (skill.classes.length > 0) categories.push(`${skill.classes.length} classes`);
-  if (skill.types.length > 0) categories.push(`${skill.types.length} types`);
-  if (skill.enums.length > 0) categories.push(`${skill.enums.length} enums`);
-  if (skill.variables && skill.variables.length > 0)
-    categories.push(`${skill.variables.length} constants`);
-  if (categories.length > 0) {
-    triggers.push(`- API surface: ${categories.join(', ')}`);
+  // @useWhen triggers from JSDoc
+  if (skill.useWhen && skill.useWhen.length > 0) {
+    for (const item of skill.useWhen) {
+      triggers.push(`- ${item}`);
+    }
   }
 
-  for (const fn of skill.functions) {
-    if (fn.tags['see']) {
-      triggers.push(`- See also: ${fn.tags['see']}`);
-      break;
+  // @avoidWhen triggers from JSDoc
+  if (skill.avoidWhen && skill.avoidWhen.length > 0) {
+    triggers.push('');
+    triggers.push('**Avoid when:**');
+    for (const item of skill.avoidWhen) {
+      triggers.push(`- ${item}`);
     }
+  }
+
+  const apiCategories: string[] = [];
+  if (skill.functions.length > 0) apiCategories.push(`${skill.functions.length} functions`);
+  if (skill.classes.length > 0) apiCategories.push(`${skill.classes.length} classes`);
+  if (skill.types.length > 0) apiCategories.push(`${skill.types.length} types`);
+  if (skill.enums.length > 0) apiCategories.push(`${skill.enums.length} enums`);
+  if (skill.variables && skill.variables.length > 0)
+    apiCategories.push(`${skill.variables.length} constants`);
+  if (apiCategories.length > 0) {
+    triggers.push(`- API surface: ${apiCategories.join(', ')}`);
   }
 
   if (triggers.length === 0) return '';
   return '## When to Use\n\n' + triggers.join('\n');
+}
+
+function renderPitfalls(skill: ExtractedSkill): string {
+  if (!skill.pitfalls || skill.pitfalls.length === 0) return '';
+  const lines = ['## Pitfalls\n'];
+  for (const item of skill.pitfalls) {
+    lines.push(`- ${item}`);
+  }
+  return lines.join('\n');
 }
 
 function renderQuickReference(skill: ExtractedSkill): string {

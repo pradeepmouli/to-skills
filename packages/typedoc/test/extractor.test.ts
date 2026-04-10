@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ReflectionKind } from 'typedoc';
-import { extractSkills } from '../src/extractor.js';
+import { extractSkills, parseBulletList } from '../src/extractor.js';
 
 // ── Mock helpers ────────────────────────────────────────────────────────────
 
@@ -8,14 +8,19 @@ function mockComment(
   text: string,
   examples: string[] = [],
   returnsText?: string,
-  blockTags: any[] = []
+  blockTags: any[] = [],
+  extraTags: Record<string, string> = {}
 ) {
   return {
     summary: [{ text }],
     getTags: (tagName: string) =>
       tagName === '@example' ? examples.map((ex) => ({ content: [{ text: ex }] })) : [],
-    getTag: (tagName: string) =>
-      tagName === '@returns' && returnsText ? { content: [{ text: returnsText }] } : undefined,
+    getTag: (tagName: string) => {
+      if (tagName === '@returns' && returnsText) return { content: [{ text: returnsText }] };
+      const key = tagName.replace(/^@/, '');
+      if (extraTags[key] !== undefined) return { content: [{ text: extraTags[key] }] };
+      return undefined;
+    },
     blockTags
   };
 }
@@ -764,5 +769,199 @@ describe('extractSkills — sourceModule', () => {
     const project = mockProject([iface]);
     const [skill] = extractSkills(project, false);
     expect(skill.types[0].sourceModule).toBe('types');
+  });
+});
+
+// ── @remarks extraction ───────────────────────────────────────────────────
+
+describe('extractSkills — @remarks', () => {
+  it('extracts @remarks from function signature comment', () => {
+    const sig = mockSig(
+      [],
+      'void',
+      mockComment('Does work', [], undefined, [], { remarks: 'Expert note: use carefully.' })
+    );
+    const fn = mockDecl('doWork', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].remarks).toBe('Expert note: use carefully.');
+  });
+
+  it('falls back to decl comment for @remarks when sig has no comment', () => {
+    const sig = mockSig([], 'void', undefined);
+    const fn = mockDecl('doWork', ReflectionKind.Function, {
+      signatures: [sig],
+      comment: mockComment('Fallback', [], undefined, [], { remarks: 'Decl-level remark.' })
+    });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].remarks).toBe('Decl-level remark.');
+  });
+
+  it('returns undefined for remarks when no @remarks tag', () => {
+    const sig = mockSig([], 'void', mockComment('No remarks here'));
+    const fn = mockDecl('simple', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].remarks).toBeUndefined();
+  });
+});
+
+// ── @category extraction ──────────────────────────────────────────────────
+
+describe('extractSkills — @category', () => {
+  it('extracts @category from function', () => {
+    const sig = mockSig(
+      [],
+      'void',
+      mockComment('Fn', [], undefined, [], { category: 'Utilities' })
+    );
+    const fn = mockDecl('util', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].category).toBe('Utilities');
+  });
+
+  it('extracts @category from class', () => {
+    const cls = mockDecl('MyClass', ReflectionKind.Class, {
+      comment: mockComment('A class', [], undefined, [], { category: 'Core' }),
+      children: []
+    });
+    const project = mockProject([cls]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.classes[0].category).toBe('Core');
+  });
+
+  it('extracts @category from interface (type)', () => {
+    const iface = mockDecl('MyInterface', ReflectionKind.Interface, {
+      comment: mockComment('An interface', [], undefined, [], { category: 'Types' }),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.types[0].category).toBe('Types');
+  });
+
+  it('extracts @category from enum', () => {
+    const en = mockDecl('Status', ReflectionKind.Enum, {
+      comment: mockComment('Status', [], undefined, [], { category: 'Enums' }),
+      children: []
+    });
+    const project = mockProject([en]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.enums[0].category).toBe('Enums');
+  });
+
+  it('extracts @category from variable', () => {
+    const v = mockDecl('MAX', ReflectionKind.Variable, {
+      type: { toString: () => 'number' },
+      flags: { isConst: true },
+      comment: mockComment('Max value', [], undefined, [], { category: 'Constants' })
+    });
+    const project = mockProject([v]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.variables[0].category).toBe('Constants');
+  });
+
+  it('returns undefined for category when no @category tag', () => {
+    const sig = mockSig([], 'void', mockComment('No category'));
+    const fn = mockDecl('plain', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].category).toBeUndefined();
+  });
+});
+
+// ── parseBulletList ───────────────────────────────────────────────────────
+
+describe('parseBulletList', () => {
+  it('parses dash-prefixed bullet items', () => {
+    const result = parseBulletList('- Item one\n- Item two\n- Item three');
+    expect(result).toEqual(['Item one', 'Item two', 'Item three']);
+  });
+
+  it('parses star-prefixed bullet items', () => {
+    const result = parseBulletList('* Item A\n* Item B');
+    expect(result).toEqual(['Item A', 'Item B']);
+  });
+
+  it('filters blank lines', () => {
+    const result = parseBulletList('- First\n\n- Second');
+    expect(result).toEqual(['First', 'Second']);
+  });
+
+  it('handles items without bullet prefix', () => {
+    const result = parseBulletList('Plain text\nAnother line');
+    expect(result).toEqual(['Plain text', 'Another line']);
+  });
+
+  it('trims whitespace from each item', () => {
+    const result = parseBulletList('-   Spaced item   ');
+    expect(result).toEqual(['Spaced item']);
+  });
+
+  it('returns empty array for empty string', () => {
+    expect(parseBulletList('')).toEqual([]);
+  });
+});
+
+// ── @useWhen / @avoidWhen / @pitfalls aggregation ─────────────────────────
+
+describe('extractSkills — @useWhen/@avoidWhen/@pitfalls aggregation', () => {
+  it('aggregates @useWhen from function tags into skill.useWhen', () => {
+    const blockTags = [
+      { tag: '@useWhen', content: [{ text: '- Need validation\n- Schema compliance' }] }
+    ];
+    const sig = mockSig([], 'void', mockComment('Validates', [], undefined, blockTags));
+    const fn = mockDecl('validate', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.useWhen).toEqual(['Need validation', 'Schema compliance']);
+  });
+
+  it('aggregates @avoidWhen from function tags into skill.avoidWhen', () => {
+    const blockTags = [
+      { tag: '@avoidWhen', content: [{ text: '- Performance critical\n- Already validated' }] }
+    ];
+    const sig = mockSig([], 'void', mockComment('Fn', [], undefined, blockTags));
+    const fn = mockDecl('fn', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.avoidWhen).toEqual(['Performance critical', 'Already validated']);
+  });
+
+  it('aggregates @pitfalls from function tags into skill.pitfalls', () => {
+    const blockTags = [
+      { tag: '@pitfalls', content: [{ text: '- Forget to await\n- Null not handled' }] }
+    ];
+    const sig = mockSig([], 'void', mockComment('Fn', [], undefined, blockTags));
+    const fn = mockDecl('fn', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.pitfalls).toEqual(['Forget to await', 'Null not handled']);
+  });
+
+  it('aggregates useWhen across multiple functions', () => {
+    const bt1 = [{ tag: '@useWhen', content: [{ text: '- Case A' }] }];
+    const bt2 = [{ tag: '@useWhen', content: [{ text: '- Case B' }] }];
+    const fn1 = mockDecl('fn1', ReflectionKind.Function, {
+      signatures: [mockSig([], 'void', mockComment('F1', [], undefined, bt1))]
+    });
+    const fn2 = mockDecl('fn2', ReflectionKind.Function, {
+      signatures: [mockSig([], 'void', mockComment('F2', [], undefined, bt2))]
+    });
+    const project = mockProject([fn1, fn2]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.useWhen).toEqual(['Case A', 'Case B']);
+  });
+
+  it('leaves useWhen/avoidWhen/pitfalls undefined when no tags', () => {
+    const sig = mockSig([], 'void', mockComment('Simple fn'));
+    const fn = mockDecl('fn', ReflectionKind.Function, { signatures: [sig] });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.useWhen).toBeUndefined();
+    expect(skill.avoidWhen).toBeUndefined();
+    expect(skill.pitfalls).toBeUndefined();
   });
 });

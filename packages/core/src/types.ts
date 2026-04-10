@@ -28,6 +28,12 @@ export interface ExtractedSkill {
   variables: ExtractedVariable[];
   /** Usage examples from @example tags or doc pages */
   examples: string[];
+  /** Aggregated @useWhen triggers from all exports */
+  useWhen?: string[];
+  /** Aggregated @avoidWhen triggers from all exports */
+  avoidWhen?: string[];
+  /** Aggregated @pitfalls from all exports */
+  pitfalls?: string[];
 }
 
 export interface ExtractedFunction {
@@ -38,12 +44,16 @@ export interface ExtractedFunction {
   returnType: string;
   /** Prose description from @returns JSDoc tag */
   returnsDescription?: string;
+  /** Extended description from @remarks tag — expert knowledge beyond summary */
+  remarks?: string;
   examples: string[];
   tags: Record<string, string>;
   /** Additional overload signatures (if function has multiple signatures) */
   overloads?: string[];
   /** Source module name derived from file path (e.g. "renderer", "tokens") */
   sourceModule?: string;
+  /** Category for grouping (from @category tag) */
+  category?: string;
 }
 
 export interface ExtractedClass {
@@ -59,6 +69,8 @@ export interface ExtractedClass {
   implements?: string[];
   /** Source module name derived from file path (e.g. "renderer", "tokens") */
   sourceModule?: string;
+  /** Category for grouping (from @category tag) */
+  category?: string;
 }
 
 export interface ExtractedType {
@@ -68,6 +80,8 @@ export interface ExtractedType {
   properties?: ExtractedProperty[];
   /** Source module name derived from file path (e.g. "renderer", "tokens") */
   sourceModule?: string;
+  /** Category for grouping (from @category tag) */
+  category?: string;
 }
 
 export interface ExtractedEnum {
@@ -76,6 +90,8 @@ export interface ExtractedEnum {
   members: Array<{ name: string; value: string; description: string }>;
   /** Source module name derived from file path (e.g. "renderer", "tokens") */
   sourceModule?: string;
+  /** Category for grouping (from @category tag) */
+  category?: string;
 }
 
 export interface ExtractedVariable {
@@ -85,6 +101,8 @@ export interface ExtractedVariable {
   isConst: boolean;
   /** Source module name derived from file path (e.g. "renderer", "tokens") */
   sourceModule?: string;
+  /** Category for grouping (from @category tag) */
+  category?: string;
 }
 
 export interface ExtractedParameter {

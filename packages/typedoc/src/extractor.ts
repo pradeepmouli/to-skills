@@ -135,7 +135,7 @@ function mergeModules(
 
   const resolvedName = metadata?.name || mods[0]?.name || '';
 
-  return {
+  const skill: ExtractedSkill = {
     name: resolvedName,
     description,
     keywords: metadata?.keywords,
@@ -150,6 +150,8 @@ function mergeModules(
     variables: allVariables,
     examples: allExamples
   };
+  aggregateSkillTags(skill);
+  return skill;
 }
 
 function extractModule(
@@ -162,7 +164,7 @@ function extractModule(
   // Resolve the best name: metadata > source package.json > reflection name
   const resolvedName = metadata?.name || resolvePackageName(mod) || mod.name;
 
-  return {
+  const skill: ExtractedSkill = {
     name: resolvedName,
     description: getCommentText(mod.comment),
     keywords: metadata?.keywords,
@@ -181,6 +183,8 @@ function extractModule(
     variables: children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable),
     examples: getExamples(mod.comment)
   };
+  aggregateSkillTags(skill);
+  return skill;
 }
 
 /**
@@ -213,10 +217,12 @@ function extractFunction(
     parameters: (sig?.parameters ?? []).map(extractParameter),
     returnType: sig?.type?.toString() ?? 'void',
     returnsDescription: getReturnsDescription(sig?.comment ?? decl.comment),
+    remarks: getRemarks(sig?.comment ?? decl.comment),
     examples: getExamples(sig?.comment ?? decl.comment),
     tags: getTagMap(sig?.comment ?? decl.comment),
     overloads: overloads.length > 0 ? overloads : undefined,
-    sourceModule: getSourceModule(parentDecl ?? decl)
+    sourceModule: getSourceModule(parentDecl ?? decl),
+    category: getCategory(sig?.comment ?? decl.comment)
   };
 }
 
@@ -244,7 +250,8 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     examples: getExamples(decl.comment),
     extends: extendedTypes?.[0],
     implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined,
-    sourceModule: getSourceModule(decl)
+    sourceModule: getSourceModule(decl),
+    category: getCategory(decl.comment)
   };
 }
 
@@ -264,7 +271,8 @@ function extractType(decl: DeclarationReflection): ExtractedType {
     description: getCommentText(decl.comment),
     definition: decl.type?.toString() ?? '',
     properties: properties.length > 0 ? properties : undefined,
-    sourceModule: getSourceModule(decl)
+    sourceModule: getSourceModule(decl),
+    category: getCategory(decl.comment)
   };
 }
 
@@ -277,7 +285,8 @@ function extractEnum(decl: DeclarationReflection): ExtractedEnum {
       value: m.type?.toString() ?? '',
       description: getCommentText(m.comment)
     })),
-    sourceModule: getSourceModule(decl)
+    sourceModule: getSourceModule(decl),
+    category: getCategory(decl.comment)
   };
 }
 
@@ -287,7 +296,8 @@ function extractVariable(decl: DeclarationReflection): ExtractedVariable {
     type: decl.type?.toString() ?? 'unknown',
     description: getCommentText(decl.comment),
     isConst: decl.flags.isConst,
-    sourceModule: getSourceModule(decl)
+    sourceModule: getSourceModule(decl),
+    category: getCategory(decl.comment)
   };
 }
 
@@ -451,4 +461,50 @@ function getTagMap(comment: Comment | undefined): Record<string, string> {
     }
   }
   return tags;
+}
+
+function getRemarks(comment: Comment | undefined): string | undefined {
+  if (!comment) return undefined;
+  const remarksTag = comment.getTag('@remarks');
+  if (!remarksTag) return undefined;
+  const text = remarksTag.content
+    .map((part) => part.text)
+    .join('')
+    .trim();
+  return text || undefined;
+}
+
+function getCategory(comment: Comment | undefined): string | undefined {
+  if (!comment) return undefined;
+  const tag = comment.getTag('@category');
+  if (!tag) return undefined;
+  const text = tag.content
+    .map((part) => part.text)
+    .join('')
+    .trim();
+  return text || undefined;
+}
+
+/** Parse a multi-line bullet list from a tag value into individual items */
+export function parseBulletList(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+function aggregateSkillTags(skill: ExtractedSkill): void {
+  const useWhen: string[] = [];
+  const avoidWhen: string[] = [];
+  const pitfalls: string[] = [];
+
+  for (const fn of skill.functions) {
+    if (fn.tags['useWhen']) useWhen.push(...parseBulletList(fn.tags['useWhen']));
+    if (fn.tags['avoidWhen']) avoidWhen.push(...parseBulletList(fn.tags['avoidWhen']));
+    if (fn.tags['pitfalls']) pitfalls.push(...parseBulletList(fn.tags['pitfalls']));
+  }
+
+  if (useWhen.length > 0) skill.useWhen = useWhen;
+  if (avoidWhen.length > 0) skill.avoidWhen = avoidWhen;
+  if (pitfalls.length > 0) skill.pitfalls = pitfalls;
 }
