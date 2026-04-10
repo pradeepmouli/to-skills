@@ -152,3 +152,72 @@ Options controlling skill rendering
 - `full: string` — llms-full.txt content (complete API)
 - `summaryTokens: number` — Estimated tokens for summary
 - `fullTokens: number` — Estimated tokens for full
+
+## audit-types
+
+### `AuditSeverity`
+
+Severity levels for audit issues, ordered from most to least severe.
+
+- `fatal`: Disqualifying problems that prevent the skill from being used safely
+- `error`: Serious problems that significantly degrade skill quality
+- `warning`: Moderate problems that reduce skill effectiveness
+- `alert`: Minor issues or suggestions for improvement
+
+```ts
+'fatal' | 'error' | 'warning' | 'alert';
+```
+
+### `AuditIssue`
+
+A single audit finding that identifies a problem in the skill package.
+**Properties:**
+
+- `severity: AuditSeverity` — Severity level of this issue
+- `code: string` — Short rule code, e.g. "F1", "E2", "W3", "A1"
+- `file: string` — Relative path to the file containing the issue
+- `line: number | null` — Line number within the file, or null if not applicable
+- `symbol: string` — Name of the function, class, or property related to the issue
+- `message: string` — Human-readable description of the problem
+- `suggestion: string` — Actionable suggestion for how to fix the issue
+
+### `AuditPass`
+
+A check that the audit engine ran and the skill package passed.
+**Properties:**
+
+- `code: string` — Short rule code corresponding to the passed check
+- `message: string` — Human-readable description of what was checked
+- `detail: string` (optional) — Optional additional detail about the passing result
+
+### `AuditContext`
+
+Contextual metadata about the package being audited, used to evaluate
+relevance and quality of skill content.
+**Properties:**
+
+- `packageDescription: string` (optional) — Description field from package.json
+- `keywords: string[]` (optional) — Keywords from package.json
+- `repository: string` (optional) — Repository URL from package.json
+- `readme: ParsedReadme` (optional) — Parsed sections of the package README
+
+### `ParsedReadme`
+
+Structured representation of key sections extracted from a package README.
+**Properties:**
+
+- `blockquote: string` (optional) — Leading blockquote, often used as a one-liner summary
+- `firstParagraph: string` (optional) — First prose paragraph after any heading or blockquote
+- `quickStart: string` (optional) — Quick-start or getting-started section content
+- `features: string` (optional) — Features or capabilities section content
+- `pitfalls: string` (optional) — Pitfalls, caveats, or anti-patterns section content (maps to skill-judge D3)
+
+### `AuditResult`
+
+The complete output of an audit run against a single skill package.
+**Properties:**
+
+- `package: string` — Package name being audited
+- `summary: Record<AuditSeverity, number>` — Count of issues found at each severity level
+- `issues: AuditIssue[]` — All issues found during the audit
+- `passing: AuditPass[]` — All checks that the package passed

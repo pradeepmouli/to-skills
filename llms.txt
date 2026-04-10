@@ -11,6 +11,10 @@
 Not exact, but good enough for budgeting skill file sizes.
 - `truncateToTokenBudget`: Truncate text to fit within a token budget, preserving complete lines
 - `renderLlmsTxt`: Render llms.txt and llms-full.txt from extracted skills
+- `parseReadme`: Parse a README markdown string and extract structured sections.
+- `auditSkill`
+- `formatAuditText`: Format an AuditResult as human-readable text suitable for TypeDoc logs.
+- `formatAuditJson`: Format an AuditResult as pretty-printed JSON for machine consumption.
 
 ## Optional
 
@@ -30,3 +34,10 @@ Not exact, but good enough for budgeting skill file sizes.
 - `SkillRenderOptions`: Options controlling skill rendering
 - `LlmsTxtOptions`
 - `LlmsTxtResult`
+- `AuditSeverity`: Severity levels for audit issues, ordered from most to least severe.
+- `AuditIssue`: A single audit finding that identifies a problem in the skill package.
+- `AuditPass`: A check that the audit engine ran and the skill package passed.
+- `AuditContext`: Contextual metadata about the package being audited, used to evaluate
+relevance and quality of skill content.
+- `ParsedReadme`: Structured representation of key sections extracted from a package README.
+- `AuditResult`: The complete output of an audit run against a single skill package.

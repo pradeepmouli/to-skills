@@ -1,5 +1,22 @@
 # @to-skills/typedoc
 
+## 0.8.0
+
+### Minor Changes
+
+- Add documentation audit engine with 20 checks, README parser, and bundled Claude Code skill
+  - 20 audit checks across 4 severity levels (fatal/error/warning/alert)
+  - README parser extracts blockquote, first paragraph, Quick Start, Features, Pitfalls
+  - Human-readable and JSON audit output formatters
+  - Audit runs automatically during `pnpm typedoc` (configurable via skillsAudit option)
+  - 3 new TypeDoc options: skillsAudit, skillsAuditFailOnError, skillsAuditJson
+  - Bundled `to-skills-docs` Claude Code skill for convention documentation and fix-it workflow
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.7.0
+
 ## 0.7.0
 
 ### Minor Changes

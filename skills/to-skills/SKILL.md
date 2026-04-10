@@ -10,7 +10,7 @@ Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript
 
 ## When to Use
 
-- API surface: 6 functions, 14 types
+- API surface: 10 functions, 20 types
 
 ## Quick Reference
 
@@ -18,7 +18,11 @@ Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript
 **writer:** `writeSkills`
 **tokens:** `estimateTokens`, `truncateToTokenBudget`
 **llms-txt:** `renderLlmsTxt`, `LlmsTxtOptions`, `LlmsTxtResult`
+**readme-parser:** `parseReadme`
+**audit:** `auditSkill`
+**audit-formatter:** `formatAuditText`, `formatAuditJson`
 **types:** `ExtractedSkill`, `ExtractedFunction`, `ExtractedClass`, `ExtractedType`, `ExtractedEnum`, `ExtractedParameter`, `ExtractedProperty`, `ExtractedVariable`, `ExtractedDocument`, `RenderedFile`, `RenderedSkill`, `SkillRenderOptions`
+**audit-types:** `AuditSeverity`, `AuditIssue`, `AuditPass`, `AuditContext`, `ParsedReadme`, `AuditResult`
 
 ## Links
 

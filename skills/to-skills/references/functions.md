@@ -90,3 +90,77 @@ renderLlmsTxt(skills: ExtractedSkill[], options: LlmsTxtOptions): LlmsTxtResult
 - `skills: ExtractedSkill[]`
 - `options: LlmsTxtOptions`
   **Returns:** `LlmsTxtResult`
+
+## readme-parser
+
+### `parseReadme`
+
+Parse a README markdown string and extract structured sections.
+
+Extraction rules:
+
+- **blockquote** – first `> …` line between `# title` and the first `## heading`.
+- **firstParagraph** – first prose lines before the first `## heading` that are
+  not a heading, badge (`[![`), image (`![`), blockquote, or blank.
+  Consecutive lines are joined with a single space.
+- **quickStart** – content under `## Quick Start`, `## Usage`, or `## Getting Started`.
+- **features** – content under `## Features`, `## Key Features`, or `## Highlights`.
+- **pitfalls** – content under `## Pitfalls`, `## Common Mistakes`, `## Gotchas`,
+  or `## Caveats`.
+
+```ts
+parseReadme(markdown: string): ParsedReadme
+```
+
+**Parameters:**
+
+- `markdown: string`
+  **Returns:** `ParsedReadme`
+
+## audit
+
+### `auditSkill`
+
+```ts
+auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult
+```
+
+**Parameters:**
+
+- `skill: ExtractedSkill`
+- `context: AuditContext`
+  **Returns:** `AuditResult`
+
+## audit-formatter
+
+### `formatAuditText`
+
+Format an AuditResult as human-readable text suitable for TypeDoc logs.
+
+Output groups issues by severity (fatal → error → warning → alert),
+then lists passing checks at the end. Empty severity groups are omitted.
+
+```ts
+formatAuditText(result: AuditResult): string
+```
+
+**Parameters:**
+
+- `result: AuditResult`
+  **Returns:** `string`
+
+### `formatAuditJson`
+
+Format an AuditResult as pretty-printed JSON for machine consumption.
+
+Returns the full result object serialized with 2-space indentation so it
+can be parsed by downstream tooling without any further transformation.
+
+```ts
+formatAuditJson(result: AuditResult): string
+```
+
+**Parameters:**
+
+- `result: AuditResult`
+  **Returns:** `string`

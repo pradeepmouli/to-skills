@@ -84,6 +84,73 @@ renderLlmsTxt(skills: ExtractedSkill[], options: LlmsTxtOptions): LlmsTxtResult
 
 **Returns:** `LlmsTxtResult`
 
+### parseReadme
+
+Parse a README markdown string and extract structured sections.
+
+Extraction rules:
+- **blockquote** – first `> …` line between `# title` and the first `## heading`.
+- **firstParagraph** – first prose lines before the first `## heading` that are
+  not a heading, badge (`[![`), image (`![`), blockquote, or blank.
+  Consecutive lines are joined with a single space.
+- **quickStart** – content under `## Quick Start`, `## Usage`, or `## Getting Started`.
+- **features** – content under `## Features`, `## Key Features`, or `## Highlights`.
+- **pitfalls** – content under `## Pitfalls`, `## Common Mistakes`, `## Gotchas`,
+  or `## Caveats`.
+
+```ts
+parseReadme(markdown: string): ParsedReadme
+```
+
+**Parameters:**
+- `markdown: string` — 
+
+**Returns:** `ParsedReadme`
+
+### auditSkill
+
+```ts
+auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult
+```
+
+**Parameters:**
+- `skill: ExtractedSkill` — 
+- `context: AuditContext` — 
+
+**Returns:** `AuditResult`
+
+### formatAuditText
+
+Format an AuditResult as human-readable text suitable for TypeDoc logs.
+
+Output groups issues by severity (fatal → error → warning → alert),
+then lists passing checks at the end. Empty severity groups are omitted.
+
+```ts
+formatAuditText(result: AuditResult): string
+```
+
+**Parameters:**
+- `result: AuditResult` — 
+
+**Returns:** `string`
+
+### formatAuditJson
+
+Format an AuditResult as pretty-printed JSON for machine consumption.
+
+Returns the full result object serialized with 2-space indentation so it
+can be parsed by downstream tooling without any further transformation.
+
+```ts
+formatAuditJson(result: AuditResult): string
+```
+
+**Parameters:**
+- `result: AuditResult` — 
+
+**Returns:** `string`
+
 ### ExtractedSkill
 
 Extracted API surface for a single package/module
@@ -119,3 +186,36 @@ Options controlling skill rendering
 ### LlmsTxtOptions
 
 ### LlmsTxtResult
+
+### AuditSeverity
+
+Severity levels for audit issues, ordered from most to least severe.
+- `fatal`: Disqualifying problems that prevent the skill from being used safely
+- `error`: Serious problems that significantly degrade skill quality
+- `warning`: Moderate problems that reduce skill effectiveness
+- `alert`: Minor issues or suggestions for improvement
+
+```ts
+type AuditSeverity = "fatal" | "error" | "warning" | "alert"
+```
+
+### AuditIssue
+
+A single audit finding that identifies a problem in the skill package.
+
+### AuditPass
+
+A check that the audit engine ran and the skill package passed.
+
+### AuditContext
+
+Contextual metadata about the package being audited, used to evaluate
+relevance and quality of skill content.
+
+### ParsedReadme
+
+Structured representation of key sections extracted from a package README.
+
+### AuditResult
+
+The complete output of an audit run against a single skill package.
