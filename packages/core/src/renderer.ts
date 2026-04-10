@@ -120,25 +120,29 @@ export function renderSkill(
 function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRenderOptions): string {
   const sections: string[] = [];
 
-  // Frontmatter
   const description = buildDescription(skill);
   sections.push(renderFrontmatter(skillName, description, opts.license || skill.license || ''));
 
-  // Title + overview
   sections.push(`# ${skill.name}`);
-  if (skill.description) {
+
+  // Package description as body intro
+  if (skill.packageDescription) {
+    sections.push(skill.packageDescription);
+  } else if (skill.description) {
     sections.push(skill.description);
   }
 
-  // When to Use
+  // Quick Start example (first module-level example)
+  if (opts.includeExamples && skill.examples.length > 0) {
+    sections.push('## Quick Start\n\n' + skill.examples[0]);
+  }
+
   const whenToUse = renderWhenToUse(skill);
   if (whenToUse) sections.push(whenToUse);
 
-  // Quick Reference — just the names, no details
   const quickRef = renderQuickReference(skill);
   if (quickRef) sections.push(quickRef);
 
-  // Links
   const links = renderLinks(skill);
   if (links) sections.push(links);
 
@@ -312,42 +316,18 @@ function renderVariablesRef(variables: ExtractedVariable[]): string {
 // ===========================================================================
 
 function buildDescription(skill: ExtractedSkill): string {
-  const parts: string[] = [];
-
-  if (skill.description) {
-    parts.push(skill.description);
-  } else {
-    parts.push(`API reference for ${skill.name}`);
-  }
-
-  const triggers: string[] = [];
-  if (skill.functions.length > 0) {
-    triggers.push(
-      skill.functions
-        .slice(0, 5)
-        .map((f) => f.name)
-        .join(', ')
-    );
-  }
-  if (skill.classes.length > 0) {
-    triggers.push(
-      skill.classes
-        .slice(0, 3)
-        .map((c) => c.name)
-        .join(', ')
-    );
-  }
-  if (triggers.length > 0) {
-    parts.push(`Use when working with ${triggers.join(', ')}.`);
-  }
+  const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
+  const parts: string[] = [desc];
 
   if (skill.keywords && skill.keywords.length > 0) {
     const useful = skill.keywords.filter(
       (k) =>
-        !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library'].includes(k.toLowerCase())
+        !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(
+          k.toLowerCase()
+        )
     );
     if (useful.length > 0) {
-      parts.push(`Keywords: ${useful.join(', ')}.`);
+      parts.push(`Use when working with ${useful.join(', ')}.`);
     }
   }
 
@@ -387,24 +367,29 @@ function renderLinks(skill: ExtractedSkill): string {
 function renderWhenToUse(skill: ExtractedSkill): string {
   const triggers: string[] = [];
 
-  if (skill.functions.length > 0) {
-    const names = skill.functions.slice(0, 5).map((f) => `\`${f.name}()\``);
-    triggers.push(
-      `- Calling ${names.join(', ')}${skill.functions.length > 5 ? `, and ${skill.functions.length - 5} more` : ''}`
+  if (skill.keywords && skill.keywords.length > 0) {
+    const useful = skill.keywords.filter(
+      (k) =>
+        !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(
+          k.toLowerCase()
+        )
     );
+    if (useful.length > 0) {
+      triggers.push(`- Working with ${useful.join(', ')}`);
+    }
   }
-  if (skill.classes.length > 0) {
-    const names = skill.classes.slice(0, 3).map((c) => `\`${c.name}\``);
-    triggers.push(`- Instantiating or extending ${names.join(', ')}`);
+
+  const categories: string[] = [];
+  if (skill.functions.length > 0) categories.push(`${skill.functions.length} functions`);
+  if (skill.classes.length > 0) categories.push(`${skill.classes.length} classes`);
+  if (skill.types.length > 0) categories.push(`${skill.types.length} types`);
+  if (skill.enums.length > 0) categories.push(`${skill.enums.length} enums`);
+  if (skill.variables && skill.variables.length > 0)
+    categories.push(`${skill.variables.length} constants`);
+  if (categories.length > 0) {
+    triggers.push(`- API surface: ${categories.join(', ')}`);
   }
-  if (skill.types.length > 0) {
-    const names = skill.types.slice(0, 5).map((t) => `\`${t.name}\``);
-    triggers.push(`- Typing with ${names.join(', ')}`);
-  }
-  if (skill.variables && skill.variables.length > 0) {
-    const names = skill.variables.slice(0, 5).map((v) => `\`${v.name}\``);
-    triggers.push(`- Using constants/variables ${names.join(', ')}`);
-  }
+
   for (const fn of skill.functions) {
     if (fn.tags['see']) {
       triggers.push(`- See also: ${fn.tags['see']}`);

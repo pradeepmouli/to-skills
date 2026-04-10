@@ -61,7 +61,7 @@ describe('renderSkill — SKILL.md (discovery)', () => {
 
     const { skill: s } = renderSkill(skill);
     expect(s.content).toContain('## When to Use');
-    expect(s.content).toContain('`greet()`');
+    expect(s.content).toContain('API surface: 1 functions');
   });
 
   it('renders Quick Reference summary', () => {
@@ -611,6 +611,190 @@ describe('renderSkill — variables in SKILL.md', () => {
 
     const { skill: s } = renderSkill(skill);
     expect(s.content).toContain('## When to Use');
-    expect(s.content).toContain('`builtinProcessors`');
+    expect(s.content).toContain('API surface: 1 constants');
+  });
+});
+
+describe('renderSkill — new description and content behaviour', () => {
+  it('uses packageDescription as frontmatter description when present', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      description: 'Short fallback',
+      packageDescription: 'Full package description for LLM triggering'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('Full package description for LLM triggering');
+    expect(s.content).not.toContain('Short fallback');
+  });
+
+  it('uses description as fallback in frontmatter when packageDescription is absent', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      description: 'Fallback description'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('description: Fallback description');
+  });
+
+  it('renders packageDescription as body intro after title', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      packageDescription: 'UNIQUE_PACKAGE_DESC_BODY'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const titleIndex = s.content.indexOf('# my-lib');
+    // Find the occurrence after the title
+    const bodyIndex = s.content.indexOf('UNIQUE_PACKAGE_DESC_BODY', titleIndex);
+    expect(bodyIndex).toBeGreaterThan(titleIndex);
+  });
+
+  it('renders description as body intro when packageDescription is absent', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      description: 'UNIQUE_DESCRIPTION_BODY'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const titleIndex = s.content.indexOf('# my-lib');
+    // Find the occurrence after the title
+    const bodyIndex = s.content.indexOf('UNIQUE_DESCRIPTION_BODY', titleIndex);
+    expect(bodyIndex).toBeGreaterThan(titleIndex);
+  });
+
+  it('When to Use uses keywords instead of listing function names', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      keywords: ['validation', 'schema'],
+      functions: [
+        {
+          name: 'validate',
+          description: 'Validates input',
+          signature: 'validate(input: unknown): boolean',
+          parameters: [],
+          returnType: 'boolean',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## When to Use');
+    expect(s.content).toContain('Working with validation, schema');
+    expect(s.content).not.toContain('`validate()`');
+    expect(s.content).not.toContain('Calling `validate');
+  });
+
+  it('When to Use shows API surface counts not individual names', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn1',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        },
+        {
+          name: 'fn2',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      classes: [
+        {
+          name: 'MyClass',
+          description: '',
+          constructorSignature: '',
+          methods: [],
+          properties: [],
+          examples: []
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('API surface: 2 functions, 1 classes');
+    expect(s.content).not.toContain('`fn1()`');
+    expect(s.content).not.toContain('`fn2()`');
+    expect(s.content).not.toContain('Instantiating or extending');
+  });
+
+  it('renders Quick Start from first module-level example', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      examples: ['```ts\nconst x = doSomething();\n```', '```ts\nconst y = doOther();\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: true });
+    expect(s.content).toContain('## Quick Start');
+    expect(s.content).toContain('doSomething()');
+  });
+
+  it('does not render Quick Start when includeExamples is false', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      examples: ['```ts\nconst x = doSomething();\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: false });
+    expect(s.content).not.toContain('## Quick Start');
+  });
+
+  it('does not use old "Calling `fn()`" pattern in When to Use', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'myFunc',
+          description: 'Does something',
+          signature: 'myFunc(): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).not.toContain('Calling `myFunc()`');
+    expect(s.content).not.toContain('Typing with');
+    expect(s.content).not.toContain('Instantiating or extending');
+    expect(s.content).not.toContain('Using constants/variables');
+  });
+
+  it('filters generic keywords from description and When to Use', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      keywords: ['typescript', 'javascript', 'npm', 'node', 'nodejs', 'library', 'package', 'http'],
+      functions: [
+        {
+          name: 'request',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    // Only 'http' should appear as useful keyword; generic ones are filtered
+    expect(s.content).toContain('http');
+    expect(s.content).not.toContain('Working with typescript');
+    expect(s.content).not.toContain('Keywords: typescript');
   });
 });
