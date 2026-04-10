@@ -579,6 +579,53 @@ describe('extractSkills — perPackage mode with modules', () => {
   });
 });
 
+// ── Nested submodule flattening ──────────────────────────────────────────
+
+describe('extractSkills — nested submodule flattening', () => {
+  it('extracts children from nested submodules', () => {
+    const submod = mockDecl('utils', ReflectionKind.Module, {
+      children: [
+        mockDecl('helper', ReflectionKind.Function, {
+          signatures: [mockSig([], 'void')],
+          sources: [{ fullFileName: '/project/src/utils.ts' }]
+        })
+      ]
+    });
+    const rootMod = mockDecl('my-pkg', ReflectionKind.Module, {
+      children: [
+        submod,
+        mockDecl('main', ReflectionKind.Function, {
+          signatures: [mockSig([], 'void')],
+          sources: [{ fullFileName: '/project/src/index.ts' }]
+        })
+      ]
+    });
+    const project = mockProject([rootMod]);
+    const [skill] = extractSkills(project, true);
+    expect(skill.functions.map((f) => f.name)).toContain('main');
+    expect(skill.functions.map((f) => f.name)).toContain('helper');
+  });
+
+  it('handles deeply nested submodules', () => {
+    const deep = mockDecl('deep', ReflectionKind.Module, {
+      children: [
+        mockDecl('deepFn', ReflectionKind.Function, {
+          signatures: [mockSig([], 'void')]
+        })
+      ]
+    });
+    const mid = mockDecl('mid', ReflectionKind.Module, {
+      children: [deep]
+    });
+    const root = mockDecl('root', ReflectionKind.Module, {
+      children: [mid]
+    });
+    const project = mockProject([root]);
+    const [skill] = extractSkills(project, true);
+    expect(skill.functions.map((f) => f.name)).toContain('deepFn');
+  });
+});
+
 // ── Mixed children (only correct kinds extracted) ────────────────────────
 
 describe('extractSkills — kind filtering', () => {

@@ -30,6 +30,19 @@ export interface PackageMetadata {
   author?: string;
 }
 
+/** Recursively collect all exportable children, flattening nested modules */
+function collectChildren(mod: DeclarationReflection): DeclarationReflection[] {
+  const result: DeclarationReflection[] = [];
+  for (const child of mod.children ?? []) {
+    if (child.kind === ReflectionKind.Module || child.kind === ReflectionKind.Namespace) {
+      result.push(...collectChildren(child));
+    } else {
+      result.push(child);
+    }
+  }
+  return result;
+}
+
 /** Extract structured API info from the TypeDoc reflection tree */
 export function extractSkills(
   project: ProjectReflection,
@@ -98,7 +111,7 @@ function mergeModules(
   let description = '';
 
   for (const mod of mods) {
-    const children = mod.children ?? [];
+    const children = collectChildren(mod);
     allFunctions.push(
       ...children.filter((c) => c.kind === ReflectionKind.Function).map((c) => extractFunction(c))
     );
@@ -144,7 +157,7 @@ function extractModule(
   metadata?: PackageMetadata,
   documents?: ExtractedDocument[]
 ): ExtractedSkill {
-  const children = (mod as DeclarationReflection).children ?? [];
+  const children = collectChildren(mod as DeclarationReflection);
 
   // Resolve the best name: metadata > source package.json > reflection name
   const resolvedName = metadata?.name || resolvePackageName(mod) || mod.name;
