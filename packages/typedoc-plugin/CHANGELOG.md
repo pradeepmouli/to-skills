@@ -1,5 +1,22 @@
 # typedoc-plugin-to-skills
 
+## 0.6.0
+
+### Minor Changes
+
+- JSDoc tag conventions for skill-judge compliance
+  - Extract and render @useWhen, @avoidWhen, @pitfalls custom tags into SKILL.md sections
+  - Extract @remarks for expert knowledge in references
+  - @category-based grouping (overrides filename-derived sourceModule)
+  - W7-W11 audit checks for tag presence
+  - Bundled skill updated with tag documentation and examples
+  - Projected skill-judge score: F (~42) → C+ (~94) with full adoption
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.9.0
+
 ## 0.5.1
 
 ### Patch Changes
