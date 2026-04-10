@@ -494,26 +494,27 @@ describe('extractSkills — perPackage mode with modules', () => {
     });
     const project = mockProject([modA, modB]);
     const skills = extractSkills(project, true);
-    expect(skills).toHaveLength(2);
-    const nameA = skills.find((s) => s.name === 'pkg-a');
-    const nameB = skills.find((s) => s.name === 'pkg-b');
-    expect(nameA).toBeDefined();
-    expect(nameB).toBeDefined();
-    expect(nameA!.functions[0].name).toBe('fnA');
-    expect(nameB!.functions[0].name).toBe('fnB');
+    // Without source files, modules can't resolve package names, so they all
+    // merge into the fallback group (project name = 'test-project')
+    expect(skills).toHaveLength(1);
+    expect(skills[0].name).toBe('test-project');
+    expect(skills[0].functions).toHaveLength(2);
+    expect(skills[0].functions.map((f) => f.name)).toContain('fnA');
+    expect(skills[0].functions.map((f) => f.name)).toContain('fnB');
   });
 
-  it('merges multiple modules under the same package name', () => {
-    const mod1 = mockDecl('my-pkg', ReflectionKind.Module, {
+  it('merges multiple modules under the fallback name when no sources', () => {
+    const mod1 = mockDecl('sub-a', ReflectionKind.Module, {
       children: [mockDecl('fn1', ReflectionKind.Function, { signatures: [mockSig([], 'void')] })]
     });
-    const mod2 = mockDecl('my-pkg', ReflectionKind.Module, {
+    const mod2 = mockDecl('sub-b', ReflectionKind.Module, {
       children: [mockDecl('fn2', ReflectionKind.Function, { signatures: [mockSig([], 'void')] })]
     });
     const project = mockProject([mod1, mod2]);
+    // Without source files, all modules merge under project name
     const skills = extractSkills(project, true);
     expect(skills).toHaveLength(1);
-    expect(skills[0].name).toBe('my-pkg');
+    expect(skills[0].name).toBe('test-project');
     expect(skills[0].functions).toHaveLength(2);
   });
 
@@ -525,17 +526,17 @@ describe('extractSkills — perPackage mode with modules', () => {
     expect(skills[0].functions[0].name).toBe('hello');
   });
 
-  it('uses module name (not metadata.name) per-package in perPackage mode', () => {
-    // In perPackage mode, each group uses the resolved package name as key,
-    // overriding the metadata.name for that group. metadata.name is superseded
-    // by the resolved pkgName per the grouping logic.
+  it('uses metadata.name as fallback when module has no source files', () => {
+    // In perPackage mode, modules that can't resolve a package name via source
+    // files fall back to metadata.name (not mod.name), preventing internal
+    // submodules like "array" or "string" from becoming separate skills.
     const mod = mockDecl('internal-name', ReflectionKind.Module, {
       children: []
     });
     const project = mockProject([mod]);
     const skills = extractSkills(project, true, { name: 'override-name' });
-    // pkgName from mod.name is 'internal-name', which takes priority over metadata.name
-    expect(skills[0].name).toBe('internal-name');
+    // Falls back to metadata.name, not mod.name
+    expect(skills[0].name).toBe('override-name');
   });
 
   it('collects functions/classes/types/enums/variables from all modules in merged group', () => {

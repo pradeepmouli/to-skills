@@ -43,8 +43,12 @@ export function extractSkills(
   );
 
   if (modules.length > 0 && perPackage) {
-    // Group modules by their resolved package name, then merge into one skill per package
-    const grouped = groupModulesByPackage(modules);
+    // Group modules by their resolved package name, then merge into one skill per package.
+    // Modules that can't resolve a package name are merged into the fallback group
+    // (metadata name or project name) — prevents internal submodules like "array"
+    // or "string" from becoming separate skills.
+    const fallbackName = metadata?.name || project.name || '(root)';
+    const grouped = groupModulesByPackage(modules, fallbackName);
     return Array.from(grouped.entries()).map(([pkgName, mods]) => {
       const perPkgMeta = metadata
         ? { ...metadata, name: pkgName || undefined }
@@ -59,11 +63,15 @@ export function extractSkills(
 
 /** Group modules by their resolved npm package name */
 function groupModulesByPackage(
-  modules: DeclarationReflection[]
+  modules: DeclarationReflection[],
+  fallbackName: string
 ): Map<string, DeclarationReflection[]> {
   const groups = new Map<string, DeclarationReflection[]>();
   for (const mod of modules) {
-    const pkgName = resolvePackageName(mod) || mod.name || '(root)';
+    // Use the resolved package name, or fall back to the parent package name.
+    // Never use mod.name as a group key — it's an internal module name like
+    // "array" or "string" that shouldn't become its own skill.
+    const pkgName = resolvePackageName(mod) || fallbackName;
     const existing = groups.get(pkgName);
     if (existing) {
       existing.push(mod);
