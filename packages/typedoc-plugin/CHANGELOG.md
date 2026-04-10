@@ -1,5 +1,22 @@
 # typedoc-plugin-to-skills
 
+## 0.4.4
+
+### Patch Changes
+
+- Skill quality improvements: contextual descriptions, module-grouped references, empty description suppression, submodule flattening
+  - SKILL.md description answers "what does this library do" instead of listing function names
+  - When to Use shows keyword-based context instead of tautological "Calling fn()"
+  - Quick Reference and references grouped by source module
+  - Quick Start example in SKILL.md from module-level @example
+  - Empty description trailing dashes suppressed
+  - Nested submodule children flattened during extraction
+  - sourceModule field on all extracted items for grouping
+  - packageDescription from package.json flows through to SKILL.md
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.7.0
+
 ## 0.4.3
 
 ### Patch Changes
