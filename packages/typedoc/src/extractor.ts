@@ -100,7 +100,7 @@ function mergeModules(
   for (const mod of mods) {
     const children = mod.children ?? [];
     allFunctions.push(
-      ...children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction)
+      ...children.filter((c) => c.kind === ReflectionKind.Function).map((c) => extractFunction(c))
     );
     allClasses.push(...children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass));
     allTypes.push(
@@ -157,7 +157,9 @@ function extractModule(
     author: metadata?.author,
     packageDescription: metadata?.description,
     documents,
-    functions: children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction),
+    functions: children
+      .filter((c) => c.kind === ReflectionKind.Function)
+      .map((c) => extractFunction(c)),
     classes: children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass),
     types: children
       .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)

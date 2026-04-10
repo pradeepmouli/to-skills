@@ -615,3 +615,107 @@ describe('extractSkills — generic function signature', () => {
     expect(skill.functions[0].signature).toBe('identity<T>(value: T): T');
   });
 });
+
+// ── sourceModule extraction ───────────────────────────────────────────────
+
+describe('extractSkills — sourceModule', () => {
+  it('extracts sourceModule from fullFileName on a function declaration', () => {
+    const sig = mockSig([], 'void');
+    const fn = mockDecl('myFn', ReflectionKind.Function, {
+      signatures: [sig],
+      sources: [{ fullFileName: '/project/src/utils.ts' }]
+    });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].sourceModule).toBe('utils');
+  });
+
+  it('falls back to fileName when fullFileName is absent', () => {
+    const sig = mockSig([], 'void');
+    const fn = mockDecl('myFn', ReflectionKind.Function, {
+      signatures: [sig],
+      sources: [{ fileName: 'src/renderer.ts' }]
+    });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].sourceModule).toBe('renderer');
+  });
+
+  it('returns undefined for index files', () => {
+    const sig = mockSig([], 'void');
+    const fn = mockDecl('myFn', ReflectionKind.Function, {
+      signatures: [sig],
+      sources: [{ fullFileName: '/project/src/index.ts' }]
+    });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].sourceModule).toBeUndefined();
+  });
+
+  it('returns undefined when sources are absent', () => {
+    const sig = mockSig([], 'void');
+    const fn = mockDecl('myFn', ReflectionKind.Function, {
+      signatures: [sig],
+      sources: undefined
+    });
+    const project = mockProject([fn]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.functions[0].sourceModule).toBeUndefined();
+  });
+
+  it('extracts sourceModule on a class declaration', () => {
+    const cls = mockDecl('MyClass', ReflectionKind.Class, {
+      children: [],
+      sources: [{ fullFileName: '/project/src/tokens.ts' }]
+    });
+    const project = mockProject([cls]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.classes[0].sourceModule).toBe('tokens');
+  });
+
+  it('methods inherit class sourceModule (via parentDecl)', () => {
+    const method = mockDecl('doWork', ReflectionKind.Method, {
+      flags: { isPrivate: false },
+      signatures: [mockSig([], 'void')],
+      sources: undefined
+    });
+    const cls = mockDecl('MyClass', ReflectionKind.Class, {
+      children: [method],
+      sources: [{ fullFileName: '/project/src/renderer.ts' }]
+    });
+    const project = mockProject([cls]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.classes[0].methods[0].sourceModule).toBe('renderer');
+  });
+
+  it('extracts sourceModule on a variable declaration', () => {
+    const v = mockDecl('MAX_RETRIES', ReflectionKind.Variable, {
+      type: { toString: () => 'number' },
+      flags: { isConst: true },
+      sources: [{ fullFileName: '/project/src/llms-txt.ts' }]
+    });
+    const project = mockProject([v]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.variables[0].sourceModule).toBe('llms-txt');
+  });
+
+  it('extracts sourceModule on an enum declaration', () => {
+    const en = mockDecl('Status', ReflectionKind.Enum, {
+      children: [],
+      sources: [{ fullFileName: '/project/src/models.ts' }]
+    });
+    const project = mockProject([en]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.enums[0].sourceModule).toBe('models');
+  });
+
+  it('extracts sourceModule on an interface declaration', () => {
+    const iface = mockDecl('IUser', ReflectionKind.Interface, {
+      children: [],
+      sources: [{ fullFileName: '/project/src/types.ts' }]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.types[0].sourceModule).toBe('types');
+  });
+});
