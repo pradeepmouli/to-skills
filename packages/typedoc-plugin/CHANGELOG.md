@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.5.1
+
+### Patch Changes
+
+- Scope audit to first-party workspace packages only — skip third-party deps that TypeDoc processes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.8.1
+
 ## 0.5.0
 
 ### Minor Changes

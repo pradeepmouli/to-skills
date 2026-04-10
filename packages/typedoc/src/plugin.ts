@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Application, Converter, type Context, ParameterType } from 'typedoc';
 import type { ExtractedSkill } from '@to-skills/core';
@@ -106,6 +106,7 @@ export function load(app: Application): void {
   // Skills files are written immediately per converter run (per-package scope).
   const allSkills: ExtractedSkill[] = [];
   const pkg = readPackageJson();
+  const workspacePackages = getWorkspacePackageNames(pkg.name);
 
   // --- Per-package: extract + write skills immediately ---
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
@@ -161,6 +162,12 @@ export function load(app: Application): void {
       };
 
       for (const skill of skills) {
+        // Only audit first-party workspace packages — skip third-party deps
+        // that TypeDoc happens to process (e.g. vscode-jsonrpc in lspeasy)
+        if (workspacePackages.size > 0 && !workspacePackages.has(skill.name)) {
+          continue;
+        }
+
         const auditResult = auditSkill(skill, auditContext);
         const text = formatAuditText(auditResult);
 
@@ -238,6 +245,43 @@ function normalizeRepoUrl(repo: PackageJson['repository']): string | undefined {
   const url = repo.url;
   if (!url) return undefined;
   return url.replace(/^git\+/, '').replace(/\.git$/, '');
+}
+
+/**
+ * Scan packages/* /package.json to build the set of first-party workspace package names.
+ * Used to scope audits to first-party code only — avoids auditing third-party deps
+ * that TypeDoc processes in monorepo entryPointStrategy: "packages" setups.
+ * Returns empty set for single-package projects (audit everything).
+ */
+function getWorkspacePackageNames(rootName?: string): Set<string> {
+  const names = new Set<string>();
+
+  // Add root package name
+  if (rootName) names.add(rootName);
+
+  // Scan packages/*/package.json
+  const packagesDir = join(process.cwd(), 'packages');
+  if (!existsSync(packagesDir)) return names;
+
+  try {
+    const dirs = readdirSync(packagesDir, { withFileTypes: true });
+    for (const dir of dirs) {
+      if (!dir.isDirectory()) continue;
+      const pkgPath = join(packagesDir, dir.name, 'package.json');
+      if (existsSync(pkgPath)) {
+        try {
+          const p = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { name?: string };
+          if (p.name) names.add(p.name);
+        } catch {
+          // skip parse errors
+        }
+      }
+    }
+  } catch {
+    // skip read errors
+  }
+
+  return names;
 }
 
 function readReadmeFile(): string | undefined {

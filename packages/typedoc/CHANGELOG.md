@@ -1,5 +1,11 @@
 # @to-skills/typedoc
 
+## 0.8.1
+
+### Patch Changes
+
+- Scope audit to first-party workspace packages only — skip third-party deps that TypeDoc processes
+
 ## 0.8.0
 
 ### Minor Changes
