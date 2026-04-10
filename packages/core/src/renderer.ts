@@ -153,108 +153,162 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
 // Reference files — full detail loaded on demand
 // ===========================================================================
 
+/** Format description suffix — returns " — desc" or empty string, never trailing " — " */
+function descSuffix(description: string | undefined): string {
+  return description ? ` — ${description}` : '';
+}
+
+function groupByModule<T extends { sourceModule?: string }>(items: T[]): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.sourceModule || '';
+    const existing = groups.get(key);
+    if (existing) existing.push(item);
+    else groups.set(key, [item]);
+  }
+  return groups;
+}
+
+function hasModuleInfo<T extends { sourceModule?: string }>(items: T[]): boolean {
+  return items.some((item) => !!item.sourceModule);
+}
+
+function renderFunctionBody(
+  fn: ExtractedFunction,
+  opts: SkillRenderOptions,
+  lines: string[]
+): void {
+  if (fn.description) lines.push(fn.description);
+
+  if (opts.includeSignatures && fn.signature) {
+    lines.push('```ts', fn.signature, '```');
+  }
+
+  if (fn.parameters.length > 0) {
+    lines.push('**Parameters:**');
+    for (const p of fn.parameters) {
+      const opt = p.optional ? ' (optional)' : '';
+      const def = p.defaultValue ? ` — default: \`${p.defaultValue}\`` : '';
+      lines.push(`- \`${p.name}: ${p.type}\`${opt}${def}${descSuffix(p.description)}`);
+    }
+  }
+
+  if (fn.returnType && fn.returnType !== 'void') {
+    const desc = fn.returnsDescription ? ` — ${fn.returnsDescription}` : '';
+    lines.push(`**Returns:** \`${fn.returnType}\`${desc}`);
+  }
+
+  // Render important tags
+  if (fn.tags['deprecated']) {
+    lines.push(`> **Deprecated:** ${fn.tags['deprecated']}`);
+  }
+  if (fn.tags['since']) {
+    lines.push(`**Since:** \`${fn.tags['since']}\``);
+  }
+  if (fn.tags['throws']) {
+    lines.push(`**Throws:** ${fn.tags['throws']}`);
+  }
+  if (fn.tags['see']) {
+    lines.push(`**See:** ${fn.tags['see']}`);
+  }
+
+  if (opts.includeSignatures && fn.overloads && fn.overloads.length > 0) {
+    lines.push('**Overloads:**');
+    for (const overload of fn.overloads) {
+      lines.push('```ts', overload, '```');
+    }
+  }
+
+  if (opts.includeExamples && fn.examples.length > 0) {
+    for (const ex of fn.examples) {
+      lines.push(ex);
+    }
+  }
+
+  lines.push('');
+}
+
 function renderFunctionsRef(fns: ExtractedFunction[], opts: SkillRenderOptions): string {
   const lines = ['# Functions\n'];
 
-  for (const fn of fns) {
-    lines.push(`## \`${fn.name}\``);
-    if (fn.description) lines.push(fn.description);
-
-    if (opts.includeSignatures && fn.signature) {
-      lines.push('```ts', fn.signature, '```');
-    }
-
-    if (fn.parameters.length > 0) {
-      lines.push('**Parameters:**');
-      for (const p of fn.parameters) {
-        const opt = p.optional ? ' (optional)' : '';
-        const def = p.defaultValue ? ` — default: \`${p.defaultValue}\`` : '';
-        lines.push(`- \`${p.name}: ${p.type}\`${opt}${def} — ${p.description || ''}`);
+  if (hasModuleInfo(fns)) {
+    const groups = groupByModule(fns);
+    for (const [mod, modFns] of groups) {
+      if (mod) lines.push(`## ${mod}\n`);
+      for (const fn of modFns) {
+        lines.push(mod ? `### \`${fn.name}\`` : `## \`${fn.name}\``);
+        renderFunctionBody(fn, opts, lines);
       }
     }
-
-    if (fn.returnType && fn.returnType !== 'void') {
-      const desc = fn.returnsDescription ? ` — ${fn.returnsDescription}` : '';
-      lines.push(`**Returns:** \`${fn.returnType}\`${desc}`);
+  } else {
+    for (const fn of fns) {
+      lines.push(`## \`${fn.name}\``);
+      renderFunctionBody(fn, opts, lines);
     }
-
-    // Render important tags
-    if (fn.tags['deprecated']) {
-      lines.push(`> **Deprecated:** ${fn.tags['deprecated']}`);
-    }
-    if (fn.tags['since']) {
-      lines.push(`**Since:** \`${fn.tags['since']}\``);
-    }
-    if (fn.tags['throws']) {
-      lines.push(`**Throws:** ${fn.tags['throws']}`);
-    }
-    if (fn.tags['see']) {
-      lines.push(`**See:** ${fn.tags['see']}`);
-    }
-
-    if (opts.includeSignatures && fn.overloads && fn.overloads.length > 0) {
-      lines.push('**Overloads:**');
-      for (const overload of fn.overloads) {
-        lines.push('```ts', overload, '```');
-      }
-    }
-
-    if (opts.includeExamples && fn.examples.length > 0) {
-      for (const ex of fn.examples) {
-        lines.push(ex);
-      }
-    }
-
-    lines.push('');
   }
 
   return lines.join('\n');
 }
 
+function renderClassBody(cls: ExtractedClass, opts: SkillRenderOptions, lines: string[]): void {
+  if (cls.description) lines.push(cls.description);
+
+  if (cls.extends) {
+    lines.push(`*extends \`${cls.extends}\`*`);
+  }
+  if (cls.implements && cls.implements.length > 0) {
+    lines.push(`*implements ${cls.implements.map((i) => `\`${i}\``).join(', ')}*`);
+  }
+
+  if (opts.includeSignatures && cls.constructorSignature) {
+    lines.push('```ts', cls.constructorSignature, '```');
+  }
+
+  if (cls.properties.length > 0) {
+    lines.push('**Properties:**');
+    for (const p of cls.properties) {
+      const opt = p.optional ? ' (optional)' : '';
+      lines.push(`- \`${p.name}: ${p.type}\`${opt}${descSuffix(p.description)}`);
+    }
+  }
+
+  if (cls.methods.length > 0) {
+    lines.push('**Methods:**');
+    for (const m of cls.methods) {
+      if (opts.includeSignatures) {
+        lines.push(`- \`${m.signature}\`${descSuffix(m.description)}`);
+      } else {
+        lines.push(`- \`${m.name}\`${descSuffix(m.description)}`);
+      }
+    }
+  }
+
+  if (opts.includeExamples && cls.examples.length > 0) {
+    for (const ex of cls.examples) {
+      lines.push(ex);
+    }
+  }
+
+  lines.push('');
+}
+
 function renderClassesRef(classes: ExtractedClass[], opts: SkillRenderOptions): string {
   const lines = ['# Classes\n'];
 
-  for (const cls of classes) {
-    lines.push(`## \`${cls.name}\``);
-    if (cls.description) lines.push(cls.description);
-
-    if (cls.extends) {
-      lines.push(`*extends \`${cls.extends}\`*`);
-    }
-    if (cls.implements && cls.implements.length > 0) {
-      lines.push(`*implements ${cls.implements.map((i) => `\`${i}\``).join(', ')}*`);
-    }
-
-    if (opts.includeSignatures && cls.constructorSignature) {
-      lines.push('```ts', cls.constructorSignature, '```');
-    }
-
-    if (cls.properties.length > 0) {
-      lines.push('**Properties:**');
-      for (const p of cls.properties) {
-        const opt = p.optional ? ' (optional)' : '';
-        lines.push(`- \`${p.name}: ${p.type}\`${opt} — ${p.description || ''}`);
+  if (hasModuleInfo(classes)) {
+    const groups = groupByModule(classes);
+    for (const [mod, modClasses] of groups) {
+      if (mod) lines.push(`## ${mod}\n`);
+      for (const cls of modClasses) {
+        lines.push(mod ? `### \`${cls.name}\`` : `## \`${cls.name}\``);
+        renderClassBody(cls, opts, lines);
       }
     }
-
-    if (cls.methods.length > 0) {
-      lines.push('**Methods:**');
-      for (const m of cls.methods) {
-        if (opts.includeSignatures) {
-          lines.push(`- \`${m.signature}\` — ${m.description || ''}`);
-        } else {
-          lines.push(`- \`${m.name}\` — ${m.description || ''}`);
-        }
-      }
+  } else {
+    for (const cls of classes) {
+      lines.push(`## \`${cls.name}\``);
+      renderClassBody(cls, opts, lines);
     }
-
-    if (opts.includeExamples && cls.examples.length > 0) {
-      for (const ex of cls.examples) {
-        lines.push(ex);
-      }
-    }
-
-    lines.push('');
   }
 
   return lines.join('\n');
@@ -263,34 +317,75 @@ function renderClassesRef(classes: ExtractedClass[], opts: SkillRenderOptions): 
 function renderTypesRef(types: ExtractedType[], enums: ExtractedEnum[]): string {
   const lines = ['# Types & Enums\n'];
 
-  if (types.length > 0) {
-    lines.push('## Types\n');
-    for (const t of types) {
-      lines.push(`### \`${t.name}\``);
-      if (t.description) lines.push(t.description);
-      if (t.properties && t.properties.length > 0) {
-        lines.push('**Properties:**');
-        for (const p of t.properties) {
-          const opt = p.optional ? ' (optional)' : '';
-          lines.push(`- \`${p.name}: ${p.type}\`${opt} — ${p.description || ''}`);
-        }
-      }
-      if (t.definition) {
-        lines.push('```ts', t.definition, '```');
-      }
-      lines.push('');
-    }
-  }
+  const allTypeLike = [...types, ...enums];
 
-  if (enums.length > 0) {
-    lines.push('## Enums\n');
-    for (const e of enums) {
-      lines.push(`### \`${e.name}\``);
-      if (e.description) lines.push(e.description);
-      for (const m of e.members) {
-        lines.push(`- \`${m.name}\` = \`${m.value}\` — ${m.description || ''}`);
+  if (hasModuleInfo(allTypeLike)) {
+    // Group types and enums together by module
+    const typeGroups = groupByModule(types);
+    const enumGroups = groupByModule(enums);
+    const allMods = new Set([...typeGroups.keys(), ...enumGroups.keys()]);
+
+    for (const mod of allMods) {
+      if (mod) lines.push(`## ${mod}\n`);
+      const heading = (name: string) => (mod ? `### \`${name}\`` : `## \`${name}\``);
+
+      const modTypes = typeGroups.get(mod) ?? [];
+      for (const t of modTypes) {
+        lines.push(heading(t.name));
+        if (t.description) lines.push(t.description);
+        if (t.properties && t.properties.length > 0) {
+          lines.push('**Properties:**');
+          for (const p of t.properties) {
+            const opt = p.optional ? ' (optional)' : '';
+            lines.push(`- \`${p.name}: ${p.type}\`${opt}${descSuffix(p.description)}`);
+          }
+        }
+        if (t.definition) {
+          lines.push('```ts', t.definition, '```');
+        }
+        lines.push('');
       }
-      lines.push('');
+
+      const modEnums = enumGroups.get(mod) ?? [];
+      for (const e of modEnums) {
+        lines.push(heading(e.name));
+        if (e.description) lines.push(e.description);
+        for (const m of e.members) {
+          lines.push(`- \`${m.name}\` = \`${m.value}\`${descSuffix(m.description)}`);
+        }
+        lines.push('');
+      }
+    }
+  } else {
+    if (types.length > 0) {
+      lines.push('## Types\n');
+      for (const t of types) {
+        lines.push(`### \`${t.name}\``);
+        if (t.description) lines.push(t.description);
+        if (t.properties && t.properties.length > 0) {
+          lines.push('**Properties:**');
+          for (const p of t.properties) {
+            const opt = p.optional ? ' (optional)' : '';
+            lines.push(`- \`${p.name}: ${p.type}\`${opt}${descSuffix(p.description)}`);
+          }
+        }
+        if (t.definition) {
+          lines.push('```ts', t.definition, '```');
+        }
+        lines.push('');
+      }
+    }
+
+    if (enums.length > 0) {
+      lines.push('## Enums\n');
+      for (const e of enums) {
+        lines.push(`### \`${e.name}\``);
+        if (e.description) lines.push(e.description);
+        for (const m of e.members) {
+          lines.push(`- \`${m.name}\` = \`${m.value}\`${descSuffix(m.description)}`);
+        }
+        lines.push('');
+      }
     }
   }
 
@@ -300,12 +395,26 @@ function renderTypesRef(types: ExtractedType[], enums: ExtractedEnum[]): string 
 function renderVariablesRef(variables: ExtractedVariable[]): string {
   const lines = ['# Variables & Constants\n'];
 
-  for (const v of variables) {
-    lines.push(`## \`${v.name}\``);
-    if (v.description) lines.push(v.description);
-    const keyword = v.isConst ? 'const' : 'let';
-    lines.push('```ts', `${keyword} ${v.name}: ${v.type}`, '```');
-    lines.push('');
+  if (hasModuleInfo(variables)) {
+    const groups = groupByModule(variables);
+    for (const [mod, modVars] of groups) {
+      if (mod) lines.push(`## ${mod}\n`);
+      for (const v of modVars) {
+        lines.push(mod ? `### \`${v.name}\`` : `## \`${v.name}\``);
+        if (v.description) lines.push(v.description);
+        const keyword = v.isConst ? 'const' : 'let';
+        lines.push('```ts', `${keyword} ${v.name}: ${v.type}`, '```');
+        lines.push('');
+      }
+    }
+  } else {
+    for (const v of variables) {
+      lines.push(`## \`${v.name}\``);
+      if (v.description) lines.push(v.description);
+      const keyword = v.isConst ? 'const' : 'let';
+      lines.push('```ts', `${keyword} ${v.name}: ${v.type}`, '```');
+      lines.push('');
+    }
   }
 
   return lines.join('\n');
@@ -402,6 +511,32 @@ function renderWhenToUse(skill: ExtractedSkill): string {
 }
 
 function renderQuickReference(skill: ExtractedSkill): string {
+  const allItems = [
+    ...skill.functions,
+    ...skill.classes,
+    ...skill.types,
+    ...skill.enums,
+    ...(skill.variables ?? [])
+  ];
+
+  if (allItems.length === 0) return '';
+
+  if (hasModuleInfo(allItems)) {
+    // Group all items by module and list names per module
+    const groups = groupByModule(allItems);
+    const lines: string[] = [];
+    for (const [mod, modItems] of groups) {
+      const names = modItems.map((item) => `\`${'name' in item ? item.name : ''}\``).join(', ');
+      if (mod) {
+        lines.push(`**${mod}:** ${names}`);
+      } else {
+        lines.push(names);
+      }
+    }
+    return '## Quick Reference\n\n' + lines.join('\n');
+  }
+
+  // Flat by kind (existing behavior)
   const items: string[] = [];
 
   if (skill.functions.length > 0) {
@@ -430,7 +565,6 @@ function renderQuickReference(skill: ExtractedSkill): string {
     );
   }
 
-  if (items.length === 0) return '';
   return '## Quick Reference\n\n' + items.join('\n');
 }
 

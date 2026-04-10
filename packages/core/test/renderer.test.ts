@@ -798,3 +798,322 @@ describe('renderSkill — new description and content behaviour', () => {
     expect(s.content).not.toContain('Keywords: typescript');
   });
 });
+
+describe('renderSkill — module grouping in references', () => {
+  it('groups functions by sourceModule in functions.md', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'renderSkill',
+          description: 'Renders a skill',
+          signature: 'renderSkill(skill: ExtractedSkill): RenderedSkill',
+          parameters: [],
+          returnType: 'RenderedSkill',
+          examples: [],
+          tags: {},
+          sourceModule: 'renderer'
+        },
+        {
+          name: 'estimateTokens',
+          description: 'Estimates token count',
+          signature: 'estimateTokens(text: string): number',
+          parameters: [],
+          returnType: 'number',
+          examples: [],
+          tags: {},
+          sourceModule: 'tokens'
+        },
+        {
+          name: 'truncateToTokenBudget',
+          description: 'Truncates content to budget',
+          signature: 'truncateToTokenBudget(text: string, budget: number): string',
+          parameters: [],
+          returnType: 'string',
+          examples: [],
+          tags: {},
+          sourceModule: 'tokens'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    // Module headings
+    expect(fns!.content).toContain('## renderer');
+    expect(fns!.content).toContain('## tokens');
+    // Function sub-headings
+    expect(fns!.content).toContain('### `renderSkill`');
+    expect(fns!.content).toContain('### `estimateTokens`');
+    expect(fns!.content).toContain('### `truncateToTokenBudget`');
+    // No flat ## (non-sub-heading) for individual functions — they should be ### under modules
+    expect(fns!.content).not.toMatch(/^## `renderSkill`/m);
+    expect(fns!.content).not.toMatch(/^## `estimateTokens`/m);
+  });
+
+  it('renders flat ## headings when no sourceModule is set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'greet',
+          description: 'Says hello',
+          signature: 'greet(name: string): string',
+          parameters: [],
+          returnType: 'string',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    expect(fns!.content).toContain('## `greet`');
+    // No module grouping headings (no plain "## word" without backticks)
+    expect(fns!.content).not.toContain('### `greet`');
+  });
+
+  it('groups classes by sourceModule in classes.md', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'Renderer',
+          description: 'The renderer class',
+          constructorSignature: 'constructor(opts: Options)',
+          methods: [],
+          properties: [],
+          examples: [],
+          sourceModule: 'renderer'
+        },
+        {
+          name: 'TokenCounter',
+          description: 'Counts tokens',
+          constructorSignature: 'constructor()',
+          methods: [],
+          properties: [],
+          examples: [],
+          sourceModule: 'tokens'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls).toBeDefined();
+    expect(cls!.content).toContain('## renderer');
+    expect(cls!.content).toContain('## tokens');
+    expect(cls!.content).toContain('### `Renderer`');
+    expect(cls!.content).toContain('### `TokenCounter`');
+  });
+
+  it('groups variables by sourceModule in variables.md', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      variables: [
+        {
+          name: 'DEFAULT_OPTIONS',
+          type: 'Options',
+          description: 'Default rendering options',
+          isConst: true,
+          sourceModule: 'renderer'
+        },
+        {
+          name: 'MAX_TOKENS',
+          type: 'number',
+          description: 'Max token limit',
+          isConst: true,
+          sourceModule: 'tokens'
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const vars = references.find((r) => r.filename.endsWith('variables.md'));
+    expect(vars).toBeDefined();
+    expect(vars!.content).toContain('## renderer');
+    expect(vars!.content).toContain('## tokens');
+    expect(vars!.content).toContain('### `DEFAULT_OPTIONS`');
+    expect(vars!.content).toContain('### `MAX_TOKENS`');
+  });
+});
+
+describe('renderSkill — suppress empty descriptions', () => {
+  it('does not render trailing " — " for empty parameter descriptions', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'parse',
+          description: 'Parses input',
+          signature: 'parse(input: string): string',
+          parameters: [
+            { name: 'input', type: 'string', description: '', optional: false },
+            { name: 'options', type: 'Options', description: 'Parse options', optional: true }
+          ],
+          returnType: 'string',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const fns = references.find((r) => r.filename.endsWith('functions.md'));
+    expect(fns).toBeDefined();
+    // No trailing " — " with nothing after
+    expect(fns!.content).not.toMatch(/`input: string` — $/m);
+    expect(fns!.content).not.toMatch(/— \s*\n/);
+    // Should still render the param with description correctly
+    expect(fns!.content).toContain('— Parse options');
+  });
+
+  it('does not render trailing " — " for empty class property descriptions', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'Config',
+          description: 'Configuration class',
+          constructorSignature: 'constructor()',
+          methods: [],
+          properties: [
+            { name: 'port', type: 'number', description: '', optional: false },
+            { name: 'host', type: 'string', description: 'Server hostname', optional: false }
+          ],
+          examples: []
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls).toBeDefined();
+    expect(cls!.content).not.toMatch(/`port: number` — $/m);
+    expect(cls!.content).toContain('— Server hostname');
+  });
+
+  it('does not render trailing " — " for empty class method descriptions', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      classes: [
+        {
+          name: 'Service',
+          description: 'Service class',
+          constructorSignature: 'constructor()',
+          methods: [
+            {
+              name: 'start',
+              description: '',
+              signature: 'start(): void',
+              parameters: [],
+              returnType: 'void',
+              examples: [],
+              tags: {}
+            },
+            {
+              name: 'stop',
+              description: 'Stops the service',
+              signature: 'stop(): void',
+              parameters: [],
+              returnType: 'void',
+              examples: [],
+              tags: {}
+            }
+          ],
+          properties: [],
+          examples: []
+        }
+      ]
+    };
+
+    const { references } = renderSkill(skill);
+    const cls = references.find((r) => r.filename.endsWith('classes.md'));
+    expect(cls).toBeDefined();
+    expect(cls!.content).not.toMatch(/`start\(\): void` — $/m);
+    expect(cls!.content).toContain('— Stops the service');
+  });
+});
+
+describe('renderSkill — Quick Reference with sourceModule', () => {
+  it('groups Quick Reference by module when sourceModule present', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'renderSkill',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          sourceModule: 'renderer'
+        },
+        {
+          name: 'estimateTokens',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          sourceModule: 'tokens'
+        }
+      ],
+      types: [
+        {
+          name: 'ExtractedSkill',
+          description: '',
+          definition: '',
+          sourceModule: 'types'
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Quick Reference');
+    expect(s.content).toContain('**renderer:**');
+    expect(s.content).toContain('`renderSkill`');
+    expect(s.content).toContain('**tokens:**');
+    expect(s.content).toContain('`estimateTokens`');
+    expect(s.content).toContain('**types:**');
+    expect(s.content).toContain('`ExtractedSkill`');
+    // Should NOT use old flat by-kind format when modules are present
+    expect(s.content).not.toContain('**3 functions**');
+  });
+
+  it('keeps flat by-kind Quick Reference when no sourceModule', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'foo',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        },
+        {
+          name: 'bar',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      types: [{ name: 'Config', description: '', definition: '' }]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('**2 functions**');
+    expect(s.content).toContain('`Config`');
+  });
+});
