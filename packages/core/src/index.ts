@@ -31,3 +31,5 @@ export type {
 export { parseReadme } from './readme-parser.js';
 
 export { auditSkill } from './audit.js';
+
+export { formatAuditText, formatAuditJson } from './audit-formatter.js';
