@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.4.3
+
+### Patch Changes
+
+- Fix spurious skills from barrel re-export submodules (array, string, fixtures, mocks, etc.)
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.6.1
+
 ## 0.4.2
 
 ### Patch Changes
