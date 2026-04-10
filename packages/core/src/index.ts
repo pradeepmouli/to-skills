@@ -27,3 +27,5 @@ export type {
   ParsedReadme,
   AuditResult
 } from './audit-types.js';
+
+export { parseReadme } from './readme-parser.js';
