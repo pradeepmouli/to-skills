@@ -29,3 +29,5 @@ export type {
 } from './audit-types.js';
 
 export { parseReadme } from './readme-parser.js';
+
+export { auditSkill } from './audit.js';
