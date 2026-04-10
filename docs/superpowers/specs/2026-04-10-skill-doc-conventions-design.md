@@ -318,6 +318,22 @@ A structured feature list that gets extracted into the SKILL.md.
 
 **Maps to:** SKILL.md feature summary.
 
+#### W6: README has `## Pitfalls` section
+
+A structured anti-pattern / common mistakes section. This maps directly to skill-judge dimension D3 (Anti-Pattern Quality) — half of expert knowledge is knowing what NOT to do.
+
+**Check:** README contains a `## Pitfalls` or `## Common Mistakes` or `## Gotchas` or `## Caveats` heading (case-insensitive exact match).
+
+**Maps to:** SKILL.md anti-patterns section. Without this, generated skills score ~2/15 on the anti-pattern dimension.
+
+#### W7: SKILL.md should have loading triggers for reference files
+
+Generated SKILL.md should tell agents WHEN to load each reference file, not just list what exists. This maps to skill-judge dimension D5 (Progressive Disclosure).
+
+**Check:** Advisory — the generator should include loading guidance. Not auditable from source docs alone.
+
+**Maps to:** SKILL.md reference section with "Load `references/functions.md` when implementing API calls" style guidance.
+
 ---
 
 ### Alert — Stylistic/quality suggestions
@@ -384,14 +400,20 @@ console.log(result);
 - **Feature One** — what it does and why it matters
 - **Feature Two** — what it does and why it matters
 - **Feature Three** — what it does and why it matters
+
+## Pitfalls
+
+- **Common Mistake** — what goes wrong and why (maps to skill-judge D3: anti-patterns)
+- **NEVER do X** — because [non-obvious reason from experience]
 ```
 
 ### Heading Detection Rules
 
-| Canonical Heading | Also Accepted (case-insensitive)   |
-| ----------------- | ---------------------------------- |
-| `## Quick Start`  | `## Usage`, `## Getting Started`   |
-| `## Features`     | `## Key Features`, `## Highlights` |
+| Canonical Heading | Also Accepted (case-insensitive)                 |
+| ----------------- | ------------------------------------------------ |
+| `## Quick Start`  | `## Usage`, `## Getting Started`                 |
+| `## Features`     | `## Key Features`, `## Highlights`               |
+| `## Pitfalls`     | `## Common Mistakes`, `## Gotchas`, `## Caveats` |
 
 All other headings are ignored by the generator. If the audit detects a heading that looks like it might be intended as one of these (e.g. `## How to Use`, `## Feature List`, `## Overview`), it emits an alert suggesting the canonical name.
 
@@ -558,3 +580,38 @@ Triggers on:
 - **Content quality judgment** — the audit checks presence, not prose quality (except trivial-detection alerts)
 - **Cross-package consistency** — each package is audited independently
 - **Auto-fix** — the audit suggests but doesn't modify source files (the Claude Code skill does the fixing interactively)
+
+---
+
+## Skill-Judge Alignment
+
+These conventions are designed so that generated skills score well against the [skill-judge evaluation rubric](https://github.com/anthropics/skill-judge) (120 points across 8 dimensions). Here's how each convention tier maps to skill-judge scores:
+
+| Skill-Judge Dimension                | Max     | Minimal Tier                    | Useful Tier                       | Complete Tier                                      |
+| ------------------------------------ | ------- | ------------------------------- | --------------------------------- | -------------------------------------------------- |
+| D1: Knowledge Delta                  | 20      | ~5 (API ref only)               | ~8 (params + returns add context) | ~14 (@packageDocumentation, @remarks, Pitfalls)    |
+| D2: Mindset + Procedures             | 15      | ~3                              | ~5 (@example shows procedures)    | ~10 (@packageDocumentation with decision guidance) |
+| D3: Anti-Patterns                    | 15      | ~2 (@deprecated only)           | ~4                                | ~10 (README ## Pitfalls section)                   |
+| D4: Description (WHAT/WHEN/KEYWORDS) | 15      | ~8 (pkg description + keywords) | ~11 (+ repository, examples)      | ~14 (+ rich keywords, features)                    |
+| D5: Progressive Disclosure           | 15      | ~10 (SKILL.md + refs structure) | ~12 (+ loading triggers)          | ~14 (+ conditional loading guidance)               |
+| D6: Freedom Calibration              | 15      | ~8 (API ref = Tool pattern)     | ~10                               | ~12                                                |
+| D7: Pattern Recognition              | 10      | ~5 (Tool-ish)                   | ~7 (clear Tool pattern)           | ~9 (with decision trees from @see)                 |
+| D8: Practical Usability              | 15      | ~4 (signatures only)            | ~9 (@param, @returns, 1 example)  | ~13 (examples on every fn, error guidance)         |
+| **Total**                            | **120** | **~45 (F)**                     | **~66 (D)**                       | **~96 (B)**                                        |
+
+The jump from Minimal to Useful is the biggest quality improvement. Complete approaches hand-crafted skill quality (Grade B). Getting to Grade A requires author expertise in decision guidance and anti-patterns that can't be mechanically checked — but the conventions create the scaffolding for it.
+
+### Key Insight from Skill-Judge
+
+> **Good Skill = Expert-only Knowledge - What Claude Already Knows**
+
+Function signatures and type definitions are things Claude already knows from training data. The _knowledge delta_ comes from:
+
+- **@packageDocumentation**: Expert overview with decision guidance
+- **@param/@returns prose**: Semantic meaning, not type restating
+- **@throws**: Error conditions only experience teaches
+- **@deprecated + reason**: Anti-patterns with non-obvious explanations
+- **README ## Pitfalls**: Expert "NEVER do X because Y" knowledge
+- **README ## Features**: What makes THIS library different from alternatives
+
+The conventions prioritize these high-delta sources over low-delta ones (signatures, type definitions).
