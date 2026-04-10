@@ -938,6 +938,300 @@ describe('W6: README Pitfalls', () => {
 });
 
 // ---------------------------------------------------------------------------
+// W7: @useWhen on at least one export
+// ---------------------------------------------------------------------------
+
+describe('W7: @useWhen on at least one export', () => {
+  it('fails when skill.useWhen is undefined', () => {
+    const issues = getIssues(makeSkill({ useWhen: undefined }), makeContext(), 'W7');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].message).toContain('@useWhen');
+  });
+
+  it('fails when skill.useWhen is an empty array', () => {
+    const issues = getIssues(makeSkill({ useWhen: [] }), makeContext(), 'W7');
+    expect(issues).toHaveLength(1);
+  });
+
+  it('passes when skill.useWhen has at least one entry', () => {
+    const passing = getPassing(
+      makeSkill({ useWhen: ['when transforming data'] }),
+      makeContext(),
+      'W7'
+    );
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes with multiple useWhen entries', () => {
+    const passing = getPassing(
+      makeSkill({ useWhen: ['condition A', 'condition B'] }),
+      makeContext(),
+      'W7'
+    );
+    expect(passing).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W8: @avoidWhen on at least one export
+// ---------------------------------------------------------------------------
+
+describe('W8: @avoidWhen on at least one export', () => {
+  it('fails when skill.avoidWhen is undefined', () => {
+    const issues = getIssues(makeSkill({ avoidWhen: undefined }), makeContext(), 'W8');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].message).toContain('@avoidWhen');
+  });
+
+  it('fails when skill.avoidWhen is an empty array', () => {
+    const issues = getIssues(makeSkill({ avoidWhen: [] }), makeContext(), 'W8');
+    expect(issues).toHaveLength(1);
+  });
+
+  it('passes when skill.avoidWhen has at least one entry', () => {
+    const passing = getPassing(
+      makeSkill({ avoidWhen: ['when performance is critical'] }),
+      makeContext(),
+      'W8'
+    );
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes with multiple avoidWhen entries', () => {
+    const passing = getPassing(makeSkill({ avoidWhen: ['case A', 'case B'] }), makeContext(), 'W8');
+    expect(passing).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W9: @pitfalls on at least one export
+// ---------------------------------------------------------------------------
+
+describe('W9: @pitfalls on at least one export', () => {
+  it('fails when skill.pitfalls is undefined', () => {
+    const issues = getIssues(makeSkill({ pitfalls: undefined }), makeContext(), 'W9');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].message).toContain('@pitfalls');
+  });
+
+  it('fails when skill.pitfalls is an empty array', () => {
+    const issues = getIssues(makeSkill({ pitfalls: [] }), makeContext(), 'W9');
+    expect(issues).toHaveLength(1);
+  });
+
+  it('passes when skill.pitfalls has at least one entry', () => {
+    const passing = getPassing(
+      makeSkill({ pitfalls: ['mutates the original array'] }),
+      makeContext(),
+      'W9'
+    );
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes with multiple pitfall entries', () => {
+    const passing = getPassing(
+      makeSkill({ pitfalls: ['pitfall A', 'pitfall B'] }),
+      makeContext(),
+      'W9'
+    );
+    expect(passing).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W10: @remarks on complex functions (3+ params)
+// ---------------------------------------------------------------------------
+
+describe('W10: @remarks on complex functions', () => {
+  it('passes when no functions exist', () => {
+    const passing = getPassing(makeSkill({ functions: [] }), makeContext(), 'W10');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes when functions have fewer than 3 params (no remarks needed)', () => {
+    const skill = makeSkill({
+      functions: [
+        makeFunction({ parameters: [makeParam({ name: 'a' }), makeParam({ name: 'b' })] })
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W10');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('fails when a function has 3 params and no remarks', () => {
+    const skill = makeSkill({
+      functions: [
+        makeFunction({
+          name: 'complexFn',
+          parameters: [
+            makeParam({ name: 'a' }),
+            makeParam({ name: 'b' }),
+            makeParam({ name: 'c' })
+          ],
+          remarks: undefined
+        })
+      ]
+    });
+    const issues = getIssues(skill, makeContext(), 'W10');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].symbol).toBe('complexFn');
+    expect(issues[0].message).toContain('3 parameters');
+  });
+
+  it('fails when a function has 5 params and no remarks', () => {
+    const skill = makeSkill({
+      functions: [
+        makeFunction({
+          name: 'manyParams',
+          parameters: [
+            makeParam({ name: 'a' }),
+            makeParam({ name: 'b' }),
+            makeParam({ name: 'c' }),
+            makeParam({ name: 'd' }),
+            makeParam({ name: 'e' })
+          ],
+          remarks: undefined
+        })
+      ]
+    });
+    const issues = getIssues(skill, makeContext(), 'W10');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain('5 parameters');
+  });
+
+  it('passes when a function has 3 params and has remarks', () => {
+    const skill = makeSkill({
+      functions: [
+        makeFunction({
+          parameters: [
+            makeParam({ name: 'a' }),
+            makeParam({ name: 'b' }),
+            makeParam({ name: 'c' })
+          ],
+          remarks: 'Use this when you need all three options set together.'
+        })
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W10');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('emits one issue per complex function missing remarks', () => {
+    const skill = makeSkill({
+      functions: [
+        makeFunction({
+          name: 'fn1',
+          parameters: [makeParam({ name: 'a' }), makeParam({ name: 'b' }), makeParam({ name: 'c' })]
+        }),
+        makeFunction({
+          name: 'fn2',
+          parameters: [makeParam({ name: 'x' }), makeParam({ name: 'y' }), makeParam({ name: 'z' })]
+        })
+      ]
+    });
+    const issues = getIssues(skill, makeContext(), 'W10');
+    expect(issues).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W11: @category for intentional grouping
+// ---------------------------------------------------------------------------
+
+describe('W11: @category for intentional grouping', () => {
+  it('fails when no exports have a category', () => {
+    const skill = makeSkill({
+      functions: [makeFunction({ category: undefined })]
+    });
+    const issues = getIssues(skill, makeContext(), 'W11');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].message).toContain('@category');
+  });
+
+  it('fails when skill has no exports at all', () => {
+    const issues = getIssues(makeSkill(), makeContext(), 'W11');
+    expect(issues).toHaveLength(1);
+  });
+
+  it('passes when a function has a category', () => {
+    const skill = makeSkill({
+      functions: [makeFunction({ category: 'Utilities' })]
+    });
+    const passing = getPassing(skill, makeContext(), 'W11');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes when a class has a category', () => {
+    const skill = makeSkill({
+      classes: [
+        {
+          name: 'MyClass',
+          description: 'A class',
+          constructorSignature: 'new MyClass()',
+          methods: [],
+          properties: [],
+          examples: [],
+          category: 'Core'
+        }
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W11');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes when a type has a category', () => {
+    const skill = makeSkill({
+      types: [
+        {
+          name: 'MyType',
+          description: 'A type',
+          definition: 'type MyType = string',
+          category: 'Types'
+        }
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W11');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes when an enum has a category', () => {
+    const skill = makeSkill({
+      enums: [
+        {
+          name: 'MyEnum',
+          description: 'An enum',
+          members: [],
+          category: 'Enums'
+        }
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W11');
+    expect(passing).toHaveLength(1);
+  });
+
+  it('passes when a variable has a category', () => {
+    const skill = makeSkill({
+      variables: [
+        {
+          name: 'MY_CONST',
+          type: 'string',
+          description: 'A constant',
+          isConst: true,
+          category: 'Constants'
+        }
+      ]
+    });
+    const passing = getPassing(skill, makeContext(), 'W11');
+    expect(passing).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // A1: Generic keywords
 // ---------------------------------------------------------------------------
 

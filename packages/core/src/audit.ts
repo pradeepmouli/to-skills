@@ -534,6 +534,131 @@ function checkW6(context: AuditContext, issues: AuditIssue[], passing: AuditPass
 }
 
 // ---------------------------------------------------------------------------
+// W7: @useWhen on at least one export
+// ---------------------------------------------------------------------------
+function checkW7(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
+  const hasUseWhen = (skill.useWhen ?? []).length > 0;
+
+  if (!hasUseWhen) {
+    issues.push(
+      issue(
+        'warning',
+        'W7',
+        `${skill.name}.ts`,
+        null,
+        skill.name,
+        'No exports have a @useWhen tag',
+        'Add @useWhen <condition> to at least one exported function to describe when to use it'
+      )
+    );
+  } else {
+    passing.push(pass('W7', 'At least one export has a @useWhen tag'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// W8: @avoidWhen on at least one export
+// ---------------------------------------------------------------------------
+function checkW8(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
+  const hasAvoidWhen = (skill.avoidWhen ?? []).length > 0;
+
+  if (!hasAvoidWhen) {
+    issues.push(
+      issue(
+        'warning',
+        'W8',
+        `${skill.name}.ts`,
+        null,
+        skill.name,
+        'No exports have an @avoidWhen tag',
+        'Add @avoidWhen <condition> to at least one exported function to describe when not to use it'
+      )
+    );
+  } else {
+    passing.push(pass('W8', 'At least one export has an @avoidWhen tag'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// W9: @pitfalls on at least one export
+// ---------------------------------------------------------------------------
+function checkW9(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
+  const hasPitfalls = (skill.pitfalls ?? []).length > 0;
+
+  if (!hasPitfalls) {
+    issues.push(
+      issue(
+        'warning',
+        'W9',
+        `${skill.name}.ts`,
+        null,
+        skill.name,
+        'No exports have a @pitfalls tag',
+        'Add @pitfalls <description> to at least one exported function to document known traps'
+      )
+    );
+  } else {
+    passing.push(pass('W9', 'At least one export has a @pitfalls tag'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// W10: @remarks on complex functions — functions with 3+ params should have @remarks
+// ---------------------------------------------------------------------------
+function checkW10(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
+  let allGood = true;
+
+  for (const fn of skill.functions) {
+    if (fn.parameters.length >= 3 && !fn.remarks?.trim()) {
+      allGood = false;
+      issues.push(
+        issue(
+          'warning',
+          'W10',
+          `${fn.sourceModule ?? skill.name}.ts`,
+          null,
+          fn.name,
+          `Function '${fn.name}' has ${fn.parameters.length} parameters but no @remarks`,
+          `Add @remarks to '${fn.name}' to explain parameter interactions and usage nuances`
+        )
+      );
+    }
+  }
+
+  if (allGood) {
+    passing.push(pass('W10', 'All complex functions (3+ params) have @remarks'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// W11: @category for intentional grouping — at least one export should have @category
+// ---------------------------------------------------------------------------
+function checkW11(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
+  const hasCategory =
+    skill.functions.some((fn) => fn.category?.trim()) ||
+    skill.classes.some((cls) => cls.category?.trim()) ||
+    skill.types.some((typ) => typ.category?.trim()) ||
+    skill.enums.some((enm) => enm.category?.trim()) ||
+    skill.variables.some((v) => v.category?.trim());
+
+  if (!hasCategory) {
+    issues.push(
+      issue(
+        'warning',
+        'W11',
+        `${skill.name}.ts`,
+        null,
+        skill.name,
+        'No exports have a @category tag',
+        'Add @category <group> to exported symbols to enable intentional grouping in documentation'
+      )
+    );
+  } else {
+    passing.push(pass('W11', 'At least one export has a @category tag'));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // A1: Generic keywords — for each generic keyword present, emit alert
 // ---------------------------------------------------------------------------
 function checkA1(context: AuditContext, issues: AuditIssue[], passing: AuditPass[]): void {
@@ -734,6 +859,11 @@ export function auditSkill(skill: ExtractedSkill, context: AuditContext): AuditR
   checkW4(context, issues, passing);
   checkW5(context, issues, passing);
   checkW6(context, issues, passing);
+  checkW7(skill, issues, passing);
+  checkW8(skill, issues, passing);
+  checkW9(skill, issues, passing);
+  checkW10(skill, issues, passing);
+  checkW11(skill, issues, passing);
 
   // Alert checks
   checkA1(context, issues, passing);
