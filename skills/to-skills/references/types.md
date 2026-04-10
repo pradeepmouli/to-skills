@@ -1,6 +1,6 @@
 # Types & Enums
 
-## Types
+## types
 
 ### `ExtractedSkill`
 
@@ -13,6 +13,7 @@ Extracted API surface for a single package/module
 - `keywords: string[]` (optional) — Keywords from package.json — used to enrich trigger descriptions
 - `repository: string` (optional) — Repository URL
 - `author: string` (optional) — Author name
+- `packageDescription: string` (optional) — Package description from package.json or README intro — used for SKILL.md description and body
 - `documents: ExtractedDocument[]` (optional) — Additional documentation content (from projectDocuments, README, etc.)
 - `functions: ExtractedFunction[]` — Exported functions
 - `classes: ExtractedClass[]` — Exported classes
@@ -25,73 +26,78 @@ Extracted API surface for a single package/module
 
 **Properties:**
 
-- `name: string` —
-- `description: string` —
-- `signature: string` —
-- `parameters: ExtractedParameter[]` —
-- `returnType: string` —
+- `name: string`
+- `description: string`
+- `signature: string`
+- `parameters: ExtractedParameter[]`
+- `returnType: string`
 - `returnsDescription: string` (optional) — Prose description from
-- `examples: string[]` —
-- `tags: Record<string, string>` —
+- `examples: string[]`
+- `tags: Record<string, string>`
 - `overloads: string[]` (optional) — Additional overload signatures (if function has multiple signatures)
+- `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")
 
 ### `ExtractedClass`
 
 **Properties:**
 
-- `name: string` —
-- `description: string` —
-- `constructorSignature: string` —
-- `methods: ExtractedFunction[]` —
-- `properties: ExtractedProperty[]` —
-- `examples: string[]` —
+- `name: string`
+- `description: string`
+- `constructorSignature: string`
+- `methods: ExtractedFunction[]`
+- `properties: ExtractedProperty[]`
+- `examples: string[]`
 - `extends: string` (optional) — Base class name (from `extends`)
 - `implements: string[]` (optional) — Implemented interface names (from `implements`)
+- `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")
 
 ### `ExtractedType`
 
 **Properties:**
 
-- `name: string` —
-- `description: string` —
-- `definition: string` —
-- `properties: ExtractedProperty[]` (optional) —
+- `name: string`
+- `description: string`
+- `definition: string`
+- `properties: ExtractedProperty[]` (optional)
+- `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")
 
 ### `ExtractedEnum`
 
 **Properties:**
 
-- `name: string` —
-- `description: string` —
-- `members: { name: string; value: string; description: string }[]` —
+- `name: string`
+- `description: string`
+- `members: { name: string; value: string; description: string }[]`
+- `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")
 
 ### `ExtractedParameter`
 
 **Properties:**
 
-- `name: string` —
-- `type: string` —
-- `description: string` —
-- `optional: boolean` —
-- `defaultValue: string` (optional) —
+- `name: string`
+- `type: string`
+- `description: string`
+- `optional: boolean`
+- `defaultValue: string` (optional)
 
 ### `ExtractedProperty`
 
 **Properties:**
 
-- `name: string` —
-- `type: string` —
-- `description: string` —
-- `optional: boolean` —
+- `name: string`
+- `type: string`
+- `description: string`
+- `optional: boolean`
 
 ### `ExtractedVariable`
 
 **Properties:**
 
-- `name: string` —
-- `type: string` —
-- `description: string` —
-- `isConst: boolean` —
+- `name: string`
+- `type: string`
+- `description: string`
+- `isConst: boolean`
+- `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")
 
 ### `ExtractedDocument`
 
@@ -128,6 +134,8 @@ Options controlling skill rendering
 - `maxTokens: number` — Maximum approximate token budget per skill (default: 4000)
 - `namePrefix: string` — Custom name prefix
 - `license: string` — License to include in frontmatter (default: read from package.json)
+
+## llms-txt
 
 ### `LlmsTxtOptions`
 

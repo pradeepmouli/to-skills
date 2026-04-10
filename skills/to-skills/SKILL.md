@@ -1,20 +1,24 @@
 ---
 name: to-skills
-description: 'API reference for to-skills Use when working with renderSkills, renderSkill, writeSkills, estimateTokens, truncateToTokenBudget.'
+description: Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
 license: MIT
 ---
 
 # to-skills
 
+Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
+
 ## When to Use
 
-- Calling `renderSkills()`, `renderSkill()`, `writeSkills()`, `estimateTokens()`, `truncateToTokenBudget()`, and 1 more
-- Typing with `ExtractedSkill`, `ExtractedFunction`, `ExtractedClass`, `ExtractedType`, `ExtractedEnum`
+- API surface: 6 functions, 14 types
 
 ## Quick Reference
 
-**6 functions** — `renderSkills`, `renderSkill`, `writeSkills`, `estimateTokens`, `truncateToTokenBudget`, `renderLlmsTxt`
-**14 types** — `ExtractedSkill`, `ExtractedFunction`, `ExtractedClass`, `ExtractedType`, `ExtractedEnum`, `ExtractedParameter`, `ExtractedProperty`, `ExtractedVariable`, `ExtractedDocument`, `RenderedFile`, `RenderedSkill`, `SkillRenderOptions`, `LlmsTxtOptions`, `LlmsTxtResult`
+**renderer:** `renderSkills`, `renderSkill`
+**writer:** `writeSkills`
+**tokens:** `estimateTokens`, `truncateToTokenBudget`
+**llms-txt:** `renderLlmsTxt`, `LlmsTxtOptions`, `LlmsTxtResult`
+**types:** `ExtractedSkill`, `ExtractedFunction`, `ExtractedClass`, `ExtractedType`, `ExtractedEnum`, `ExtractedParameter`, `ExtractedProperty`, `ExtractedVariable`, `ExtractedDocument`, `RenderedFile`, `RenderedSkill`, `SkillRenderOptions`
 
 ## Links
 
