@@ -24,6 +24,7 @@ import type {
 export interface PackageMetadata {
   /** Package name from package.json (preferred over TypeDoc project name) */
   name?: string;
+  description?: string;
   keywords?: string[];
   repository?: string;
   author?: string;
@@ -127,6 +128,7 @@ function mergeModules(
     keywords: metadata?.keywords,
     repository: metadata?.repository,
     author: metadata?.author,
+    packageDescription: metadata?.description,
     documents,
     functions: allFunctions,
     classes: allClasses,
@@ -153,6 +155,7 @@ function extractModule(
     keywords: metadata?.keywords,
     repository: metadata?.repository,
     author: metadata?.author,
+    packageDescription: metadata?.description,
     documents,
     functions: children.filter((c) => c.kind === ReflectionKind.Function).map(extractFunction),
     classes: children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass),
@@ -165,7 +168,26 @@ function extractModule(
   };
 }
 
-function extractFunction(decl: DeclarationReflection): ExtractedFunction {
+/**
+ * Extract the source module name (filename without extension) from a declaration.
+ * Returns undefined for "index" files or declarations with no sources.
+ */
+function getSourceModule(decl: DeclarationReflection): string | undefined {
+  const source = decl.sources?.[0];
+  if (!source) return undefined;
+  const fullPath = source.fullFileName ?? source.fileName;
+  if (!fullPath) return undefined;
+  // Get the basename without extension
+  const base = fullPath.split('/').pop() ?? fullPath;
+  const name = base.replace(/\.[^.]+$/, '');
+  if (name === 'index') return undefined;
+  return name || undefined;
+}
+
+function extractFunction(
+  decl: DeclarationReflection,
+  parentDecl?: DeclarationReflection
+): ExtractedFunction {
   const sig = decl.signatures?.[0];
   const overloads = (decl.signatures ?? []).slice(1).map((s) => formatSignature(decl.name, s));
 
@@ -178,7 +200,8 @@ function extractFunction(decl: DeclarationReflection): ExtractedFunction {
     returnsDescription: getReturnsDescription(sig?.comment ?? decl.comment),
     examples: getExamples(sig?.comment ?? decl.comment),
     tags: getTagMap(sig?.comment ?? decl.comment),
-    overloads: overloads.length > 0 ? overloads : undefined
+    overloads: overloads.length > 0 ? overloads : undefined,
+    sourceModule: getSourceModule(parentDecl ?? decl)
   };
 }
 
@@ -187,7 +210,7 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
   const ctor = children.find((c) => c.kind === ReflectionKind.Constructor);
   const methods = children
     .filter((c) => c.kind === ReflectionKind.Method && !c.flags.isPrivate)
-    .map(extractFunction);
+    .map((m) => extractFunction(m, decl));
   const properties = children
     .filter((c) => c.kind === ReflectionKind.Property && !c.flags.isPrivate)
     .map(extractProperty);
@@ -205,7 +228,8 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     properties,
     examples: getExamples(decl.comment),
     extends: extendedTypes?.[0],
-    implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined
+    implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined,
+    sourceModule: getSourceModule(decl)
   };
 }
 
@@ -224,7 +248,8 @@ function extractType(decl: DeclarationReflection): ExtractedType {
     name: decl.name,
     description: getCommentText(decl.comment),
     definition: decl.type?.toString() ?? '',
-    properties: properties.length > 0 ? properties : undefined
+    properties: properties.length > 0 ? properties : undefined,
+    sourceModule: getSourceModule(decl)
   };
 }
 
@@ -236,7 +261,8 @@ function extractEnum(decl: DeclarationReflection): ExtractedEnum {
       name: m.name,
       value: m.type?.toString() ?? '',
       description: getCommentText(m.comment)
-    }))
+    })),
+    sourceModule: getSourceModule(decl)
   };
 }
 
@@ -245,7 +271,8 @@ function extractVariable(decl: DeclarationReflection): ExtractedVariable {
     name: decl.name,
     type: decl.type?.toString() ?? 'unknown',
     description: getCommentText(decl.comment),
-    isConst: decl.flags.isConst
+    isConst: decl.flags.isConst,
+    sourceModule: getSourceModule(decl)
   };
 }
 

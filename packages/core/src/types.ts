@@ -12,6 +12,8 @@ export interface ExtractedSkill {
   repository?: string;
   /** Author name */
   author?: string;
+  /** Package description from package.json or README intro — used for SKILL.md description and body */
+  packageDescription?: string;
   /** Additional documentation content (from projectDocuments, README, etc.) */
   documents?: ExtractedDocument[];
   /** Exported functions */
@@ -40,6 +42,8 @@ export interface ExtractedFunction {
   tags: Record<string, string>;
   /** Additional overload signatures (if function has multiple signatures) */
   overloads?: string[];
+  /** Source module name derived from file path (e.g. "renderer", "tokens") */
+  sourceModule?: string;
 }
 
 export interface ExtractedClass {
@@ -53,6 +57,8 @@ export interface ExtractedClass {
   extends?: string;
   /** Implemented interface names (from `implements`) */
   implements?: string[];
+  /** Source module name derived from file path (e.g. "renderer", "tokens") */
+  sourceModule?: string;
 }
 
 export interface ExtractedType {
@@ -60,12 +66,16 @@ export interface ExtractedType {
   description: string;
   definition: string;
   properties?: ExtractedProperty[];
+  /** Source module name derived from file path (e.g. "renderer", "tokens") */
+  sourceModule?: string;
 }
 
 export interface ExtractedEnum {
   name: string;
   description: string;
   members: Array<{ name: string; value: string; description: string }>;
+  /** Source module name derived from file path (e.g. "renderer", "tokens") */
+  sourceModule?: string;
 }
 
 export interface ExtractedVariable {
@@ -73,6 +83,8 @@ export interface ExtractedVariable {
   type: string;
   description: string;
   isConst: boolean;
+  /** Source module name derived from file path (e.g. "renderer", "tokens") */
+  sourceModule?: string;
 }
 
 export interface ExtractedParameter {

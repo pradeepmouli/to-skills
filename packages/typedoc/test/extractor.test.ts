@@ -86,6 +86,21 @@ describe('extractSkills — single package (no modules)', () => {
     expect(skill.author).toBe('Alice');
   });
 
+  it('passes through packageDescription from metadata description', () => {
+    const project = mockProject([]);
+    const [skill] = extractSkills(project, false, {
+      name: 'my-pkg',
+      description: 'A helpful library for doing things'
+    });
+    expect(skill.packageDescription).toBe('A helpful library for doing things');
+  });
+
+  it('leaves packageDescription undefined when metadata has no description', () => {
+    const project = mockProject([]);
+    const [skill] = extractSkills(project, false, { name: 'my-pkg' });
+    expect(skill.packageDescription).toBeUndefined();
+  });
+
   it('returns empty arrays for all categories when project has no children', () => {
     const project = mockProject([]);
     const [skill] = extractSkills(project, false);

@@ -1,74 +1,74 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { Application, Converter, type Context, ParameterType } from "typedoc";
-import type { ExtractedSkill } from "@to-skills/core";
-import { renderSkills, writeSkills, renderLlmsTxt } from "@to-skills/core";
-import { extractSkills } from "./extractor.js";
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { Application, Converter, type Context, ParameterType } from 'typedoc';
+import type { ExtractedSkill } from '@to-skills/core';
+import { renderSkills, writeSkills, renderLlmsTxt } from '@to-skills/core';
+import { extractSkills } from './extractor.js';
 
 export function load(app: Application): void {
   // --- Options ---
 
   app.options.addDeclaration({
-    name: "skillsOutDir",
-    help: "[Skills] Output directory for generated skill files",
+    name: 'skillsOutDir',
+    help: '[Skills] Output directory for generated skill files',
     type: ParameterType.String,
-    defaultValue: "skills",
+    defaultValue: 'skills'
   });
 
   app.options.addDeclaration({
-    name: "skillsPerPackage",
-    help: "[Skills] Emit one skill per package in a monorepo",
+    name: 'skillsPerPackage',
+    help: '[Skills] Emit one skill per package in a monorepo',
     type: ParameterType.Boolean,
-    defaultValue: true,
+    defaultValue: true
   });
 
   app.options.addDeclaration({
-    name: "skillsIncludeExamples",
-    help: "[Skills] Include usage examples from @example tags",
+    name: 'skillsIncludeExamples',
+    help: '[Skills] Include usage examples from @example tags',
     type: ParameterType.Boolean,
-    defaultValue: true,
+    defaultValue: true
   });
 
   app.options.addDeclaration({
-    name: "skillsIncludeSignatures",
-    help: "[Skills] Include type signatures in skill output",
+    name: 'skillsIncludeSignatures',
+    help: '[Skills] Include type signatures in skill output',
     type: ParameterType.Boolean,
-    defaultValue: true,
+    defaultValue: true
   });
 
   app.options.addDeclaration({
-    name: "skillsMaxTokens",
-    help: "[Skills] Maximum approximate token budget per skill file",
+    name: 'skillsMaxTokens',
+    help: '[Skills] Maximum approximate token budget per skill file',
     type: ParameterType.Number,
-    defaultValue: 4000,
+    defaultValue: 4000
   });
 
   app.options.addDeclaration({
-    name: "skillsNamePrefix",
-    help: "[Skills] Custom skill name prefix (default: package name)",
+    name: 'skillsNamePrefix',
+    help: '[Skills] Custom skill name prefix (default: package name)',
     type: ParameterType.String,
-    defaultValue: "",
+    defaultValue: ''
   });
 
   app.options.addDeclaration({
-    name: "skillsLicense",
-    help: "[Skills] License for generated skills (default: read from package.json)",
+    name: 'skillsLicense',
+    help: '[Skills] License for generated skills (default: read from package.json)',
     type: ParameterType.String,
-    defaultValue: "",
+    defaultValue: ''
   });
 
   app.options.addDeclaration({
-    name: "llmsTxt",
-    help: "[Skills] Generate llms.txt and llms-full.txt alongside skills",
+    name: 'llmsTxt',
+    help: '[Skills] Generate llms.txt and llms-full.txt alongside skills',
     type: ParameterType.Boolean,
-    defaultValue: false,
+    defaultValue: false
   });
 
   app.options.addDeclaration({
-    name: "llmsTxtOutDir",
-    help: "[Skills] Output directory for llms.txt files (default: repo root)",
+    name: 'llmsTxtOutDir',
+    help: '[Skills] Output directory for llms.txt files (default: repo root)',
     type: ParameterType.String,
-    defaultValue: ".",
+    defaultValue: '.'
   });
 
   // --- State ---
@@ -80,16 +80,16 @@ export function load(app: Application): void {
   // --- Per-package: extract + write skills immediately ---
   app.converter.on(Converter.EVENT_RESOLVE_END, (context: Context) => {
     const project = context.project;
-    const perPackage = app.options.getValue("skillsPerPackage") as boolean;
-    const outDir = app.options.getValue("skillsOutDir") as string;
-    const license =
-      (app.options.getValue("skillsLicense") as string) || pkg.license || "";
+    const perPackage = app.options.getValue('skillsPerPackage') as boolean;
+    const outDir = app.options.getValue('skillsOutDir') as string;
+    const license = (app.options.getValue('skillsLicense') as string) || pkg.license || '';
 
     const skills = extractSkills(project, perPackage, {
       name: pkg.name,
+      description: pkg.description,
       keywords: pkg.keywords,
       repository: normalizeRepoUrl(pkg.repository),
-      author: typeof pkg.author === "string" ? pkg.author : pkg.author?.name,
+      author: typeof pkg.author === 'string' ? pkg.author : pkg.author?.name
     });
 
     // Accumulate for llms.txt
@@ -99,20 +99,20 @@ export function load(app: Application): void {
     // Each skill writes to skills/<package-name>/ — doesn't touch other packages
     const rendered = renderSkills(skills, {
       outDir,
-      includeExamples: app.options.getValue("skillsIncludeExamples") as boolean,
-      includeSignatures: app.options.getValue("skillsIncludeSignatures") as boolean,
-      maxTokens: app.options.getValue("skillsMaxTokens") as number,
-      namePrefix: app.options.getValue("skillsNamePrefix") as string,
-      license,
+      includeExamples: app.options.getValue('skillsIncludeExamples') as boolean,
+      includeSignatures: app.options.getValue('skillsIncludeSignatures') as boolean,
+      maxTokens: app.options.getValue('skillsMaxTokens') as number,
+      namePrefix: app.options.getValue('skillsNamePrefix') as string,
+      license
     });
 
     writeSkills(rendered, { outDir });
 
     for (const skill of rendered) {
-      const st = skill.skill.tokens ? ` (~${skill.skill.tokens} tokens)` : "";
+      const st = skill.skill.tokens ? ` (~${skill.skill.tokens} tokens)` : '';
       app.logger.info(`[skills] ${skill.skill.filename}${st}`);
       for (const ref of skill.references) {
-        const rt = ref.tokens ? ` (~${ref.tokens} tokens)` : "";
+        const rt = ref.tokens ? ` (~${ref.tokens} tokens)` : '';
         app.logger.info(`[skills]   └─ ${ref.filename}${rt}`);
       }
     }
@@ -120,23 +120,23 @@ export function load(app: Application): void {
 
   // --- Project-wide: write llms.txt once after all packages ---
   app.renderer.postRenderAsyncJobs.push(async () => {
-    const llmsEnabled = app.options.getValue("llmsTxt") as boolean;
+    const llmsEnabled = app.options.getValue('llmsTxt') as boolean;
     if (!llmsEnabled || allSkills.length === 0) return;
 
-    const llmsOutDir = app.options.getValue("llmsTxtOutDir") as string;
+    const llmsOutDir = app.options.getValue('llmsTxtOutDir') as string;
     const result = renderLlmsTxt(allSkills, {
-      projectName: pkg.name || "project",
-      projectDescription: pkg.description || "",
+      projectName: pkg.name || 'project',
+      projectDescription: pkg.description || ''
     });
 
     mkdirSync(llmsOutDir, { recursive: true });
 
-    const summaryPath = join(llmsOutDir, "llms.txt");
-    writeFileSync(summaryPath, result.summary, "utf-8");
+    const summaryPath = join(llmsOutDir, 'llms.txt');
+    writeFileSync(summaryPath, result.summary, 'utf-8');
     app.logger.info(`[llms-txt] ${summaryPath} (~${result.summaryTokens} tokens)`);
 
-    const fullPath = join(llmsOutDir, "llms-full.txt");
-    writeFileSync(fullPath, result.full, "utf-8");
+    const fullPath = join(llmsOutDir, 'llms-full.txt');
+    writeFileSync(fullPath, result.full, 'utf-8');
     app.logger.info(`[llms-txt] ${fullPath} (~${result.fullTokens} tokens)`);
   });
 }
@@ -152,17 +152,17 @@ interface PackageJson {
 
 function readPackageJson(): PackageJson {
   try {
-    const raw = readFileSync(join(process.cwd(), "package.json"), "utf-8");
+    const raw = readFileSync(join(process.cwd(), 'package.json'), 'utf-8');
     return JSON.parse(raw) as PackageJson;
   } catch {
     return {};
   }
 }
 
-function normalizeRepoUrl(repo: PackageJson["repository"]): string | undefined {
+function normalizeRepoUrl(repo: PackageJson['repository']): string | undefined {
   if (!repo) return undefined;
-  if (typeof repo === "string") return repo;
+  if (typeof repo === 'string') return repo;
   const url = repo.url;
   if (!url) return undefined;
-  return url.replace(/^git\+/, "").replace(/\.git$/, "");
+  return url.replace(/^git\+/, '').replace(/\.git$/, '');
 }
