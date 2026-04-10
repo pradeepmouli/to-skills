@@ -326,13 +326,45 @@ A structured anti-pattern / common mistakes section. This maps directly to skill
 
 **Maps to:** SKILL.md anti-patterns section. Without this, generated skills score ~2/15 on the anti-pattern dimension.
 
-#### W7: SKILL.md should have loading triggers for reference files
+#### W7: `@useWhen` on at least one export
 
-Generated SKILL.md should tell agents WHEN to load each reference file, not just list what exists. This maps to skill-judge dimension D5 (Progressive Disclosure).
+At least one exported function/class should have a `@useWhen` tag with decision triggers.
 
-**Check:** Advisory — the generator should include loading guidance. Not auditable from source docs alone.
+**Check:** At least one function in `ExtractedSkill.functions` has a non-empty `useWhen` tag.
 
-**Maps to:** SKILL.md reference section with "Load `references/functions.md` when implementing API calls" style guidance.
+**Maps to:** SKILL.md "When to Use" section with positive triggers.
+
+#### W8: `@avoidWhen` on at least one export
+
+At least one exported function/class should have an `@avoidWhen` tag with negative triggers.
+
+**Check:** At least one function in `ExtractedSkill.functions` has a non-empty `avoidWhen` tag.
+
+**Maps to:** SKILL.md "When to Use" section with negative triggers (freedom calibration).
+
+#### W9: `@pitfalls` on at least one export
+
+At least one export should have a `@pitfalls` tag with NEVER + BECAUSE anti-patterns.
+
+**Check:** At least one function in `ExtractedSkill.functions` has a non-empty `pitfalls` tag.
+
+**Maps to:** SKILL.md "Pitfalls" section.
+
+#### W10: `@remarks` on complex functions
+
+Functions with 3+ parameters or complex return types should have `@remarks` providing extended expert context.
+
+**Check:** Advisory — flag functions with 3+ parameters and no `@remarks` tag.
+
+**Maps to:** references/functions.md extended description (D1 knowledge delta).
+
+#### W11: `@category` on exports for intentional grouping
+
+Exports should use `@category` tags for author-intentional grouping rather than relying on filename-derived `sourceModule`.
+
+**Check:** Advisory — flag when no `@category` tags are used across all exports.
+
+**Maps to:** SKILL.md Quick Reference grouping and reference file organization.
 
 ---
 
@@ -371,6 +403,173 @@ A Quick Start that's >15 lines defeats the purpose of being quick.
 **Check:** First fenced code block under `## Quick Start` is >15 lines.
 
 **Suggestion:** "Quick Start example is {N} lines. Keep it under 15 lines — move detailed examples to ## Usage or ## API."
+
+---
+
+## JSDoc Tag Conventions
+
+### Standard Tags (already supported by TypeDoc)
+
+These tags are parsed by TypeDoc and should be used on every exported symbol where applicable:
+
+| Tag                | Purpose                                           | Skill-Judge Mapping              | Generator Renders In                               |
+| ------------------ | ------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| `@param`           | Parameter description (prose, not type restating) | D8 (usability)                   | references/functions.md                            |
+| `@returns`         | Return value meaning                              | D8 (usability)                   | references/functions.md                            |
+| `@example`         | Usage examples with imports and setup             | D8 (usability)                   | SKILL.md Quick Start + references/examples.md      |
+| `@remarks`         | Extended expert knowledge beyond the summary      | **D1 (knowledge delta)**         | references/functions.md — after summary            |
+| `@category`        | Groups exports into named categories              | **D7 (pattern recognition)**     | SKILL.md Quick Reference + reference file grouping |
+| `@deprecated`      | Deprecation notice with migration path            | D3 (anti-patterns)               | references/functions.md                            |
+| `@since`           | Version introduced                                | D8 (usability)                   | references/functions.md                            |
+| `@throws`          | Error conditions and types                        | D3/D8 (anti-patterns, usability) | references/functions.md                            |
+| `@see`             | Cross-references to related symbols               | D7 (cross-references)            | references/functions.md                            |
+| `@typeParam`       | Generic type parameter descriptions               | D8 (usability)                   | references/functions.md                            |
+| `@defaultValue`    | Default values on properties                      | D8 (usability)                   | references/types.md                                |
+| `@alpha` / `@beta` | API stability markers                             | D8 (usability)                   | references — badge after name                      |
+
+### Custom Tags (declared in typedoc.json)
+
+These three custom tags close the skill-judge gaps for D2 (procedures), D3 (anti-patterns), and D6 (freedom calibration). Each is used at most once per JSDoc comment and contains a bullet list.
+
+Add to `typedoc.json`:
+
+```json
+{ "blockTags": ["@useWhen", "@avoidWhen", "@pitfalls"] }
+```
+
+#### `@useWhen` — Positive decision trigger (D2 + D4)
+
+When should an LLM reach for this function/class? Each bullet is one scenario.
+
+```typescript
+/**
+ * Run class instances in isolated child processes.
+ *
+ * @useWhen
+ * - You need CPU-intensive work isolated from the main process
+ * - You want automatic EventEmitter forwarding across processes
+ * - You need to run untrusted code in a sandboxed environment
+ */
+```
+
+**Check (warning):** At least one exported function should have a `@useWhen` tag.
+
+**Maps to:** SKILL.md "When to Use" section as `- ✅ [text]` items. Aggregated from all exports into a decision guide.
+
+#### `@avoidWhen` — Negative decision trigger (D2 + D6)
+
+When should an LLM NOT use this function/class? Prevents misuse before it happens.
+
+```typescript
+/**
+ * @avoidWhen
+ * - The class uses non-serializable state (closures, WeakMaps, Symbols)
+ * - You need sub-millisecond latency — IPC adds ~1ms overhead per call
+ * - You want to share mutable state between parent and child
+ */
+```
+
+**Check (warning):** At least one exported function should have an `@avoidWhen` tag.
+
+**Maps to:** SKILL.md "When to Use" section as `- ❌ [text]` items. Gives LLMs freedom calibration — knowing when NOT to reach for something is as important as knowing when to.
+
+#### `@pitfalls` — Anti-patterns with reasoning (D3)
+
+Explicit NEVER + BECAUSE rules. Each bullet should state what to never do AND why it's dangerous. This is the highest-leverage tag for skill quality — it directly provides expert knowledge that Claude doesn't have.
+
+```typescript
+/**
+ * @pitfalls
+ * - NEVER pass functions as constructor arguments — V8 serialization silently drops them, producing a proxy that appears to work but has undefined methods
+ * - NEVER call $terminate() inside a proxied method — creates an IPC deadlock where the child can't respond to its own termination signal
+ * - NEVER assume event ordering across IPC — events may arrive out of order under load, use sequence numbers if ordering matters
+ */
+```
+
+**Check (warning):** At least one export in the package should have a `@pitfalls` tag.
+
+**Maps to:** SKILL.md "Pitfalls" section as `- **NEVER** [text]` items. Also aggregated from README `## Pitfalls` section if both exist.
+
+### Complete JSDoc Example
+
+````typescript
+/**
+ * Run class instances in isolated child processes with full TypeScript support.
+ *
+ * @remarks
+ * All method calls become async and are transparently forwarded over IPC.
+ * Supports V8 serialization (10x faster than JSON) and EventEmitter forwarding.
+ * Use `Symbol.dispose` or explicit `$terminate()` for cleanup.
+ *
+ * @useWhen
+ * - You need CPU-intensive work isolated from the main process
+ * - You want automatic EventEmitter forwarding across processes
+ *
+ * @avoidWhen
+ * - The class uses non-serializable state (closures, WeakMaps)
+ * - You need sub-millisecond latency — IPC adds ~1ms overhead
+ *
+ * @pitfalls
+ * - NEVER pass functions as constructor args — V8 serialization silently drops them
+ * - NEVER call $terminate() inside a proxied method — creates IPC deadlock
+ *
+ * @param target The class constructor to proxy
+ * @param modulePath Path to the module exporting the class (resolved from cwd)
+ * @returns Proxied instance where all methods return Promises
+ * @throws {ProcxyError} When the child process fails to start or the module can't be loaded
+ *
+ * @example
+ * ```typescript
+ * import { procxy } from 'procxy';
+ * await using calc = await procxy(Calculator, './calculator.js');
+ * const result = await calc.add(2, 3); // runs in child process
+ * ```
+ *
+ * @see sanitizeForV8 — pre-check if values survive V8 serialization
+ * @category Core
+ * @since 1.0.0
+ */
+export async function procxy<T>(target: Class<T>, modulePath: string): Promise<Procxy<T>>;
+````
+
+### Grouping: `@category` vs `sourceModule`
+
+`@category` is the preferred grouping mechanism. When present, it overrides the automatic `sourceModule` (filename-derived) grouping:
+
+- **`@category`**: Author-intentional. Can group across files. Explicit label.
+- **`sourceModule`**: Automatic fallback. Derived from filename. No extra work required.
+
+The generator uses `@category` when any export has it, falls back to `sourceModule` otherwise.
+
+```typescript
+// In renderer.ts — grouped under "Rendering" not "renderer"
+/** @category Rendering */
+export function renderSkill(...) {}
+
+// In writer.ts — also grouped under "Rendering"
+/** @category Rendering */
+export function writeSkills(...) {}
+
+// In tokens.ts — grouped under "Token Management"
+/** @category Token Management */
+export function estimateTokens(...) {}
+```
+
+### Skill-Judge Score Impact
+
+With full JSDoc convention adoption, the projected scores shift significantly:
+
+| Dimension                  | Without Tags | With Tags    | What Changed                                          |
+| -------------------------- | ------------ | ------------ | ----------------------------------------------------- |
+| D1: Knowledge Delta        | ~5           | ~14          | `@remarks` adds expert context                        |
+| D2: Procedures             | ~3           | ~11          | `@useWhen` / `@avoidWhen` provide decision procedures |
+| D3: Anti-Patterns          | ~1           | ~12          | `@pitfalls` provides NEVER + BECAUSE lists            |
+| D4: Description            | ~8           | ~13          | `@useWhen` enriches SKILL.md triggers                 |
+| D5: Progressive Disclosure | ~10          | ~13          | `@category` improves grouping, loading triggers       |
+| D6: Freedom Calibration    | ~5           | ~11          | `@avoidWhen` explicitly constrains when NOT to use    |
+| D7: Pattern Recognition    | ~4           | ~8           | `@category` creates clear Tool pattern sections       |
+| D8: Usability              | ~6           | ~12          | `@remarks` + `@throws` + `@example` + `@see` together |
+| **Total**                  | **~42 (F)**  | **~94 (C+)** | Tags alone lift from F to C — hand-tuning gets to B   |
 
 ---
 
