@@ -18,3 +18,12 @@ export { writeSkills } from './writer.js';
 export { estimateTokens, truncateToTokenBudget } from './tokens.js';
 export { renderLlmsTxt } from './llms-txt.js';
 export type { LlmsTxtOptions, LlmsTxtResult } from './llms-txt.js';
+
+export type {
+  AuditSeverity,
+  AuditIssue,
+  AuditPass,
+  AuditContext,
+  ParsedReadme,
+  AuditResult
+} from './audit-types.js';
