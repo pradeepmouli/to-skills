@@ -52,7 +52,8 @@ export function parseReadme(markdown: string): ParsedReadme {
 
   let preambleEnd = lines.length;
   for (let i = 0; i < lines.length; i++) {
-    if (isH2(lines[i])) {
+    const li = lines[i] ?? '';
+    if (isH2(li)) {
       preambleEnd = i;
       break;
     }
@@ -100,7 +101,7 @@ export function parseReadme(markdown: string): ParsedReadme {
   // Walk through H2 sections and capture content
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lines[i] ?? '';
 
     if (isH2(line)) {
       const text = headingText(line);
@@ -114,8 +115,8 @@ export function parseReadme(markdown: string): ParsedReadme {
         // Collect lines until the next ## heading or EOF
         const contentLines: string[] = [];
         i++;
-        while (i < lines.length && !isH2(lines[i])) {
-          contentLines.push(lines[i]);
+        while (i < lines.length && !isH2(lines[i] ?? '')) {
+          contentLines.push(lines[i] ?? '');
           i++;
         }
         const content = nonEmpty(contentLines.join('\n'));

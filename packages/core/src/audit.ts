@@ -616,7 +616,7 @@ function isTrivialExample(example: string): boolean {
     .split('\n')
     .filter((l) => l.trim());
   if (lines.length !== 1) return false;
-  const line = lines[0].trim();
+  const line = (lines[0] ?? '').trim();
   if (line.startsWith('import ') || line.startsWith('//') || line.includes('=')) return false;
   return true;
 }

@@ -1,8 +1,17 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Application, Converter, type Context, ParameterType } from 'typedoc';
 import type { ExtractedSkill } from '@to-skills/core';
-import { renderSkills, writeSkills, renderLlmsTxt } from '@to-skills/core';
+import {
+  renderSkills,
+  writeSkills,
+  renderLlmsTxt,
+  auditSkill,
+  formatAuditText,
+  formatAuditJson,
+  parseReadme
+} from '@to-skills/core';
+import type { AuditContext } from '@to-skills/core';
 import { extractSkills } from './extractor.js';
 
 export function load(app: Application): void {
@@ -71,6 +80,27 @@ export function load(app: Application): void {
     defaultValue: '.'
   });
 
+  app.options.addDeclaration({
+    name: 'skillsAudit',
+    help: '[Skills] Run documentation audit during skill generation',
+    type: ParameterType.Boolean,
+    defaultValue: true
+  });
+
+  app.options.addDeclaration({
+    name: 'skillsAuditFailOnError',
+    help: '[Skills] Fail build on fatal or error severity audit issues',
+    type: ParameterType.Boolean,
+    defaultValue: false
+  });
+
+  app.options.addDeclaration({
+    name: 'skillsAuditJson',
+    help: "[Skills] Path to write JSON audit report (empty = don't write)",
+    type: ParameterType.String,
+    defaultValue: ''
+  });
+
   // --- State ---
   // Accumulate skills across converter runs for llms.txt (project-wide).
   // Skills files are written immediately per converter run (per-package scope).
@@ -114,6 +144,49 @@ export function load(app: Application): void {
       for (const ref of skill.references) {
         const rt = ref.tokens ? ` (~${ref.tokens} tokens)` : '';
         app.logger.info(`[skills]   └─ ${ref.filename}${rt}`);
+      }
+    }
+
+    // --- Audit ---
+    const auditEnabled = app.options.getValue('skillsAudit') as boolean;
+    if (auditEnabled) {
+      const readmeContent = readReadmeFile();
+      const readme = readmeContent ? parseReadme(readmeContent) : undefined;
+
+      const auditContext: AuditContext = {
+        packageDescription: pkg.description,
+        keywords: pkg.keywords,
+        repository: normalizeRepoUrl(pkg.repository),
+        readme
+      };
+
+      for (const skill of skills) {
+        const auditResult = auditSkill(skill, auditContext);
+        const text = formatAuditText(auditResult);
+
+        // Log each line with appropriate severity
+        for (const line of text.split('\n')) {
+          if (line.includes('FATAL') || line.includes('ERROR')) {
+            app.logger.warn(line);
+          } else if (line.trim()) {
+            app.logger.info(line);
+          }
+        }
+
+        // Write JSON report if configured
+        const jsonPath = app.options.getValue('skillsAuditJson') as string;
+        if (jsonPath) {
+          writeFileSync(jsonPath, formatAuditJson(auditResult), 'utf-8');
+          app.logger.info(`[audit] JSON report written to ${jsonPath}`);
+        }
+
+        // Fail build if configured and there are fatal/error issues
+        const failOnError = app.options.getValue('skillsAuditFailOnError') as boolean;
+        if (failOnError && (auditResult.summary.fatal > 0 || auditResult.summary.error > 0)) {
+          app.logger.error(
+            `[audit] Build failed: ${auditResult.summary.fatal} fatal, ${auditResult.summary.error} error issues found`
+          );
+        }
       }
     }
   });
@@ -165,4 +238,19 @@ function normalizeRepoUrl(repo: PackageJson['repository']): string | undefined {
   const url = repo.url;
   if (!url) return undefined;
   return url.replace(/^git\+/, '').replace(/\.git$/, '');
+}
+
+function readReadmeFile(): string | undefined {
+  const names = ['README.md', 'readme.md', 'Readme.md'];
+  for (const name of names) {
+    const readmePath = join(process.cwd(), name);
+    if (existsSync(readmePath)) {
+      try {
+        return readFileSync(readmePath, 'utf-8');
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
 }
