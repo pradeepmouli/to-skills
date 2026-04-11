@@ -1,0 +1,43 @@
+{
+  "name": "@to-skills/cli",
+  "version": "0.1.0",
+  "description": "Extract CLI command structure from commander/yargs for AI agent skill generation",
+  "keywords": [
+    "agent-skills",
+    "cli",
+    "commander",
+    "documentation",
+    "skill-generation",
+    "yargs"
+  ],
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": "https://github.com/pradeepmouli/to-skills",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "type-check": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@to-skills/core": "workspace:*"
+  },
+  "devDependencies": {
+    "commander": "^14.0.0"
+  },
+  "peerDependencies": {
+    "commander": ">=12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "commander": {
+      "optional": true
+    }
+  }
+}
