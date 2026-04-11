@@ -54,6 +54,12 @@ importers:
 
   packages/core: {}
 
+  packages/docusaurus:
+    dependencies:
+      '@to-skills/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/typedoc:
     dependencies:
       '@to-skills/core':
