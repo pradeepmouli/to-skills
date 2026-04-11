@@ -46,3 +46,5 @@ export { renderConfigSurfaceSection, renderConfigReference } from './config-rend
 export type { ParsedSection, ParsedMarkdownDoc, DocsExtractionOptions } from './markdown-types.js';
 
 export { parseMarkdownDoc } from './markdown-parser.js';
+
+export { scanDocs, docsToExtractedDocuments } from './docs-scanner.js';
