@@ -173,6 +173,9 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
   const quickRef = renderQuickReference(skill);
   if (quickRef) sections.push(quickRef);
 
+  const docs = renderDocumentation(skill);
+  if (docs) sections.push(docs);
+
   const links = renderLinks(skill);
   if (links) sections.push(links);
 
@@ -508,6 +511,22 @@ function quoteYaml(value: string): string {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
   return value;
+}
+
+function extractFirstSentence(text: string): string {
+  const match = text.match(/^[^.!?]*[.!?]/);
+  return match ? match[0].trim() : '';
+}
+
+function renderDocumentation(skill: ExtractedSkill): string {
+  if (!skill.documents || skill.documents.length === 0) return '';
+  const lines = ['## Documentation\n'];
+  for (const doc of skill.documents) {
+    const firstSentence = extractFirstSentence(doc.content);
+    const desc = firstSentence ? ` — ${firstSentence}` : '';
+    lines.push(`- **${doc.title}**${desc}`);
+  }
+  return lines.join('\n');
 }
 
 function renderLinks(skill: ExtractedSkill): string {

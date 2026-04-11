@@ -1330,6 +1330,100 @@ describe('renderSkill — @useWhen/@avoidWhen in SKILL.md', () => {
   });
 });
 
+describe('renderSkill — Documentation section in SKILL.md', () => {
+  it('renders Documentation section when skill has documents', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      documents: [
+        {
+          title: 'Architecture',
+          content: 'System architecture and design decisions. More details here.'
+        },
+        { title: 'Troubleshooting', content: 'Common issues and solutions. See FAQ for more.' }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Documentation');
+    expect(s.content).toContain('**Architecture**');
+    expect(s.content).toContain('**Troubleshooting**');
+  });
+
+  it('extracts first sentence as description for each doc', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      documents: [
+        {
+          title: 'Architecture',
+          content: 'System architecture and design decisions. More details here.'
+        },
+        { title: 'Troubleshooting', content: 'Common issues and solutions. See FAQ for more.' }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('**Architecture** — System architecture and design decisions.');
+    expect(s.content).toContain('**Troubleshooting** — Common issues and solutions.');
+    // Should not include content past the first sentence
+    expect(s.content).not.toContain('More details here');
+    expect(s.content).not.toContain('See FAQ for more');
+  });
+
+  it('renders just the bold title when no first sentence can be extracted', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      documents: [{ title: 'Notes', content: '' }]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Documentation');
+    expect(s.content).toContain('**Notes**');
+    expect(s.content).not.toContain('**Notes** —');
+  });
+
+  it('does not render Documentation section when no documents field', () => {
+    const { skill: s } = renderSkill(minimalSkill);
+    expect(s.content).not.toContain('## Documentation');
+  });
+
+  it('does not render Documentation section when documents array is empty', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      documents: []
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).not.toContain('## Documentation');
+  });
+
+  it('renders Documentation after Quick Reference and before Links', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      documents: [{ title: 'Guide', content: 'Getting started guide.' }],
+      repository: 'https://github.com/example/repo'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const content = s.content;
+    const quickRefIdx = content.indexOf('## Quick Reference');
+    const docsIdx = content.indexOf('## Documentation');
+    const linksIdx = content.indexOf('## Links');
+    expect(quickRefIdx).toBeLessThan(docsIdx);
+    expect(docsIdx).toBeLessThan(linksIdx);
+  });
+});
+
 describe('renderSkill — @pitfalls in SKILL.md', () => {
   it('renders Pitfalls section when pitfalls are present', () => {
     const skill: ExtractedSkill = {
