@@ -1,3 +1,5 @@
+import type { ExtractedConfigSurface } from './config-types.js';
+
 /** Extracted API surface for a single package/module */
 export interface ExtractedSkill {
   /** Package or module name */
@@ -34,6 +36,8 @@ export interface ExtractedSkill {
   avoidWhen?: string[];
   /** Aggregated @pitfalls from all exports */
   pitfalls?: string[];
+  /** Configuration surfaces (CLI commands, config files) */
+  configSurfaces?: ExtractedConfigSurface[];
 }
 
 export interface ExtractedFunction {

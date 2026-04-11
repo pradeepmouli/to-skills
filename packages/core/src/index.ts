@@ -33,3 +33,10 @@ export { parseReadme } from './readme-parser.js';
 export { auditSkill } from './audit.js';
 
 export { formatAuditText, formatAuditJson } from './audit-formatter.js';
+
+export type {
+  ConfigSourceType,
+  ExtractedConfigSurface,
+  ExtractedConfigOption,
+  ExtractedConfigArgument
+} from './config-types.js';
