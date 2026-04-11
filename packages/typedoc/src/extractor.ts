@@ -537,7 +537,11 @@ function extractConfigOption(decl: DeclarationReflection): ExtractedConfigOption
   const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
   const avoidWhenText = avoidWhenTag?.content.map((p) => p.text).join('') ?? '';
   const pitfallsText = pitfallsTag?.content.map((p) => p.text).join('') ?? '';
-  const remarksText = remarksTag?.content.map((p) => p.text).join('').trim() ?? '';
+  const remarksText =
+    remarksTag?.content
+      .map((p) => p.text)
+      .join('')
+      .trim() ?? '';
 
   const useWhen = useWhenText ? parseBulletList(useWhenText) : undefined;
   const avoidWhen = avoidWhenText ? parseBulletList(avoidWhenText) : undefined;
@@ -575,7 +579,11 @@ function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurfa
   const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
   const avoidWhenText = avoidWhenTag?.content.map((p) => p.text).join('') ?? '';
   const pitfallsText = pitfallsTag?.content.map((p) => p.text).join('') ?? '';
-  const remarksText = remarksTag?.content.map((p) => p.text).join('').trim() ?? '';
+  const remarksText =
+    remarksTag?.content
+      .map((p) => p.text)
+      .join('')
+      .trim() ?? '';
 
   const useWhen = useWhenText ? parseBulletList(useWhenText) : undefined;
   const avoidWhen = avoidWhenText ? parseBulletList(avoidWhenText) : undefined;
