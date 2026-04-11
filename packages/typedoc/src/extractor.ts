@@ -17,7 +17,9 @@ import type {
   ExtractedVariable,
   ExtractedParameter,
   ExtractedProperty,
-  ExtractedDocument
+  ExtractedDocument,
+  ExtractedConfigSurface,
+  ExtractedConfigOption
 } from '@to-skills/core';
 
 /** Package metadata to enrich extracted skills */
@@ -108,6 +110,7 @@ function mergeModules(
   const allEnums: ExtractedEnum[] = [];
   const allVariables: ExtractedVariable[] = [];
   const allExamples: string[] = [];
+  const allConfigSurfaces: ExtractedConfigSurface[] = [];
   let description = '';
 
   for (const mod of mods) {
@@ -116,11 +119,20 @@ function mergeModules(
       ...children.filter((c) => c.kind === ReflectionKind.Function).map((c) => extractFunction(c))
     );
     allClasses.push(...children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass));
-    allTypes.push(
-      ...children
-        .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
-        .map(extractType)
+
+    const interfaceAndAliasChildren = children.filter(
+      (c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias
     );
+    const configInterfaceChildren = interfaceAndAliasChildren.filter(
+      (c) => c.kind === ReflectionKind.Interface && isConfigInterface(c)
+    );
+    const regularTypeChildren = interfaceAndAliasChildren.filter(
+      (c) => !(c.kind === ReflectionKind.Interface && isConfigInterface(c))
+    );
+
+    allTypes.push(...regularTypeChildren.map(extractType));
+    allConfigSurfaces.push(...configInterfaceChildren.map(extractConfigSurface));
+
     allEnums.push(...children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum));
     allVariables.push(
       ...children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable)
@@ -148,7 +160,8 @@ function mergeModules(
     types: allTypes,
     enums: allEnums,
     variables: allVariables,
-    examples: allExamples
+    examples: allExamples,
+    ...(allConfigSurfaces.length > 0 ? { configSurfaces: allConfigSurfaces } : {})
   };
   aggregateSkillTags(skill);
   return skill;
@@ -164,6 +177,18 @@ function extractModule(
   // Resolve the best name: metadata > source package.json > reflection name
   const resolvedName = metadata?.name || resolvePackageName(mod) || mod.name;
 
+  // Separate config interfaces from regular types
+  const interfaceAndAliasChildren = children.filter(
+    (c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias
+  );
+  const configInterfaceChildren = interfaceAndAliasChildren.filter(
+    (c) => c.kind === ReflectionKind.Interface && isConfigInterface(c)
+  );
+  const regularTypeChildren = interfaceAndAliasChildren.filter(
+    (c) => !(c.kind === ReflectionKind.Interface && isConfigInterface(c))
+  );
+  const configSurfaces = configInterfaceChildren.map(extractConfigSurface);
+
   const skill: ExtractedSkill = {
     name: resolvedName,
     description: getCommentText(mod.comment),
@@ -176,12 +201,11 @@ function extractModule(
       .filter((c) => c.kind === ReflectionKind.Function)
       .map((c) => extractFunction(c)),
     classes: children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass),
-    types: children
-      .filter((c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias)
-      .map(extractType),
+    types: regularTypeChildren.map(extractType),
     enums: children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum),
     variables: children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable),
-    examples: getExamples(mod.comment)
+    examples: getExamples(mod.comment),
+    ...(configSurfaces.length > 0 ? { configSurfaces } : {})
   };
   aggregateSkillTags(skill);
   return skill;
@@ -483,6 +507,90 @@ function getCategory(comment: Comment | undefined): string | undefined {
     .join('')
     .trim();
   return text || undefined;
+}
+
+// ── Config interface detection & extraction ─────────────────────────────────
+
+const CONFIG_SUFFIXES = ['Options', 'Config', 'Configuration', 'Settings'];
+
+function isConfigInterface(decl: DeclarationReflection): boolean {
+  // Explicit @config tag
+  if (decl.comment?.getTag('@config')) return true;
+  // Name suffix at PascalCase word boundary
+  const name = decl.name;
+  for (const suffix of CONFIG_SUFFIXES) {
+    if (name.endsWith(suffix) && name.length > suffix.length) {
+      const charBefore = name[name.length - suffix.length - 1];
+      if (charBefore && charBefore === charBefore.toLowerCase()) return true;
+    }
+  }
+  return false;
+}
+
+function extractConfigOption(decl: DeclarationReflection): ExtractedConfigOption {
+  const comment = decl.comment;
+  const useWhenTag = comment?.getTag('@useWhen');
+  const avoidWhenTag = comment?.getTag('@avoidWhen');
+  const pitfallsTag = comment?.getTag('@pitfalls');
+  const remarksTag = comment?.getTag('@remarks');
+
+  const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
+  const avoidWhenText = avoidWhenTag?.content.map((p) => p.text).join('') ?? '';
+  const pitfallsText = pitfallsTag?.content.map((p) => p.text).join('') ?? '';
+  const remarksText = remarksTag?.content.map((p) => p.text).join('').trim() ?? '';
+
+  const useWhen = useWhenText ? parseBulletList(useWhenText) : undefined;
+  const avoidWhen = avoidWhenText ? parseBulletList(avoidWhenText) : undefined;
+  const pitfalls = pitfallsText ? parseBulletList(pitfallsText) : undefined;
+
+  return {
+    name: decl.name,
+    type: decl.type?.toString() ?? 'unknown',
+    description: getCommentText(comment),
+    required: !decl.flags.isOptional,
+    ...(useWhen && useWhen.length > 0 ? { useWhen } : {}),
+    ...(avoidWhen && avoidWhen.length > 0 ? { avoidWhen } : {}),
+    ...(pitfalls && pitfalls.length > 0 ? { pitfalls } : {}),
+    ...(remarksText ? { remarks: remarksText } : {}),
+    category: getCategory(comment)
+  };
+}
+
+function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurface {
+  const options: ExtractedConfigOption[] = [];
+  if (decl.kind === ReflectionKind.Interface && decl.children) {
+    for (const child of decl.children) {
+      if (child.kind === ReflectionKind.Property || child.kind === ReflectionKind.Accessor) {
+        options.push(extractConfigOption(child));
+      }
+    }
+  }
+
+  const comment = decl.comment;
+  const useWhenTag = comment?.getTag('@useWhen');
+  const avoidWhenTag = comment?.getTag('@avoidWhen');
+  const pitfallsTag = comment?.getTag('@pitfalls');
+  const remarksTag = comment?.getTag('@remarks');
+
+  const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
+  const avoidWhenText = avoidWhenTag?.content.map((p) => p.text).join('') ?? '';
+  const pitfallsText = pitfallsTag?.content.map((p) => p.text).join('') ?? '';
+  const remarksText = remarksTag?.content.map((p) => p.text).join('').trim() ?? '';
+
+  const useWhen = useWhenText ? parseBulletList(useWhenText) : undefined;
+  const avoidWhen = avoidWhenText ? parseBulletList(avoidWhenText) : undefined;
+  const pitfalls = pitfallsText ? parseBulletList(pitfallsText) : undefined;
+
+  return {
+    name: decl.name,
+    description: getCommentText(comment),
+    sourceType: 'config',
+    options,
+    ...(useWhen && useWhen.length > 0 ? { useWhen } : {}),
+    ...(avoidWhen && avoidWhen.length > 0 ? { avoidWhen } : {}),
+    ...(pitfalls && pitfalls.length > 0 ? { pitfalls } : {}),
+    ...(remarksText ? { remarks: remarksText } : {})
+  };
 }
 
 /** Parse a multi-line bullet list from a tag value into individual items */

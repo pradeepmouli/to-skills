@@ -965,3 +965,270 @@ describe('extractSkills — @useWhen/@avoidWhen/@pitfalls aggregation', () => {
     expect(skill.pitfalls).toBeUndefined();
   });
 });
+
+// ── Config interface detection ────────────────────────────────────────────
+
+describe('extractSkills — config interface detection', () => {
+  it('detects @config tag on interface → extracted as configSurface', () => {
+    const iface = mockDecl('MySettings', ReflectionKind.Interface, {
+      comment: mockComment('Config with explicit tag', [], undefined, [], { config: '' }),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('MySettings');
+    expect(skill.types).toHaveLength(0);
+  });
+
+  it('detects *Options suffix → extracted as configSurface', () => {
+    const iface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('BuildOptions');
+    expect(skill.types).toHaveLength(0);
+  });
+
+  it('detects *Config suffix → extracted as configSurface', () => {
+    const iface = mockDecl('UserConfig', ReflectionKind.Interface, {
+      comment: mockComment('User config'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('UserConfig');
+    expect(skill.types).toHaveLength(0);
+  });
+
+  it('detects *Configuration suffix → extracted as configSurface', () => {
+    const iface = mockDecl('ServerConfiguration', ReflectionKind.Interface, {
+      comment: mockComment('Server configuration'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('ServerConfiguration');
+  });
+
+  it('detects *Settings suffix → extracted as configSurface', () => {
+    const iface = mockDecl('AppSettings', ReflectionKind.Interface, {
+      comment: mockComment('App settings'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('AppSettings');
+  });
+
+  it('does NOT detect "OptionsParser" (suffix not at PascalCase word boundary)', () => {
+    // "OptionsParser" ends with "Parser", not a config suffix
+    // But also: "Options" is a suffix only if the char before is lowercase
+    // "OptionsParser" → name.endsWith('Options') is false, endsWith('Config') is false
+    const iface = mockDecl('OptionsParser', ReflectionKind.Interface, {
+      comment: mockComment('Parses options'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+    expect(skill.types).toHaveLength(1);
+    expect(skill.types[0].name).toBe('OptionsParser');
+  });
+
+  it('does NOT detect when suffix is the entire name (e.g. "Options" alone)', () => {
+    // name.length > suffix.length check: "Options".length === "Options".length → false
+    const iface = mockDecl('Options', ReflectionKind.Interface, {
+      comment: mockComment('Just Options'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+    expect(skill.types).toHaveLength(1);
+  });
+
+  it('does NOT detect an interface with uppercase char before config suffix (not a word boundary)', () => {
+    // e.g. "FOOConfig": charBefore 'O' is uppercase, so should NOT match
+    const iface = mockDecl('FOOConfig', ReflectionKind.Interface, {
+      comment: mockComment('All caps prefix'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+    expect(skill.types).toHaveLength(1);
+  });
+
+  it('regular interfaces (no @config, no suffix) stay in types array', () => {
+    const iface = mockDecl('UserProfile', ReflectionKind.Interface, {
+      comment: mockComment('A user profile'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+    expect(skill.types).toHaveLength(1);
+    expect(skill.types[0].name).toBe('UserProfile');
+  });
+
+  it('config interfaces removed from types array (not duplicated)', () => {
+    const configIface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: []
+    });
+    const regularIface = mockDecl('UserProfile', ReflectionKind.Interface, {
+      comment: mockComment('A user profile'),
+      children: []
+    });
+    const project = mockProject([configIface, regularIface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.types).toHaveLength(1);
+    expect(skill.types[0].name).toBe('UserProfile');
+    // BuildOptions must not appear in types
+    expect(skill.types.find((t) => t.name === 'BuildOptions')).toBeUndefined();
+  });
+
+  it('sets sourceType to "config" on extracted configSurface', () => {
+    const iface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces![0].sourceType).toBe('config');
+  });
+
+  it('extracts interface properties as ExtractedConfigOption items', () => {
+    const prop = mockDecl('outDir', ReflectionKind.Property, {
+      flags: { isOptional: true },
+      type: { toString: () => 'string' },
+      comment: mockComment('Output directory')
+    });
+    const iface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: [prop]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    const surface = skill.configSurfaces![0];
+    expect(surface.options).toHaveLength(1);
+    expect(surface.options[0].name).toBe('outDir');
+    expect(surface.options[0].type).toBe('string');
+    expect(surface.options[0].description).toBe('Output directory');
+    expect(surface.options[0].required).toBe(false);
+  });
+
+  it('required=true when property is not optional', () => {
+    const prop = mockDecl('entry', ReflectionKind.Property, {
+      flags: { isOptional: false },
+      type: { toString: () => 'string' },
+      comment: mockComment('Entry point')
+    });
+    const iface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: [prop]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces![0].options[0].required).toBe(true);
+  });
+
+  it('extracts @useWhen from config interface property', () => {
+    const prop = mockDecl('watch', ReflectionKind.Property, {
+      flags: { isOptional: true },
+      type: { toString: () => 'boolean' },
+      comment: mockComment('Watch mode', [], undefined, [], {
+        useWhen: '- During development\n- Hot reload needed'
+      })
+    });
+    const iface = mockDecl('BuildOptions', ReflectionKind.Interface, {
+      comment: mockComment('Build options'),
+      children: [prop]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    const opt = skill.configSurfaces![0].options[0];
+    expect(opt.useWhen).toEqual(['During development', 'Hot reload needed']);
+  });
+
+  it('extracts @pitfalls from config interface property', () => {
+    const prop = mockDecl('cache', ReflectionKind.Property, {
+      flags: { isOptional: true },
+      type: { toString: () => 'boolean' },
+      comment: mockComment('Enable cache', [], undefined, [], {
+        pitfalls: '- Can serve stale data\n- Requires manual invalidation'
+      })
+    });
+    const iface = mockDecl('CacheOptions', ReflectionKind.Interface, {
+      comment: mockComment('Cache options'),
+      children: [prop]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    const opt = skill.configSurfaces![0].options[0];
+    expect(opt.pitfalls).toEqual(['Can serve stale data', 'Requires manual invalidation']);
+  });
+
+  it('extracts @avoidWhen from config interface property', () => {
+    const prop = mockDecl('verbose', ReflectionKind.Property, {
+      flags: { isOptional: true },
+      type: { toString: () => 'boolean' },
+      comment: mockComment('Verbose mode', [], undefined, [], {
+        avoidWhen: '- Production builds\n- CI pipelines'
+      })
+    });
+    const iface = mockDecl('LogOptions', ReflectionKind.Interface, {
+      comment: mockComment('Logging options'),
+      children: [prop]
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    const opt = skill.configSurfaces![0].options[0];
+    expect(opt.avoidWhen).toEqual(['Production builds', 'CI pipelines']);
+  });
+
+  it('extracts @useWhen/@pitfalls from config interface itself (surface level)', () => {
+    const iface = mockDecl('DeployConfig', ReflectionKind.Interface, {
+      comment: mockComment('Deployment config', [], undefined, [], {
+        useWhen: '- Deploying to production',
+        pitfalls: '- Missing env vars cause silent failures'
+      }),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    const surface = skill.configSurfaces![0];
+    expect(surface.useWhen).toEqual(['Deploying to production']);
+    expect(surface.pitfalls).toEqual(['Missing env vars cause silent failures']);
+  });
+
+  it('configSurfaces undefined when no config interfaces present', () => {
+    const iface = mockDecl('UserProfile', ReflectionKind.Interface, {
+      comment: mockComment('A profile'),
+      children: []
+    });
+    const project = mockProject([iface]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+  });
+
+  it('TypeAlias is never treated as config surface even if name matches', () => {
+    const alias = mockDecl('BuildOptions', ReflectionKind.TypeAlias, {
+      comment: mockComment('A type alias'),
+      type: { toString: () => 'string | number' }
+    });
+    const project = mockProject([alias]);
+    const [skill] = extractSkills(project, false);
+    expect(skill.configSurfaces).toBeUndefined();
+    expect(skill.types).toHaveLength(1);
+    expect(skill.types[0].name).toBe('BuildOptions');
+  });
+});
