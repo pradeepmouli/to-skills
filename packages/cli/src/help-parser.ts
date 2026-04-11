@@ -39,7 +39,7 @@ export function parseHelpOutput(text: string, commandName: string): ExtractedCon
   let descriptionCandidateIndex = -1;
 
   for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
+    const raw = lines[i] ?? '';
     const trimmed = raw.trim();
 
     // -----------------------------------------------------------------------
@@ -143,7 +143,7 @@ function parsePositionalArgs(usage: string): ExtractedConfigArgument[] {
 
   while ((match = re.exec(usage)) !== null) {
     const full = match[0];
-    const inner = (match[2] ?? match[3]).trim();
+    const inner = (match[2] ?? match[3] ?? '').trim();
 
     // Skip meta-placeholders that aren't real positional args
     if (/^options?$/i.test(inner) || /^commands?$/i.test(inner)) {
@@ -198,8 +198,8 @@ function parseOptionLine(raw: string): ExtractedConfigOption | null {
   let descPart: string;
 
   if (flagsAndRest) {
-    flagsPart = flagsAndRest[1].trim();
-    descPart = flagsAndRest[2].trim();
+    flagsPart = (flagsAndRest[1] ?? '').trim();
+    descPart = (flagsAndRest[2] ?? '').trim();
   } else {
     // No description separator found — the whole trimmed line is the flags
     flagsPart = trimmed;
@@ -248,7 +248,7 @@ function parseOptionLine(raw: string): ExtractedConfigOption | null {
   let defaultValue: string | undefined;
   const defaultMatch = descPart.match(/\(default:\s*([^)]+)\)/i);
   if (defaultMatch) {
-    defaultValue = defaultMatch[1].trim();
+    defaultValue = defaultMatch[1]?.trim();
     descPart = descPart.replace(defaultMatch[0], '').trim();
   }
 
@@ -273,7 +273,7 @@ function parseOptionLine(raw: string): ExtractedConfigOption | null {
   // -------------------------------------------------------------------------
   // Derive canonical name from long flag (strip leading --)
   // -------------------------------------------------------------------------
-  const name = cliFlag.replace(/^--/, '');
+  const name = cliFlag ? cliFlag.replace(/^--/, '') : '';
 
   const option: ExtractedConfigOption = {
     name,
