@@ -10,6 +10,7 @@ import type {
   SkillRenderOptions
 } from './types.js';
 import { estimateTokens, truncateToTokenBudget } from './tokens.js';
+import { renderConfigSurfaceSection, renderConfigReference } from './config-renderer.js';
 
 /** agentskills.io spec: max 1024 chars for description */
 const DESCRIPTION_MAX = 1024;
@@ -103,6 +104,29 @@ export function renderSkill(
     }
   }
 
+  if (skill.configSurfaces && skill.configSurfaces.length > 0) {
+    const cliSurfaces = skill.configSurfaces.filter((s) => s.sourceType === 'cli');
+    const configSurfaces = skill.configSurfaces.filter((s) => s.sourceType !== 'cli');
+
+    if (cliSurfaces.length > 0) {
+      const content = renderConfigReference(cliSurfaces);
+      references.push({
+        filename: `${basePath}/references/commands.md`,
+        content: truncateToTokenBudget(content, opts.maxTokens),
+        tokens: estimateTokens(content)
+      });
+    }
+
+    if (configSurfaces.length > 0) {
+      const content = renderConfigReference(configSurfaces);
+      references.push({
+        filename: `${basePath}/references/config.md`,
+        content: truncateToTokenBudget(content, opts.maxTokens),
+        tokens: estimateTokens(content)
+      });
+    }
+  }
+
   return {
     skill: {
       filename: `${basePath}/SKILL.md`,
@@ -142,6 +166,9 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
 
   const pitfalls = renderPitfalls(skill);
   if (pitfalls) sections.push(pitfalls);
+
+  const configSection = renderConfigSurfaceSection(skill.configSurfaces);
+  if (configSection) sections.push(configSection);
 
   const quickRef = renderQuickReference(skill);
   if (quickRef) sections.push(quickRef);

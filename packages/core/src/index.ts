@@ -40,3 +40,5 @@ export type {
   ExtractedConfigOption,
   ExtractedConfigArgument
 } from './config-types.js';
+
+export { renderConfigSurfaceSection, renderConfigReference } from './config-renderer.js';
