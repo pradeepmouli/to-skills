@@ -228,15 +228,15 @@ export function parseMarkdownDoc(markdown: string, filePath: string): ParsedMark
 
   // Title: frontmatter.title > first # heading > filename
   const fmTitle =
-    frontmatter?.title !== undefined && frontmatter.title !== ''
-      ? String(frontmatter.title)
+    frontmatter?.['title'] !== undefined && frontmatter['title'] !== ''
+      ? String(frontmatter['title'])
       : undefined;
   const title = fmTitle ?? extractFirstH1(body) ?? filenameToTitle(filePath);
 
   // Description: frontmatter.description > first paragraph after first heading
   const fmDescription =
-    frontmatter?.description !== undefined && frontmatter.description !== ''
-      ? String(frontmatter.description)
+    frontmatter?.['description'] !== undefined && frontmatter['description'] !== ''
+      ? String(frontmatter['description'])
       : undefined;
   const description = fmDescription ?? extractFirstParagraph(body);
 
@@ -245,7 +245,9 @@ export function parseMarkdownDoc(markdown: string, filePath: string): ParsedMark
 
   // Order: frontmatter.sidebar_position > filename prefix > Infinity
   const fmOrder =
-    frontmatter?.sidebar_position !== undefined ? Number(frontmatter.sidebar_position) : undefined;
+    frontmatter?.['sidebar_position'] !== undefined
+      ? Number(frontmatter['sidebar_position'])
+      : undefined;
   const order =
     fmOrder !== undefined && !Number.isNaN(fmOrder) ? fmOrder : orderFromFilename(filePath);
 

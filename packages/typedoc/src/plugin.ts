@@ -9,7 +9,9 @@ import {
   auditSkill,
   formatAuditText,
   formatAuditJson,
-  parseReadme
+  parseReadme,
+  scanDocs,
+  docsToExtractedDocuments
 } from '@to-skills/core';
 import type { AuditContext } from '@to-skills/core';
 import { extractSkills } from './extractor.js';
@@ -101,6 +103,20 @@ export function load(app: Application): void {
     defaultValue: ''
   });
 
+  app.options.addDeclaration({
+    name: 'skillsIncludeDocs',
+    help: '[Skills] Include prose docs from docs/ directory alongside API skills',
+    type: ParameterType.Boolean,
+    defaultValue: false
+  });
+
+  app.options.addDeclaration({
+    name: 'skillsDocsDir',
+    help: '[Skills] Directory containing prose documentation (default: docs)',
+    type: ParameterType.String,
+    defaultValue: 'docs'
+  });
+
   // --- State ---
   // Accumulate skills across converter runs for llms.txt (project-wide).
   // Skills files are written immediately per converter run (per-package scope).
@@ -122,6 +138,26 @@ export function load(app: Application): void {
       repository: normalizeRepoUrl(pkg.repository),
       author: typeof pkg.author === 'string' ? pkg.author : pkg.author?.name
     });
+
+    // --- Docs scanning (opt-in) ---
+    const includeDocs = app.options.getValue('skillsIncludeDocs') as boolean;
+    if (includeDocs) {
+      const docsDir = app.options.getValue('skillsDocsDir') as string;
+      const fullDocsDir = join(process.cwd(), docsDir);
+      if (existsSync(fullDocsDir)) {
+        const parsedDocs = scanDocs({
+          docsDir: fullDocsDir,
+          include: undefined,
+          exclude: ['**/api/**', '**/node_modules/**'],
+          maxDocs: undefined
+        });
+        const extractedDocs = docsToExtractedDocuments(parsedDocs);
+        for (const skill of skills) {
+          skill.documents = [...(skill.documents ?? []), ...extractedDocs];
+        }
+        app.logger.info(`[skills] Included ${extractedDocs.length} docs from ${docsDir}/`);
+      }
+    }
 
     // Accumulate for llms.txt
     allSkills.push(...skills);
