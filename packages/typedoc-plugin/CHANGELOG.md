@@ -1,5 +1,12 @@
 # typedoc-plugin-to-skills
 
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.11.0
+
 ## 0.6.1
 
 ### Patch Changes
