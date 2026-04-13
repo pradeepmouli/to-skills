@@ -1,5 +1,11 @@
 # @to-skills/typedoc
 
+## 0.11.1
+
+### Patch Changes
+
+- Fix config surface detection to include type aliases, not just interfaces
+
 ## 0.11.0
 
 ### Minor Changes

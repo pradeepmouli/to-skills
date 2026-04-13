@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.6.3
+
+### Patch Changes
+
+- Fix config surface detection to include type aliases, not just interfaces
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.11.1
+
 ## 0.6.2
 
 ### Patch Changes
