@@ -123,12 +123,8 @@ function mergeModules(
     const interfaceAndAliasChildren = children.filter(
       (c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias
     );
-    const configInterfaceChildren = interfaceAndAliasChildren.filter(
-      (c) => c.kind === ReflectionKind.Interface && isConfigInterface(c)
-    );
-    const regularTypeChildren = interfaceAndAliasChildren.filter(
-      (c) => !(c.kind === ReflectionKind.Interface && isConfigInterface(c))
-    );
+    const configInterfaceChildren = interfaceAndAliasChildren.filter((c) => isConfigInterface(c));
+    const regularTypeChildren = interfaceAndAliasChildren.filter((c) => !isConfigInterface(c));
 
     allTypes.push(...regularTypeChildren.map(extractType));
     allConfigSurfaces.push(...configInterfaceChildren.map(extractConfigSurface));
@@ -181,12 +177,8 @@ function extractModule(
   const interfaceAndAliasChildren = children.filter(
     (c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias
   );
-  const configInterfaceChildren = interfaceAndAliasChildren.filter(
-    (c) => c.kind === ReflectionKind.Interface && isConfigInterface(c)
-  );
-  const regularTypeChildren = interfaceAndAliasChildren.filter(
-    (c) => !(c.kind === ReflectionKind.Interface && isConfigInterface(c))
-  );
+  const configInterfaceChildren = interfaceAndAliasChildren.filter((c) => isConfigInterface(c));
+  const regularTypeChildren = interfaceAndAliasChildren.filter((c) => !isConfigInterface(c));
   const configSurfaces = configInterfaceChildren.map(extractConfigSurface);
 
   const skill: ExtractedSkill = {
@@ -562,7 +554,8 @@ function extractConfigOption(decl: DeclarationReflection): ExtractedConfigOption
 
 function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurface {
   const options: ExtractedConfigOption[] = [];
-  if (decl.kind === ReflectionKind.Interface && decl.children) {
+  // Interfaces and type aliases with object structure both have children
+  if (decl.children) {
     for (const child of decl.children) {
       if (child.kind === ReflectionKind.Property || child.kind === ReflectionKind.Accessor) {
         options.push(extractConfigOption(child));

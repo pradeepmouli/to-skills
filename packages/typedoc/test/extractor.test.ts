@@ -1220,15 +1220,22 @@ describe('extractSkills — config interface detection', () => {
     expect(skill.configSurfaces).toBeUndefined();
   });
 
-  it('TypeAlias is never treated as config surface even if name matches', () => {
+  it('TypeAlias with config suffix is treated as config surface', () => {
     const alias = mockDecl('BuildOptions', ReflectionKind.TypeAlias, {
-      comment: mockComment('A type alias'),
-      type: { toString: () => 'string | number' }
+      comment: mockComment('Build options'),
+      children: [
+        mockDecl('watch', ReflectionKind.Property, {
+          type: { toString: () => 'boolean' },
+          flags: { isOptional: true },
+          comment: mockComment('Watch mode')
+        })
+      ]
     });
     const project = mockProject([alias]);
     const [skill] = extractSkills(project, false);
-    expect(skill.configSurfaces).toBeUndefined();
-    expect(skill.types).toHaveLength(1);
-    expect(skill.types[0].name).toBe('BuildOptions');
+    expect(skill.configSurfaces).toHaveLength(1);
+    expect(skill.configSurfaces![0].name).toBe('BuildOptions');
+    expect(skill.configSurfaces![0].options).toHaveLength(1);
+    expect(skill.types).toHaveLength(0);
   });
 });
