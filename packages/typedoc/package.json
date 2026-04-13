@@ -45,7 +45,7 @@
     "@to-skills/core": "workspace:*"
   },
   "devDependencies": {
-    "typedoc": "^0.28.17"
+    "typedoc": "^0.28.19"
   },
   "peerDependencies": {
     "typedoc": ">=0.28.0"

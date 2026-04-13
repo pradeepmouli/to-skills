@@ -43,7 +43,7 @@
     "lint-staged": "^15.5.1",
     "oxlint": "^1.56.0",
     "simple-git-hooks": "^2.12.1",
-    "typedoc": "^0.28.17",
+    "typedoc": "^0.28.19",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   },
