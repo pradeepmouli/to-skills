@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+  "tagDefinitions": [
+    { "tagName": "@useWhen", "syntaxKind": "block" },
+    { "tagName": "@avoidWhen", "syntaxKind": "block" },
+    { "tagName": "@pitfalls", "syntaxKind": "block" },
+    { "tagName": "@config", "syntaxKind": "modifier" },
+    { "tagName": "@category", "syntaxKind": "block" }
+  ]
+}

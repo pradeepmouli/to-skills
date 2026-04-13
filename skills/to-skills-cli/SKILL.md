@@ -1,15 +1,16 @@
 ---
-name: to-skills
-description: Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
+name: to-skills-cli
+description: 'Extract CLI command structure from commander/yargs for AI agent skill generation Use when working with agent-skills, cli, commander, documentation, skill-generation, yargs.'
 license: MIT
 ---
 
-# to-skills
+# @to-skills/cli
 
-Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
+Extract CLI command structure from commander/yargs for AI agent skill generation
 
 ## When to Use
 
+- Working with agent-skills, cli, commander, documentation, skill-generation, yargs
 - You have a Commander program and want structured option/argument extraction with full fidelity
 - Runtime introspection is unavailable (no access to the program object)
 - The CLI uses a framework other than Commander (yargs, oclif, custom)

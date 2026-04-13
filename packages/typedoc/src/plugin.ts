@@ -239,12 +239,20 @@ export function load(app: Application): void {
     const outDir = app.options.getValue('skillsOutDir') as string;
     const license = (app.options.getValue('skillsLicense') as string) || pkg.license || '';
 
+    // Resolve per-package metadata: try package-specific package.json first,
+    // fall back to root. This matters for entryPointStrategy: "packages" where
+    // each converter run is a different workspace package.
+    const perPkgJson = readPackageJsonForProject(project.name) ?? pkg;
     const skills = extractSkills(project, perPackage, {
-      name: pkg.name,
-      description: pkg.description,
-      keywords: pkg.keywords,
-      repository: normalizeRepoUrl(pkg.repository),
-      author: typeof pkg.author === 'string' ? pkg.author : pkg.author?.name
+      name: perPkgJson.name || pkg.name,
+      description: perPkgJson.description || pkg.description,
+      keywords: perPkgJson.keywords || pkg.keywords,
+      repository: normalizeRepoUrl(perPkgJson.repository) || normalizeRepoUrl(pkg.repository),
+      author:
+        typeof perPkgJson.author === 'string'
+          ? perPkgJson.author
+          : perPkgJson.author?.name ||
+            (typeof pkg.author === 'string' ? pkg.author : pkg.author?.name)
     });
 
     // --- Docs scanning (opt-in) ---
@@ -381,6 +389,32 @@ function readPackageJson(): PackageJson {
   } catch {
     return {};
   }
+}
+
+/** Try to find a workspace package's package.json by matching project name. */
+function readPackageJsonForProject(projectName: string): PackageJson | null {
+  const packagesDir = join(process.cwd(), 'packages');
+  if (!existsSync(packagesDir)) return null;
+
+  try {
+    const dirs = readdirSync(packagesDir, { withFileTypes: true });
+    for (const dir of dirs) {
+      if (!dir.isDirectory()) continue;
+      const pkgPath = join(packagesDir, dir.name, 'package.json');
+      if (existsSync(pkgPath)) {
+        try {
+          const p = JSON.parse(readFileSync(pkgPath, 'utf-8')) as PackageJson;
+          if (p.name === projectName) return p;
+        } catch {
+          // skip
+        }
+      }
+    }
+  } catch {
+    // skip
+  }
+
+  return null;
 }
 
 function normalizeRepoUrl(repo: PackageJson['repository']): string | undefined {

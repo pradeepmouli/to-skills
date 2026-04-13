@@ -2,6 +2,10 @@
 
 > Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
 
+## @to-skills/core
+
+> Shared types, renderers, and utilities for the to-skills ecosystem.
+
 ### API
 
 - `renderSkills`: Render multiple extracted skills into progressive disclosure file sets.
@@ -59,3 +63,24 @@ Positional arguments are ordered and do not use flag prefixes.
 - `ParsedSection`: A single section extracted from a markdown document, corresponding to one
 heading and all content that follows it until the next heading.
 - `ParsedMarkdownDoc`: A fully parsed markdown document with structured metadata and sections.
+
+## @to-skills/typedoc
+
+> TypeDoc plugin that extracts structured AI agent skills from the TypeDoc reflection tree.
+
+### API
+
+- `load`
+
+## @to-skills/cli
+
+> CLI extraction for commander/yargs programs.
+
+### API
+
+- `introspectCommander`: Introspects a commander Program object and extracts all top-level command
+definitions as ExtractedConfigSurface[].
+- `parseHelpOutput`: Parse standard `--help` text output into an ExtractedConfigSurface.
+- `correlateFlags`: Merges JSDoc tag metadata from a typed config interface surface into CLI
+option metadata extracted from commander/--help output.
+- `extractCliSkill`: Extract a structured skill from a CLI program.

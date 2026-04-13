@@ -2,6 +2,15 @@
 
 > Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
 
+## @to-skills/core
+
+Shared types, renderers, and utilities for the to-skills ecosystem.
+
+Core provides the intermediate representation (ExtractedSkill), the SKILL.md renderer
+with progressive disclosure (lean discovery file + on-demand reference files), the
+audit engine (20 checks across fatal/error/warning/alert), and utilities for
+token budgeting, README parsing, and docs scanning.
+
 ### renderSkills
 
 Render multiple extracted skills into progressive disclosure file sets.
@@ -331,3 +340,105 @@ heading and all content that follows it until the next heading.
 ### ParsedMarkdownDoc
 
 A fully parsed markdown document with structured metadata and sections.
+
+---
+
+## @to-skills/typedoc
+
+TypeDoc plugin that extracts structured AI agent skills from the TypeDoc reflection tree.
+
+Install as `typedoc-plugin-to-skills` for auto-discovery, or import `@to-skills/typedoc`
+directly. The plugin hooks into TypeDoc's converter to extract functions, classes, types,
+enums, config surfaces, and documents, then renders them as SKILL.md + reference files
+via `@to-skills/core`.
+
+### load
+
+```ts
+load(app: Application): void
+```
+
+**Parameters:**
+- `app: Application` — 
+
+---
+
+## @to-skills/cli
+
+CLI extraction for commander/yargs programs.
+
+Provides a three-phase pipeline for extracting structured skill data from CLI tools:
+1. **Introspect** — walk a Commander program tree to extract commands, options, and arguments
+2. **Parse** — fallback: parse `--help` text output when runtime introspection is unavailable
+3. **Correlate** — merge JSDoc metadata from typed config interfaces into CLI option metadata
+
+The result is an `ExtractedSkill` that can be rendered by `@to-skills/core`.
+
+### introspectCommander
+
+Introspects a commander Program object and extracts all top-level command
+definitions as ExtractedConfigSurface[].
+
+```ts
+introspectCommander(program: any): ExtractedConfigSurface[]
+```
+
+**Parameters:**
+- `program: any` — A commander `Command` instance (typed as `any` to avoid
+  a hard dependency on the commander package at the call site).
+
+**Returns:** `ExtractedConfigSurface[]`
+
+### parseHelpOutput
+
+Parse standard `--help` text output into an ExtractedConfigSurface.
+
+This is the framework-agnostic fallback used when runtime introspection of a
+commander/yargs program is not available.
+
+```ts
+parseHelpOutput(text: string, commandName: string): ExtractedConfigSurface
+```
+
+**Parameters:**
+- `text: string` — Raw text emitted by `program --help`
+- `commandName: string` — Canonical name for this surface (e.g. `"generate"`)
+
+**Returns:** `ExtractedConfigSurface`
+
+### correlateFlags
+
+Merges JSDoc tag metadata from a typed config interface surface into CLI
+option metadata extracted from commander/--help output.
+
+The CLI surface is treated as authoritative for structural fields (flags,
+description, required, defaultValue). The config surface contributes rich
+JSDoc metadata (remarks, useWhen, avoidWhen, pitfalls, category) that the
+CLI help text does not capture.
+
+```ts
+correlateFlags(cliSurface: ExtractedConfigSurface, configSurface: ExtractedConfigSurface | undefined): ExtractedConfigSurface
+```
+
+**Parameters:**
+- `cliSurface: ExtractedConfigSurface` — The surface extracted from CLI introspection/help parsing
+- `configSurface: ExtractedConfigSurface | undefined` — The surface extracted from a typed config interface (optional)
+
+**Returns:** `ExtractedConfigSurface`
+
+### extractCliSkill
+
+Extract a structured skill from a CLI program.
+
+Runs the three-phase pipeline: introspect (or parse help) → correlate with typed interfaces → produce ExtractedSkill.
+
+```ts
+extractCliSkill(options: CliExtractionOptions): Promise<ExtractedSkill>
+```
+
+**Parameters:**
+- `options: CliExtractionOptions` — 
+
+**Returns:** `Promise<ExtractedSkill>`
+
+---

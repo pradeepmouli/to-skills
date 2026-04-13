@@ -1,6 +1,6 @@
 {
-  "entryPoints": ["packages/core/src/index.ts", "packages/typedoc/src/index.ts"],
-  "tsconfig": "packages/core/tsconfig.json",
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/core", "packages/typedoc", "packages/cli"],
   "out": "docs/api",
   "plugin": ["typedoc-plugin-to-skills"],
   "skipErrorChecking": true,
