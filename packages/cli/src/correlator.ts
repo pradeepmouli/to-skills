@@ -12,10 +12,15 @@ import type { ExtractedConfigSurface, ExtractedConfigOption } from '@to-skills/c
  * @param cliSurface   - The surface extracted from CLI introspection/help parsing
  * @param configSurface - The surface extracted from a typed config interface (optional)
  * @returns A new ExtractedConfigSurface combining both sources
+ *
+ * @category Correlation
+ * @useWhen
+ * - You have both CLI surfaces (from introspection/help) and typed config interfaces (from TypeDoc)
+ * - You want JSDoc @useWhen/@avoidWhen/@pitfalls tags to appear on CLI options in the generated skill
  */
 export function correlateFlags(
   cliSurface: ExtractedConfigSurface,
-  configSurface: ExtractedConfigSurface | undefined,
+  configSurface: ExtractedConfigSurface | undefined
 ): ExtractedConfigSurface {
   if (!configSurface) return cliSurface;
 
@@ -40,7 +45,7 @@ export function correlateFlags(
       useWhen: cliOpt.useWhen ?? configOpt.useWhen,
       avoidWhen: cliOpt.avoidWhen ?? configOpt.avoidWhen,
       pitfalls: cliOpt.pitfalls ?? configOpt.pitfalls,
-      category: cliOpt.category ?? configOpt.category,
+      category: cliOpt.category ?? configOpt.category
     };
   });
 
@@ -51,6 +56,6 @@ export function correlateFlags(
     useWhen: cliSurface.useWhen ?? configSurface.useWhen,
     avoidWhen: cliSurface.avoidWhen ?? configSurface.avoidWhen,
     pitfalls: cliSurface.pitfalls ?? configSurface.pitfalls,
-    remarks: cliSurface.remarks ?? configSurface.remarks,
+    remarks: cliSurface.remarks ?? configSurface.remarks
   };
 }

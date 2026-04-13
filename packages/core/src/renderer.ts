@@ -24,7 +24,17 @@ const DEFAULT_OPTIONS: SkillRenderOptions = {
   license: ''
 };
 
-/** Render multiple extracted skills into progressive disclosure file sets */
+/**
+ * Render multiple extracted skills into progressive disclosure file sets.
+ *
+ * @category Rendering
+ * @useWhen
+ * - You have one or more ExtractedSkill objects and need SKILL.md + references/ output
+ * - Building a custom extraction pipeline that bypasses the TypeDoc plugin
+ * @pitfalls
+ * - NEVER set maxTokens below 500 — reference files become truncated mid-signature, producing broken code blocks that confuse LLMs
+ * - NEVER pass skills with empty `name` — the output directory becomes a bare `/` path
+ */
 export function renderSkills(
   skills: ExtractedSkill[],
   options?: Partial<SkillRenderOptions>
@@ -33,7 +43,15 @@ export function renderSkills(
   return skills.map((skill) => renderSkill(skill, opts));
 }
 
-/** Render a single skill into SKILL.md + references/ */
+/**
+ * Render a single skill into SKILL.md + references/.
+ *
+ * @category Rendering
+ * @useWhen
+ * - You need fine-grained control over rendering a single skill
+ * @pitfalls
+ * - NEVER set maxTokens below 500 — reference files become truncated mid-signature, producing broken code blocks
+ */
 export function renderSkill(
   skill: ExtractedSkill,
   options?: Partial<SkillRenderOptions>

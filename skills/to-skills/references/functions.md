@@ -1,10 +1,10 @@
 # Functions
 
-## renderer
+## Rendering
 
 ### `renderSkills`
 
-Render multiple extracted skills into progressive disclosure file sets
+Render multiple extracted skills into progressive disclosure file sets.
 
 ```ts
 renderSkills(skills: ExtractedSkill[], options?: Partial<SkillRenderOptions>): RenderedSkill[]
@@ -18,7 +18,7 @@ renderSkills(skills: ExtractedSkill[], options?: Partial<SkillRenderOptions>): R
 
 ### `renderSkill`
 
-Render a single skill into SKILL.md + references/
+Render a single skill into SKILL.md + references/.
 
 ```ts
 renderSkill(skill: ExtractedSkill, options?: Partial<SkillRenderOptions>): RenderedSkill
@@ -30,11 +30,11 @@ renderSkill(skill: ExtractedSkill, options?: Partial<SkillRenderOptions>): Rende
 - `options: Partial<SkillRenderOptions>` (optional)
   **Returns:** `RenderedSkill`
 
-## writer
+## I/O
 
 ### `writeSkills`
 
-Write rendered skill file sets to disk (SKILL.md + references/)
+Write rendered skill file sets to disk (SKILL.md + references/).
 
 ```ts
 writeSkills(skills: RenderedSkill[], options: Pick<SkillRenderOptions, "outDir">): void
@@ -45,7 +45,7 @@ writeSkills(skills: RenderedSkill[], options: Pick<SkillRenderOptions, "outDir">
 - `skills: RenderedSkill[]`
 - `options: Pick<SkillRenderOptions, "outDir">`
 
-## tokens
+## Token Management
 
 ### `estimateTokens`
 
@@ -63,7 +63,7 @@ estimateTokens(text: string): number
 
 ### `truncateToTokenBudget`
 
-Truncate text to fit within a token budget, preserving complete lines
+Truncate text to fit within a token budget, preserving complete lines.
 
 ```ts
 truncateToTokenBudget(text: string, maxTokens: number): string
@@ -91,7 +91,7 @@ renderLlmsTxt(skills: ExtractedSkill[], options: LlmsTxtOptions): LlmsTxtResult
 - `options: LlmsTxtOptions`
   **Returns:** `LlmsTxtResult`
 
-## readme-parser
+## Parsing
 
 ### `parseReadme`
 
@@ -117,9 +117,60 @@ parseReadme(markdown: string): ParsedReadme
 - `markdown: string`
   **Returns:** `ParsedReadme`
 
-## audit
+### `parseMarkdownDoc`
+
+Parse a markdown document string into a structured `ParsedMarkdownDoc`.
+
+```ts
+parseMarkdownDoc(markdown: string, filePath: string): ParsedMarkdownDoc
+```
+
+**Parameters:**
+
+- `markdown: string` — Raw markdown source text.
+- `filePath: string` — File path used for `relativePath`, title fallback, and order fallback.
+  **Returns:** `ParsedMarkdownDoc`
+
+### `scanDocs`
+
+Scan a docs directory and return parsed markdown documents.
+
+- Returns `[]` when `docsDir` does not exist.
+- Recursively collects `.md` / `.mdx` files, honouring exclude patterns.
+- Default exclusions: **/api/**, **/node_modules/**, **/.specify/**, **/superpowers/**.
+- Sorts ascending by `order`, then alphabetically by `title`.
+- Truncates to `maxDocs` (default 20).
+
+```ts
+scanDocs(options: DocsExtractionOptions): ParsedMarkdownDoc[]
+```
+
+**Parameters:**
+
+- `options: DocsExtractionOptions`
+  **Returns:** `ParsedMarkdownDoc[]`
+
+### `docsToExtractedDocuments`
+
+Convert parsed markdown documents to the generic `ExtractedDocument` shape.
+
+```ts
+docsToExtractedDocuments(docs: ParsedMarkdownDoc[]): ExtractedDocument[]
+```
+
+**Parameters:**
+
+- `docs: ParsedMarkdownDoc[]`
+  **Returns:** `ExtractedDocument[]`
+
+## Audit
 
 ### `auditSkill`
+
+Run the documentation audit on a single extracted skill.
+
+Executes 20+ checks across fatal/error/warning/alert severity levels and returns
+a structured result with issues, passing checks, and summary counts.
 
 ```ts
 auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult
@@ -130,8 +181,6 @@ auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult
 - `skill: ExtractedSkill`
 - `context: AuditContext`
   **Returns:** `AuditResult`
-
-## audit-formatter
 
 ### `formatAuditText`
 
@@ -163,4 +212,38 @@ formatAuditJson(result: AuditResult): string
 **Parameters:**
 
 - `result: AuditResult`
+  **Returns:** `string`
+
+## config-renderer
+
+### `renderConfigSurfaceSection`
+
+Render ExtractedConfigSurface[] as SKILL.md inline sections.
+
+CLI surfaces → ## Commands
+Config/env surfaces → ## Configuration
+
+```ts
+renderConfigSurfaceSection(surfaces: ExtractedConfigSurface[] | undefined): string
+```
+
+**Parameters:**
+
+- `surfaces: ExtractedConfigSurface[] | undefined`
+  **Returns:** `string`
+
+### `renderConfigReference`
+
+Render ExtractedConfigSurface[] as per-option detail for reference files.
+
+CLI surfaces → # Commands with ## commandName / #### --flag
+Config/env surfaces → # Configuration with ## InterfaceName / #### propertyName
+
+```ts
+renderConfigReference(surfaces: ExtractedConfigSurface[] | undefined): string
+```
+
+**Parameters:**
+
+- `surfaces: ExtractedConfigSurface[] | undefined`
   **Returns:** `string`

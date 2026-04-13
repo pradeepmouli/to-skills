@@ -45,7 +45,20 @@ function collectChildren(mod: DeclarationReflection): DeclarationReflection[] {
   return result;
 }
 
-/** Extract structured API info from the TypeDoc reflection tree */
+/**
+ * Extract structured API info from the TypeDoc reflection tree.
+ *
+ * Walks the TypeDoc project reflection, collecting functions, classes, types,
+ * enums, variables, config surfaces, and documents into ExtractedSkill objects.
+ *
+ * @category Extraction
+ * @useWhen
+ * - You are building a custom TypeDoc plugin that needs ExtractedSkill data without the full plugin pipeline
+ * - You want to post-process or filter extracted skills before rendering
+ * @pitfalls
+ * - NEVER call with an empty project reflection — produces a skill with no exports, which the audit flags as fatal
+ * - NEVER assume module names match package.json names — TypeDoc may use directory names as module identifiers
+ */
 export function extractSkills(
   project: ProjectReflection,
   perPackage: boolean,

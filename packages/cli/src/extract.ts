@@ -20,6 +20,21 @@ export interface CliExtractionOptions {
   configSurfaces?: ExtractedConfigSurface[];
 }
 
+/**
+ * Extract a structured skill from a CLI program.
+ *
+ * Runs the three-phase pipeline: introspect (or parse help) → correlate with typed interfaces → produce ExtractedSkill.
+ *
+ * @category Extraction
+ * @useWhen
+ * - You have a Commander program and want to generate a skill from its command structure
+ * - You have raw --help output and no runtime access to the program object
+ * @avoidWhen
+ * - Your CLI is built with a framework other than Commander — use parseHelpOutput directly instead
+ * @pitfalls
+ * - NEVER pass both `program` and `helpTexts` — program takes precedence and helpTexts is silently ignored
+ * - NEVER forget to pass configSurfaces when you have typed option interfaces — JSDoc metadata won't be correlated
+ */
 export async function extractCliSkill(options: CliExtractionOptions): Promise<ExtractedSkill> {
   const { program, helpTexts, metadata = {}, configSurfaces = [] } = options;
 

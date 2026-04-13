@@ -103,6 +103,13 @@ function collectMarkdownFiles(
  * - Default exclusions: **\/api\/**, **\/node_modules\/**, **\/.specify\/**, **\/superpowers\/**.
  * - Sorts ascending by `order`, then alphabetically by `title`.
  * - Truncates to `maxDocs` (default 20).
+ *
+ * @category Parsing
+ * @useWhen
+ * - You have hand-written prose docs (tutorials, guides, architecture) in a docs/ directory
+ * - You want these docs included alongside API skills for richer agent context
+ * @avoidWhen
+ * - Your docs/ directory contains only auto-generated API docs — they duplicate the TypeDoc output
  */
 export function scanDocs(options: DocsExtractionOptions): ParsedMarkdownDoc[] {
   const { docsDir, exclude, maxDocs = DEFAULT_MAX_DOCS } = options;
@@ -131,6 +138,10 @@ export function scanDocs(options: DocsExtractionOptions): ParsedMarkdownDoc[] {
 
 /**
  * Convert parsed markdown documents to the generic `ExtractedDocument` shape.
+ *
+ * @category Parsing
+ * @useWhen
+ * - You have ParsedMarkdownDoc objects from scanDocs() and need to attach them to an ExtractedSkill
  */
 export function docsToExtractedDocuments(docs: ParsedMarkdownDoc[]): ExtractedDocument[] {
   return docs.map((doc) => ({ title: doc.title, content: doc.rawContent }));

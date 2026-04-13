@@ -4,17 +4,25 @@
 
 ### API
 
-- `renderSkills`: Render multiple extracted skills into progressive disclosure file sets
-- `renderSkill`: Render a single skill into SKILL.md + references/
-- `writeSkills`: Write rendered skill file sets to disk (SKILL.md + references/)
+- `renderSkills`: Render multiple extracted skills into progressive disclosure file sets.
+- `renderSkill`: Render a single skill into SKILL.md + references/.
+- `writeSkills`: Write rendered skill file sets to disk (SKILL.md + references/).
 - `estimateTokens`: Rough token estimate: ~4 chars per token for English/code.
 Not exact, but good enough for budgeting skill file sizes.
-- `truncateToTokenBudget`: Truncate text to fit within a token budget, preserving complete lines
+- `truncateToTokenBudget`: Truncate text to fit within a token budget, preserving complete lines.
 - `renderLlmsTxt`: Render llms.txt and llms-full.txt from extracted skills
 - `parseReadme`: Parse a README markdown string and extract structured sections.
-- `auditSkill`
+- `auditSkill`: Run the documentation audit on a single extracted skill.
 - `formatAuditText`: Format an AuditResult as human-readable text suitable for TypeDoc logs.
 - `formatAuditJson`: Format an AuditResult as pretty-printed JSON for machine consumption.
+- `renderConfigSurfaceSection`: Render ExtractedConfigSurface[] as SKILL.md inline sections.
+
+CLI surfaces → ## Commands
+Config/env surfaces → ## Configuration
+- `renderConfigReference`: Render ExtractedConfigSurface[] as per-option detail for reference files.
+- `parseMarkdownDoc`: Parse a markdown document string into a structured `ParsedMarkdownDoc`.
+- `scanDocs`: Scan a docs directory and return parsed markdown documents.
+- `docsToExtractedDocuments`: Convert parsed markdown documents to the generic `ExtractedDocument` shape.
 
 ## Optional
 
@@ -31,8 +39,6 @@ Not exact, but good enough for budgeting skill file sizes.
 - `ExtractedDocument`
 - `RenderedFile`: A single rendered file
 - `RenderedSkill`: A rendered skill with progressive disclosure structure
-- `SkillRenderOptions`: Options controlling skill rendering
-- `LlmsTxtOptions`
 - `LlmsTxtResult`
 - `AuditSeverity`: Severity levels for audit issues, ordered from most to least severe.
 - `AuditIssue`: A single audit finding that identifies a problem in the skill package.
@@ -41,3 +47,15 @@ Not exact, but good enough for budgeting skill file sizes.
 relevance and quality of skill content.
 - `ParsedReadme`: Structured representation of key sections extracted from a package README.
 - `AuditResult`: The complete output of an audit run against a single skill package.
+- `ConfigSourceType`: The source type of a configuration surface:
+- 'cli'    — a command-line command or subcommand
+- 'config' — a configuration file (e.
+- `ExtractedConfigSurface`: Describes a single configuration surface: a CLI command, config file schema,
+or environment-variable group that an agent may need to invoke or popu...
+- `ExtractedConfigOption`: A single configurable option within a surface: a CLI flag, a config-file key,
+or an environment variable (or any combination of the three).
+- `ExtractedConfigArgument`: A positional command-line argument accepted by a CLI surface.
+Positional arguments are ordered and do not use flag prefixes.
+- `ParsedSection`: A single section extracted from a markdown document, corresponding to one
+heading and all content that follows it until the next heading.
+- `ParsedMarkdownDoc`: A fully parsed markdown document with structured metadata and sections.

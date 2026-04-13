@@ -1,3 +1,19 @@
+/**
+ * Shared types, renderers, and utilities for the to-skills ecosystem.
+ *
+ * Core provides the intermediate representation (ExtractedSkill), the SKILL.md renderer
+ * with progressive disclosure (lean discovery file + on-demand reference files), the
+ * audit engine (20 checks across fatal/error/warning/alert), and utilities for
+ * token budgeting, README parsing, and docs scanning.
+ *
+ * @remarks
+ * All extractors (@to-skills/typedoc, @to-skills/cli, @to-skills/docusaurus) produce
+ * ExtractedSkill objects. Core renders them into SKILL.md + references/ files.
+ * The rendering is framework-agnostic — it doesn't know where the data came from.
+ *
+ * @packageDocumentation
+ */
+
 export type {
   ExtractedSkill,
   ExtractedFunction,

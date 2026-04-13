@@ -58,6 +58,8 @@ function groupByFile(issues: AuditIssue[]): Map<string, AuditIssue[]> {
  *
  * Output groups issues by severity (fatal → error → warning → alert),
  * then lists passing checks at the end. Empty severity groups are omitted.
+ *
+ * @category Audit
  */
 export function formatAuditText(result: AuditResult): string {
   const lines: string[] = [];
@@ -65,9 +67,7 @@ export function formatAuditText(result: AuditResult): string {
   // Header
   lines.push(`📊 Skill Documentation Audit: ${result.package}`);
   const { fatal, error, warning, alert } = result.summary;
-  lines.push(
-    `   ${fatal} fatal · ${error} error · ${warning} warning · ${alert} alert`
-  );
+  lines.push(`   ${fatal} fatal · ${error} error · ${warning} warning · ${alert} alert`);
 
   // Issue groups
   const bySeverity = groupBySeverity(result.issues);
@@ -108,6 +108,8 @@ export function formatAuditText(result: AuditResult): string {
  *
  * Returns the full result object serialized with 2-space indentation so it
  * can be parsed by downstream tooling without any further transformation.
+ *
+ * @category Audit
  */
 export function formatAuditJson(result: AuditResult): string {
   return JSON.stringify(result, null, 2);

@@ -45,6 +45,24 @@ Summary index and full API dump following the [llmstxt.org](https://llmstxt.org)
 
 Generates both `llms.txt` (summary with truncated descriptions) and `llms-full.txt` (complete API content).
 
+## Features
+
+- **Progressive Disclosure** — lean SKILL.md (~200 tokens) for discovery, detailed reference files loaded on demand
+- **Multi-Extractor Architecture** — TypeDoc for API, CLI for commander/yargs, Docusaurus for prose docs
+- **Documentation Audit** — 25 checks across fatal/error/warning/alert severity levels with file:line references
+- **Token Budgeting** — per-file token limits prevent context window overflow
+- **Module Grouping** — exports grouped by source file or @category tag
+- **JSDoc Convention Tags** — @useWhen, @avoidWhen, @pitfalls for expert knowledge extraction
+- **Config Surface Detection** — interfaces with @config tag or \*Options suffix rendered as configuration docs
+
+## Pitfalls
+
+- **NEVER set skillsMaxTokens below 500** — reference files become truncated mid-signature, producing broken code blocks that confuse LLMs
+- **NEVER enable skillsAuditFailOnError in local development** — it blocks all typedoc output on any audit failure, use it only in CI
+- **NEVER use with Zod v3 for config extraction** — @config interface detection relies on TypeDoc's type resolution which requires v4 introspection APIs
+- **NEVER mix registerDeep and registerFlat on the same schema** — registry entries conflict silently producing incorrect field configs
+- **NEVER forget blockTags in typedoc.json** — custom tags like @useWhen, @avoidWhen, @pitfalls won't be extracted without declaring them
+
 ## Packages
 
 | Package                                               | Description                                                         |

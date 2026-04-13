@@ -16,6 +16,114 @@ import {
 import type { AuditContext } from '@to-skills/core';
 import { extractSkills } from './extractor.js';
 
+/**
+ * Configuration options for typedoc-plugin-to-skills.
+ *
+ * @config
+ *
+ * @example
+ * ```json
+ * // typedoc.json
+ * {
+ *   "plugin": ["typedoc-plugin-to-skills"],
+ *   "skillsOutDir": "skills",
+ *   "skillsPerPackage": true,
+ *   "skillsAudit": true,
+ *   "skillsMaxTokens": 4000,
+ *   "llmsTxt": true
+ * }
+ * ```
+ */
+export interface SkillsPluginOptions {
+  /** Output directory for generated skill files
+   * @defaultValue "skills"
+   */
+  skillsOutDir?: string;
+
+  /** Emit one skill per package in a monorepo
+   * @defaultValue true
+   * @useWhen
+   * - Your project is a monorepo with multiple packages
+   * @avoidWhen
+   * - Single-package project — leave as default
+   */
+  skillsPerPackage?: boolean;
+
+  /** Include usage examples from @example tags
+   * @defaultValue true
+   */
+  skillsIncludeExamples?: boolean;
+
+  /** Include type signatures in skill output
+   * @defaultValue true
+   */
+  skillsIncludeSignatures?: boolean;
+
+  /** Maximum approximate token budget per skill file
+   * @defaultValue 4000
+   * @pitfalls
+   * - NEVER set below 500 — reference files become truncated mid-signature, producing broken code blocks
+   */
+  skillsMaxTokens?: number;
+
+  /** Custom prefix for skill names
+   * @defaultValue ""
+   */
+  skillsNamePrefix?: string;
+
+  /** License for generated skills (reads from package.json if empty)
+   * @defaultValue ""
+   */
+  skillsLicense?: string;
+
+  /** Generate llms.txt and llms-full.txt alongside skills
+   * @defaultValue false
+   * @useWhen
+   * - You want LLM-friendly API documentation following the llmstxt.org spec
+   */
+  llmsTxt?: boolean;
+
+  /** Output directory for llms.txt files
+   * @defaultValue "."
+   */
+  llmsTxtOutDir?: string;
+
+  /** Run documentation audit during skill generation
+   * @defaultValue true
+   * @useWhen
+   * - You want feedback on JSDoc quality during typedoc build
+   * @avoidWhen
+   * - You find audit output noisy during rapid iteration — disable temporarily
+   */
+  skillsAudit?: boolean;
+
+  /** Fail build on fatal or error severity audit issues
+   * @defaultValue false
+   * @useWhen
+   * - CI enforcement — block PRs with undocumented exports
+   * @pitfalls
+   * - NEVER enable during local development — it blocks all typedoc output on audit failures
+   */
+  skillsAuditFailOnError?: boolean;
+
+  /** Path to write JSON audit report (empty = don't write)
+   * @defaultValue ""
+   */
+  skillsAuditJson?: string;
+
+  /** Include prose docs from docs/ directory alongside API skills
+   * @defaultValue false
+   * @useWhen
+   * - You have hand-written docs in a docs/ directory (tutorials, guides, architecture)
+   */
+  skillsIncludeDocs?: boolean;
+
+  /** Directory containing prose documentation
+   * @defaultValue "docs"
+   */
+  skillsDocsDir?: string;
+}
+
 export function load(app: Application): void {
   // --- Options ---
 

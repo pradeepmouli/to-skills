@@ -4,7 +4,7 @@
 
 ### renderSkills
 
-Render multiple extracted skills into progressive disclosure file sets
+Render multiple extracted skills into progressive disclosure file sets.
 
 ```ts
 renderSkills(skills: ExtractedSkill[], options?: Partial<SkillRenderOptions>): RenderedSkill[]
@@ -18,7 +18,7 @@ renderSkills(skills: ExtractedSkill[], options?: Partial<SkillRenderOptions>): R
 
 ### renderSkill
 
-Render a single skill into SKILL.md + references/
+Render a single skill into SKILL.md + references/.
 
 ```ts
 renderSkill(skill: ExtractedSkill, options?: Partial<SkillRenderOptions>): RenderedSkill
@@ -32,7 +32,7 @@ renderSkill(skill: ExtractedSkill, options?: Partial<SkillRenderOptions>): Rende
 
 ### writeSkills
 
-Write rendered skill file sets to disk (SKILL.md + references/)
+Write rendered skill file sets to disk (SKILL.md + references/).
 
 ```ts
 writeSkills(skills: RenderedSkill[], options: Pick<SkillRenderOptions, "outDir">): void
@@ -58,7 +58,7 @@ estimateTokens(text: string): number
 
 ### truncateToTokenBudget
 
-Truncate text to fit within a token budget, preserving complete lines
+Truncate text to fit within a token budget, preserving complete lines.
 
 ```ts
 truncateToTokenBudget(text: string, maxTokens: number): string
@@ -109,6 +109,11 @@ parseReadme(markdown: string): ParsedReadme
 
 ### auditSkill
 
+Run the documentation audit on a single extracted skill.
+
+Executes 20+ checks across fatal/error/warning/alert severity levels and returns
+a structured result with issues, passing checks, and summary counts.
+
 ```ts
 auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult
 ```
@@ -151,6 +156,84 @@ formatAuditJson(result: AuditResult): string
 
 **Returns:** `string`
 
+### renderConfigSurfaceSection
+
+Render ExtractedConfigSurface[] as SKILL.md inline sections.
+
+CLI surfaces → ## Commands
+Config/env surfaces → ## Configuration
+
+```ts
+renderConfigSurfaceSection(surfaces: ExtractedConfigSurface[] | undefined): string
+```
+
+**Parameters:**
+- `surfaces: ExtractedConfigSurface[] | undefined` — 
+
+**Returns:** `string`
+
+### renderConfigReference
+
+Render ExtractedConfigSurface[] as per-option detail for reference files.
+
+CLI surfaces → # Commands with ## commandName / #### --flag
+Config/env surfaces → # Configuration with ## InterfaceName / #### propertyName
+
+```ts
+renderConfigReference(surfaces: ExtractedConfigSurface[] | undefined): string
+```
+
+**Parameters:**
+- `surfaces: ExtractedConfigSurface[] | undefined` — 
+
+**Returns:** `string`
+
+### parseMarkdownDoc
+
+Parse a markdown document string into a structured `ParsedMarkdownDoc`.
+
+```ts
+parseMarkdownDoc(markdown: string, filePath: string): ParsedMarkdownDoc
+```
+
+**Parameters:**
+- `markdown: string` — Raw markdown source text.
+- `filePath: string` — File path used for `relativePath`, title fallback, and order fallback.
+
+**Returns:** `ParsedMarkdownDoc`
+
+### scanDocs
+
+Scan a docs directory and return parsed markdown documents.
+
+- Returns `[]` when `docsDir` does not exist.
+- Recursively collects `.md` / `.mdx` files, honouring exclude patterns.
+- Default exclusions: **/api/**, **/node_modules/**, **/.specify/**, **/superpowers/**.
+- Sorts ascending by `order`, then alphabetically by `title`.
+- Truncates to `maxDocs` (default 20).
+
+```ts
+scanDocs(options: DocsExtractionOptions): ParsedMarkdownDoc[]
+```
+
+**Parameters:**
+- `options: DocsExtractionOptions` — 
+
+**Returns:** `ParsedMarkdownDoc[]`
+
+### docsToExtractedDocuments
+
+Convert parsed markdown documents to the generic `ExtractedDocument` shape.
+
+```ts
+docsToExtractedDocuments(docs: ParsedMarkdownDoc[]): ExtractedDocument[]
+```
+
+**Parameters:**
+- `docs: ParsedMarkdownDoc[]` — 
+
+**Returns:** `ExtractedDocument[]`
+
 ### ExtractedSkill
 
 Extracted API surface for a single package/module
@@ -178,12 +261,6 @@ A single rendered file
 ### RenderedSkill
 
 A rendered skill with progressive disclosure structure
-
-### SkillRenderOptions
-
-Options controlling skill rendering
-
-### LlmsTxtOptions
 
 ### LlmsTxtResult
 
@@ -219,3 +296,38 @@ Structured representation of key sections extracted from a package README.
 ### AuditResult
 
 The complete output of an audit run against a single skill package.
+
+### ConfigSourceType
+
+The source type of a configuration surface:
+- 'cli'    — a command-line command or subcommand
+- 'config' — a configuration file (e.g. JSON, YAML, TOML)
+- 'env'    — environment variables
+
+```ts
+type ConfigSourceType = "cli" | "config" | "env"
+```
+
+### ExtractedConfigSurface
+
+Describes a single configuration surface: a CLI command, config file schema,
+or environment-variable group that an agent may need to invoke or populate.
+
+### ExtractedConfigOption
+
+A single configurable option within a surface: a CLI flag, a config-file key,
+or an environment variable (or any combination of the three).
+
+### ExtractedConfigArgument
+
+A positional command-line argument accepted by a CLI surface.
+Positional arguments are ordered and do not use flag prefixes.
+
+### ParsedSection
+
+A single section extracted from a markdown document, corresponding to one
+heading and all content that follows it until the next heading.
+
+### ParsedMarkdownDoc
+
+A fully parsed markdown document with structured metadata and sections.

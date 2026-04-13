@@ -98,6 +98,12 @@ function extractCommand(cmd: any, parentName: string): ExtractedConfigSurface {
  *   a hard dependency on the commander package at the call site).
  * @returns An array of extracted config surfaces, one per top-level command.
  *   Returns an empty array if the program has no subcommands.
+ *
+ * @category Commander
+ * @useWhen
+ * - You have a Commander program and want structured option/argument extraction with full fidelity
+ * @avoidWhen
+ * - Your CLI uses yargs, oclif, or another framework — use parseHelpOutput as a fallback instead
  */
 export function introspectCommander(program: any): ExtractedConfigSurface[] {
   const commands: any[] = program.commands ?? [];

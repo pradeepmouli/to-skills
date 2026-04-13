@@ -41,6 +41,11 @@ function nonEmpty(s: string): string | undefined {
  * - **features** – content under `## Features`, `## Key Features`, or `## Highlights`.
  * - **pitfalls** – content under `## Pitfalls`, `## Common Mistakes`, `## Gotchas`,
  *   or `## Caveats`.
+ *
+ * @category Parsing
+ * @useWhen
+ * - You need structured README sections for audit context or skill enrichment
+ * - The audit engine calls this to check for Features and Pitfalls sections
  */
 export function parseReadme(markdown: string): ParsedReadme {
   if (!markdown.trim()) return {};

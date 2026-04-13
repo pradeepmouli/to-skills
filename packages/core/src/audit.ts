@@ -835,6 +835,20 @@ function checkA4(context: AuditContext, issues: AuditIssue[], passing: AuditPass
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
+
+/**
+ * Run the documentation audit on a single extracted skill.
+ *
+ * Executes 20+ checks across fatal/error/warning/alert severity levels and returns
+ * a structured result with issues, passing checks, and summary counts.
+ *
+ * @category Audit
+ * @useWhen
+ * - You want programmatic quality feedback on JSDoc coverage before publishing skills
+ * - Building a CI gate that blocks PRs with undocumented exports
+ * @avoidWhen
+ * - Rapid local iteration where audit noise slows you down — use the skillsAudit: false option instead
+ */
 export function auditSkill(skill: ExtractedSkill, context: AuditContext): AuditResult {
   const issues: AuditIssue[] = [];
   const passing: AuditPass[] = [];

@@ -222,6 +222,8 @@ function orderFromFilename(filePath: string): number {
  *
  * @param markdown - Raw markdown source text.
  * @param filePath - File path used for `relativePath`, title fallback, and order fallback.
+ *
+ * @category Parsing
  */
 export function parseMarkdownDoc(markdown: string, filePath: string): ParsedMarkdownDoc {
   const { frontmatter, body } = extractFrontmatter(markdown);

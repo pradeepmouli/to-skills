@@ -12,6 +12,11 @@ import type {
  *
  * @param text        Raw text emitted by `program --help`
  * @param commandName Canonical name for this surface (e.g. `"generate"`)
+ *
+ * @category Fallback
+ * @useWhen
+ * - Runtime introspection is unavailable (no access to the program object)
+ * - The CLI uses a framework other than Commander (yargs, oclif, custom)
  */
 export function parseHelpOutput(text: string, commandName: string): ExtractedConfigSurface {
   if (!text.trim()) {
