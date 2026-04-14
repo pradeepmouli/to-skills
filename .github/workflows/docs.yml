@@ -4,46 +4,44 @@ on:
   push:
     branches: [master]
     paths:
-      - "packages/*/src/**"
-      - "src/**"
-      - "typedoc.json"
-      - "typedoc.html.json"
-      - "README.md"
+      - 'website/**'
+      - 'packages/*/src/**'
+      - 'README.md'
+  workflow_dispatch:
 
 permissions:
-  contents: read
   pages: write
   id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
-          cache: pnpm
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: pnpm/action-setup@v5
 
-      - name: Generate HTML docs
-        run: pnpm docs
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+      - uses: actions/setup-node@v6
         with:
-          path: docs/html
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Build VitePress site
+        run: cd website && pnpm docs:build
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: website/docs/.vitepress/dist
 
   deploy:
     needs: build
@@ -55,4 +53,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
