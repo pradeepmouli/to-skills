@@ -40,7 +40,7 @@
     "@types/node": "^25.5.0",
     "@typescript/native-preview": "7.0.0-dev.20260323.1",
     "@vitest/coverage-v8": "^4.1.1",
-    "lint-staged": "^15.5.1",
+    "lint-staged": "^16.4.0",
     "oxlint": "^1.56.0",
     "simple-git-hooks": "^2.12.1",
     "typedoc": "^0.28.17",
