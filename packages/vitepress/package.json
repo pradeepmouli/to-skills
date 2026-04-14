@@ -1,0 +1,52 @@
+{
+  "name": "@to-skills/vitepress",
+  "version": "0.1.0",
+  "description": "VitePress plugin for AI agent skill generation — uses sidebar for document ordering",
+  "keywords": [
+    "agent-skills",
+    "documentation",
+    "sidebar",
+    "skill-generation",
+    "vite-plugin",
+    "vitepress"
+  ],
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/vitepress"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "type-check": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@to-skills/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitepress": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitepress": {
+      "optional": true
+    }
+  }
+}
