@@ -38,7 +38,7 @@
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.29.4",
     "@types/node": "^25.5.0",
-    "@typescript/native-preview": "7.0.0-dev.20260323.1",
+    "@typescript/native-preview": "7.0.0-dev.20260413.1",
     "@vitest/coverage-v8": "^4.1.1",
     "lint-staged": "^15.5.1",
     "oxlint": "^1.56.0",
