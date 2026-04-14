@@ -1,8 +1,19 @@
 import { defineConfig } from 'vitepress';
+import { toSkills } from '@to-skills/vitepress';
 
 export default defineConfig({
   title: 'to-skills',
   description: 'Generate AI agent skills from TypeScript documentation',
+
+  vite: {
+    plugins: [
+      toSkills({
+        skillsOutDir: '../skills',
+        name: 'to-skills-docs',
+        license: 'MIT',
+      }),
+    ],
+  },
 
   themeConfig: {
     nav: [
