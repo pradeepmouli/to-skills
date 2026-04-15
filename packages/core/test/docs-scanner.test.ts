@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { scanDocs, docsToExtractedDocuments } from '../src/docs-scanner.js';
+import { scanDocs, docsToExtractedDocuments, scanRootDocs } from '../src/docs-scanner.js';
 import type { DocsExtractionOptions } from '../src/markdown-types.js';
 
 // ---------------------------------------------------------------------------
@@ -236,5 +236,89 @@ describe('docsToExtractedDocuments', () => {
       expect(typeof item.title).toBe('string');
       expect(typeof item.content).toBe('string');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// scanRootDocs
+// ---------------------------------------------------------------------------
+
+describe('scanRootDocs – basic scanning', () => {
+  it('scans root .md files and returns parsed docs', () => {
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), '# Architecture\n\nSystem design overview.');
+    writeFileSync(join(tmpDir, 'MIGRATION.md'), '# Migration\n\nHow to migrate from v1 to v2.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(2);
+    const titles = docs.map((d) => d.title);
+    expect(titles).toContain('Architecture');
+    expect(titles).toContain('Migration');
+  });
+
+  it('returns empty array for non-existent directory', () => {
+    const docs = scanRootDocs(join(tmpDir, 'does-not-exist'));
+    expect(docs).toEqual([]);
+  });
+
+  it('skips README.md', () => {
+    writeFileSync(join(tmpDir, 'README.md'), '# README\n\nThe readme.');
+    writeFileSync(join(tmpDir, 'CONTRIBUTING.md'), '# Contributing\n\nHow to contribute.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.title).toBe('Contributing');
+  });
+
+  it('skips LICENSE and LICENSE.md', () => {
+    writeFileSync(join(tmpDir, 'LICENSE'), 'MIT License...');
+    writeFileSync(join(tmpDir, 'LICENSE.md'), '# License\n\nMIT.');
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), '# Architecture\n\nDesign.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.title).toBe('Architecture');
+  });
+
+  it('skips CODE_OF_CONDUCT.md', () => {
+    writeFileSync(join(tmpDir, 'CODE_OF_CONDUCT.md'), '# Code of Conduct\n\nBe nice.');
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), '# Architecture\n\nDesign.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.title).toBe('Architecture');
+  });
+
+  it('skips CHANGELOG.md', () => {
+    writeFileSync(join(tmpDir, 'CHANGELOG.md'), '# Changelog\n\n## v1.0.0\n\nInitial release.');
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), '# Architecture\n\nDesign.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.title).toBe('Architecture');
+  });
+
+  it('returns docs sorted alphabetically by title', () => {
+    writeFileSync(join(tmpDir, 'MIGRATION.md'), '# Migration\n\nMigration guide.');
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), '# Architecture\n\nSystem design.');
+    writeFileSync(join(tmpDir, 'CONTRIBUTING.md'), '# Contributing\n\nHow to contribute.');
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs.map((d) => d.title)).toEqual(['Architecture', 'Contributing', 'Migration']);
+  });
+
+  it('parses files with parseMarkdownDoc (exposes rawContent)', () => {
+    const content = '# Architecture\n\nSystem design overview.';
+    writeFileSync(join(tmpDir, 'ARCHITECTURE.md'), content);
+
+    const docs = scanRootDocs(tmpDir);
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.rawContent).toBe(content);
   });
 });

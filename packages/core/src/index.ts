@@ -63,4 +63,4 @@ export type { ParsedSection, ParsedMarkdownDoc, DocsExtractionOptions } from './
 
 export { parseMarkdownDoc } from './markdown-parser.js';
 
-export { scanDocs, docsToExtractedDocuments } from './docs-scanner.js';
+export { scanDocs, docsToExtractedDocuments, scanRootDocs } from './docs-scanner.js';

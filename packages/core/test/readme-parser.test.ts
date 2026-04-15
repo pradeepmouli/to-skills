@@ -95,29 +95,29 @@ describe('parseReadme – features', () => {
   });
 });
 
-describe('parseReadme – pitfalls', () => {
-  it('extracts Pitfalls section', () => {
-    const md = `# Pkg\n\n## Pitfalls\n\nDo not do X.\n\n## Usage\n\nUsage.`;
+describe('parseReadme – troubleshooting', () => {
+  it('extracts Troubleshooting section', () => {
+    const md = `# Pkg\n\n## Troubleshooting\n\nDo not do X.\n\n## Usage\n\nUsage.`;
     const result = parseReadme(md);
-    expect(result.pitfalls).toBe('Do not do X.');
+    expect(result.troubleshooting).toBe('Do not do X.');
   });
 
-  it('accepts "Common Mistakes" as variant', () => {
-    const md = `# Pkg\n\n## Common Mistakes\n\nAvoid Y.\n\n## Usage\n\nUsage.`;
+  it('accepts "Common Issues" as variant', () => {
+    const md = `# Pkg\n\n## Common Issues\n\nAvoid Y.\n\n## Usage\n\nUsage.`;
     const result = parseReadme(md);
-    expect(result.pitfalls).toBe('Avoid Y.');
+    expect(result.troubleshooting).toBe('Avoid Y.');
   });
 
-  it('accepts "Gotchas" as variant', () => {
-    const md = `# Pkg\n\n## Gotchas\n\nWatch out for Z.\n\n## Usage\n\nUsage.`;
+  it('accepts "Common Errors" as variant', () => {
+    const md = `# Pkg\n\n## Common Errors\n\nWatch out for Z.\n\n## Usage\n\nUsage.`;
     const result = parseReadme(md);
-    expect(result.pitfalls).toBe('Watch out for Z.');
+    expect(result.troubleshooting).toBe('Watch out for Z.');
   });
 
-  it('accepts "Caveats" as variant', () => {
-    const md = `# Pkg\n\n## Caveats\n\nBe aware of W.\n\n## Usage\n\nUsage.`;
+  it('accepts "FAQ" as variant', () => {
+    const md = `# Pkg\n\n## FAQ\n\nBe aware of W.\n\n## Usage\n\nUsage.`;
     const result = parseReadme(md);
-    expect(result.pitfalls).toBe('Be aware of W.');
+    expect(result.troubleshooting).toBe('Be aware of W.');
   });
 });
 

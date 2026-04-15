@@ -146,3 +146,45 @@ export function scanDocs(options: DocsExtractionOptions): ParsedMarkdownDoc[] {
 export function docsToExtractedDocuments(docs: ParsedMarkdownDoc[]): ExtractedDocument[] {
   return docs.map((doc) => ({ title: doc.title, content: doc.rawContent }));
 }
+
+/**
+ * Scan root-level .md files that contain useful documentation.
+ * Skips README.md (parsed separately), LICENSE, CODE_OF_CONDUCT.md.
+ *
+ * @category Parsing
+ * @useWhen
+ * - You want to include well-known root-level markdown files (ARCHITECTURE.md, MIGRATION.md, CONTRIBUTING.md) as documents
+ * - Supplementing API skills with project-level documentation context
+ * @avoidWhen
+ * - Your root directory has many auto-generated or release-tracking markdown files — use explicit include lists instead
+ */
+export function scanRootDocs(projectRoot: string): ParsedMarkdownDoc[] {
+  const SKIP = new Set([
+    'readme.md',
+    'license',
+    'license.md',
+    'code_of_conduct.md',
+    'changelog.md'
+  ]);
+
+  if (!existsSync(projectRoot)) return [];
+
+  const entries = readdirSync(projectRoot, { withFileTypes: true });
+  const docs: ParsedMarkdownDoc[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!/\.mdx?$/i.test(entry.name)) continue;
+    if (SKIP.has(entry.name.toLowerCase())) continue;
+
+    try {
+      const content = readFileSync(join(projectRoot, entry.name), 'utf-8');
+      const parsed = parseMarkdownDoc(content, entry.name);
+      docs.push(parsed);
+    } catch {
+      // skip unreadable
+    }
+  }
+
+  return docs.sort((a, b) => a.title.localeCompare(b.title));
+}

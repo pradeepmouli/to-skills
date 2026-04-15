@@ -3,7 +3,12 @@ import type { ParsedReadme } from './audit-types.js';
 // Heading alias maps keyed by canonical field name
 const QUICK_START_HEADINGS = new Set(['quick start', 'usage', 'getting started']);
 const FEATURES_HEADINGS = new Set(['features', 'key features', 'highlights']);
-const PITFALLS_HEADINGS = new Set(['pitfalls', 'common mistakes', 'gotchas', 'caveats']);
+const TROUBLESHOOTING_HEADINGS = new Set([
+  'troubleshooting',
+  'common issues',
+  'common errors',
+  'faq'
+]);
 
 /** Return true if the line is a `## level-2` heading. */
 function isH2(line: string): boolean {
@@ -39,13 +44,13 @@ function nonEmpty(s: string): string | undefined {
  *   Consecutive lines are joined with a single space.
  * - **quickStart** – content under `## Quick Start`, `## Usage`, or `## Getting Started`.
  * - **features** – content under `## Features`, `## Key Features`, or `## Highlights`.
- * - **pitfalls** – content under `## Pitfalls`, `## Common Mistakes`, `## Gotchas`,
- *   or `## Caveats`.
+ * - **troubleshooting** – content under `## Troubleshooting`, `## Common Issues`, `## Common Errors`,
+ *   or `## FAQ`.
  *
  * @category Parsing
  * @useWhen
  * - You need structured README sections for audit context or skill enrichment
- * - The audit engine calls this to check for Features and Pitfalls sections
+ * - The audit engine calls this to check for Features and Troubleshooting sections
  */
 export function parseReadme(markdown: string): ParsedReadme {
   if (!markdown.trim()) return {};
@@ -114,7 +119,7 @@ export function parseReadme(markdown: string): ParsedReadme {
 
       if (QUICK_START_HEADINGS.has(text)) field = 'quickStart';
       else if (FEATURES_HEADINGS.has(text)) field = 'features';
-      else if (PITFALLS_HEADINGS.has(text)) field = 'pitfalls';
+      else if (TROUBLESHOOTING_HEADINGS.has(text)) field = 'troubleshooting';
 
       if (field !== null) {
         // Collect lines until the next ## heading or EOF

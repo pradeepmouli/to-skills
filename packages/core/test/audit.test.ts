@@ -904,11 +904,11 @@ describe('W5: README Features', () => {
 });
 
 // ---------------------------------------------------------------------------
-// W6: README Pitfalls
+// W6: README Troubleshooting
 // ---------------------------------------------------------------------------
 
-describe('W6: README Pitfalls', () => {
-  it('fails when readme has no pitfalls section', () => {
+describe('W6: README Troubleshooting', () => {
+  it('fails when readme has no troubleshooting section', () => {
     const issues = getIssues(
       makeSkill(),
       makeContext({
@@ -925,11 +925,11 @@ describe('W6: README Pitfalls', () => {
     expect(issues).toHaveLength(1);
   });
 
-  it('passes when pitfalls is present', () => {
+  it('passes when troubleshooting is present', () => {
     const passing = getPassing(
       makeSkill(),
       makeContext({
-        readme: { blockquote: 'A useful library.', pitfalls: 'Do not use X with Y.' }
+        readme: { blockquote: 'A useful library.', troubleshooting: 'If X fails, try Y.' }
       }),
       'W6'
     );
@@ -1649,7 +1649,7 @@ describe('auditSkill — AuditResult structure', () => {
         blockquote: 'A fully-documented library for data transformation.',
         firstParagraph: 'Extended description of the full library capabilities.',
         features: '- Feature 1\n- Feature 2',
-        pitfalls: 'Do not use X with Y.',
+        troubleshooting: 'If X fails, try Y.',
         quickStart: '```\nimport { transform } from "full-lib";\ntransform("data");\n```'
       }
     });

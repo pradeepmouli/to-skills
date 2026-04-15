@@ -100,7 +100,7 @@ export interface Config {
 **W3:** Use `@deprecated`, `@since`, `@throws`, `@see` tags where applicable.
 **W4:** Add 10+ domain-specific keywords.
 **W5:** Add `## Features` section to README.
-**W6:** Add `## Pitfalls` section to README — expert "NEVER do X because Y" knowledge. This is what makes a skill genuinely useful vs just being an API reference.
+**W6:** Add `## Troubleshooting` section to README — common issues, errors, and FAQs users encounter.
 
 ## JSDoc Tags for Expert-Quality Skills
 
@@ -240,9 +240,9 @@ main();
 
 - **Feature** — what it does and why
 
-## Pitfalls
+## Troubleshooting
 
-- **NEVER do X** — because [non-obvious reason]
+- **Error X occurs when** — [cause and fix]
 ```
 
 Accepted heading variants (case-insensitive):
@@ -250,14 +250,14 @@ Accepted heading variants (case-insensitive):
 |-----------|--------------|
 | `## Quick Start` | `## Usage`, `## Getting Started` |
 | `## Features` | `## Key Features`, `## Highlights` |
-| `## Pitfalls` | `## Common Mistakes`, `## Gotchas`, `## Caveats` |
+| `## Troubleshooting` | `## Common Issues`, `## Common Errors`, `## FAQ` |
 
 ## Why This Matters (Skill-Judge Alignment)
 
 Generated skills are evaluated on 8 dimensions. The biggest gaps without conventions:
 
 - **Knowledge Delta**: Function signatures are things Claude already knows. The value comes from @param prose, @returns meaning, @throws conditions, and Pitfalls.
-- **Anti-Patterns**: Without a ## Pitfalls section, skills score ~2/15 on anti-pattern quality.
+- **Anti-Patterns**: Without a ## Troubleshooting section, skills score ~2/15 on anti-pattern quality.
 - **Description**: Without proper package.json description + keywords, skills never trigger.
 
 ## Workflow

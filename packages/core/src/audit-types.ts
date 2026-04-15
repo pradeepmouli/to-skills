@@ -66,8 +66,8 @@ export interface ParsedReadme {
   quickStart?: string;
   /** Features or capabilities section content */
   features?: string;
-  /** Pitfalls, caveats, or anti-patterns section content (maps to skill-judge D3) */
-  pitfalls?: string;
+  /** Troubleshooting, common issues, or FAQ section content */
+  troubleshooting?: string;
 }
 
 /**

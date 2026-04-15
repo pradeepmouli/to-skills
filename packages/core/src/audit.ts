@@ -513,23 +513,23 @@ function checkW5(context: AuditContext, issues: AuditIssue[], passing: AuditPass
 }
 
 // ---------------------------------------------------------------------------
-// W6: README Pitfalls — context.readme?.pitfalls must exist
+// W6: README Troubleshooting — context.readme?.troubleshooting must exist
 // ---------------------------------------------------------------------------
 function checkW6(context: AuditContext, issues: AuditIssue[], passing: AuditPass[]): void {
-  if (!context.readme?.pitfalls?.trim()) {
+  if (!context.readme?.troubleshooting?.trim()) {
     issues.push(
       issue(
         'warning',
         'W6',
         'README.md',
         null,
-        'pitfalls',
-        'README is missing a Pitfalls/Caveats section',
-        'Add a "## Pitfalls", "## Caveats", or "## Anti-patterns" section to README.md'
+        'troubleshooting',
+        'README is missing a Troubleshooting section',
+        'Add a "## Troubleshooting", "## Common Issues", or "## FAQ" section to README.md'
       )
     );
   } else {
-    passing.push(pass('W6', 'README has a Pitfalls/Caveats section'));
+    passing.push(pass('W6', 'README has a Troubleshooting section'));
   }
 }
 
