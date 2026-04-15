@@ -164,7 +164,19 @@ export function scanRootDocs(projectRoot: string): ParsedMarkdownDoc[] {
     'license',
     'license.md',
     'code_of_conduct.md',
-    'changelog.md'
+    'changelog.md',
+    'changes.md',
+    'history.md',
+    'releases.md',
+    'security.md',
+    'support.md',
+    'contributors.md',
+    'authors.md',
+    'acknowledgments.md',
+    'agents.md',
+    'claude.md',
+    'gemini.md',
+    'copilot.md'
   ]);
 
   if (!existsSync(projectRoot)) return [];
