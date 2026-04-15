@@ -105,8 +105,8 @@ Extraction rules:
   Consecutive lines are joined with a single space.
 - **quickStart** – content under `## Quick Start`, `## Usage`, or `## Getting Started`.
 - **features** – content under `## Features`, `## Key Features`, or `## Highlights`.
-- **pitfalls** – content under `## Pitfalls`, `## Common Mistakes`, `## Gotchas`,
-  or `## Caveats`.
+- **troubleshooting** – content under `## Troubleshooting`, `## Common Issues`, `## Common Errors`,
+  or `## FAQ`.
 
 ```ts
 parseReadme(markdown: string): ParsedReadme
@@ -162,6 +162,53 @@ docsToExtractedDocuments(docs: ParsedMarkdownDoc[]): ExtractedDocument[]
 
 - `docs: ParsedMarkdownDoc[]`
   **Returns:** `ExtractedDocument[]`
+
+### `scanRootDocs`
+
+Scan root-level .md files that contain useful documentation.
+Skips README.md (parsed separately), LICENSE, CODE_OF_CONDUCT.md.
+
+```ts
+scanRootDocs(projectRoot: string): ParsedMarkdownDoc[]
+```
+
+**Parameters:**
+
+- `projectRoot: string`
+  **Returns:** `ParsedMarkdownDoc[]`
+
+### `scanExamples`
+
+Scan an examples directory for `.ts`/`.js`/`.tsx`/`.jsx` files and parse
+their import statements and top-level comments.
+
+```ts
+scanExamples(examplesDir: string): ParsedExample[]
+```
+
+**Parameters:**
+
+- `examplesDir: string`
+  **Returns:** `ParsedExample[]`
+
+```ts
+JSDoc tags (use TypeDoc extraction instead)
+```
+
+### `linkExamplesToSkill`
+
+Mutate an `ExtractedSkill` in place by linking each example to the first
+matching exported function or class. Falls back to `skill.examples` when no
+symbol matches any export.
+
+```ts
+linkExamplesToSkill(examples: ParsedExample[], skill: ExtractedSkill): void
+```
+
+**Parameters:**
+
+- `examples: ParsedExample[]`
+- `skill: ExtractedSkill`
 
 ## Audit
 

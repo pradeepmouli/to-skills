@@ -1,6 +1,6 @@
 # to-skills
 
-> Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation
+> Compile-time generator of AI agent skills from your codebase. Inline docs, CLI definitions, config schemas, and examples compile into progressively disclosed SKILL.md files that any LLM can discover.
 
 ## @to-skills/core
 
@@ -27,6 +27,12 @@ Config/env surfaces → ## Configuration
 - `parseMarkdownDoc`: Parse a markdown document string into a structured `ParsedMarkdownDoc`.
 - `scanDocs`: Scan a docs directory and return parsed markdown documents.
 - `docsToExtractedDocuments`: Convert parsed markdown documents to the generic `ExtractedDocument` shape.
+- `scanRootDocs`: Scan root-level .md files that contain useful documentation.
+Skips README.md (parsed separately), LICENSE, CODE_OF_CONDUCT.md.
+- `scanExamples`: Scan an examples directory for `.ts`/`.js`/`.tsx`/`.jsx` files and parse
+their import statements and top-level comments.
+- `linkExamplesToSkill`: Mutate an `ExtractedSkill` in place by linking each example to the first
+matching exported function or class.
 
 ## Optional
 
@@ -63,6 +69,7 @@ Positional arguments are ordered and do not use flag prefixes.
 - `ParsedSection`: A single section extracted from a markdown document, corresponding to one
 heading and all content that follows it until the next heading.
 - `ParsedMarkdownDoc`: A fully parsed markdown document with structured metadata and sections.
+- `ParsedExample`
 
 ## @to-skills/typedoc
 

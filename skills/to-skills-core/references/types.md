@@ -201,7 +201,7 @@ Structured representation of key sections extracted from a package README.
 - `firstParagraph: string` (optional) — First prose paragraph after any heading or blockquote
 - `quickStart: string` (optional) — Quick-start or getting-started section content
 - `features: string` (optional) — Features or capabilities section content
-- `pitfalls: string` (optional) — Pitfalls, caveats, or anti-patterns section content (maps to skill-judge D3)
+- `troubleshooting: string` (optional) — Troubleshooting, common issues, or FAQ section content
 
 ### `AuditResult`
 
@@ -323,3 +323,16 @@ A fully parsed markdown document with structured metadata and sections.
 - `sections: ParsedSection[]` — Ordered list of sections extracted from the document body
 - `rawContent: string` — Original unmodified markdown source text of the document
 - `order: number` — Zero-based sort order used to sequence this document within a collection
+
+## examples-scanner
+
+### `ParsedExample`
+
+**Properties:**
+
+- `relativePath: string` — File path relative to examples dir
+- `title: string` — Title derived from top-level JSDoc
+- `description: string` (optional) — Description from top-level JSDoc or first comment
+- `importedSymbols: string[]` — Imported symbol names (e.g. ["renderSkill", "writeSkills"])
+- `importedFrom: string[]` — Package names imported from (e.g. ["@to-skills/core"])
+- `content: string` — Full file content
