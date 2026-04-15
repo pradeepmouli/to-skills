@@ -5,13 +5,19 @@
   "keywords": [
     "agent-skills",
     "ai",
+    "claude-code",
+    "cli",
+    "copilot",
+    "cursor",
     "documentation",
+    "jsdoc",
     "llm",
     "llms-txt",
     "skill-md",
     "to-skills",
     "typedoc",
-    "typedoc-plugin"
+    "typedoc-plugin",
+    "typescript"
   ],
   "license": "MIT",
   "repository": {

@@ -2,7 +2,7 @@
   "name": "to-skills",
   "version": "0.0.0",
   "private": true,
-  "description": "Generate structured AI agent skills (SKILL.md) and llms.txt from your TypeScript API documentation",
+  "description": "Compile inline documentation into AI agent skills. Your code is the source of truth.",
   "license": "MIT",
   "author": "Pradeep Mouli",
   "repository": {
