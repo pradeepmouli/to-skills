@@ -84,6 +84,17 @@ export default defineConfig({
 
 The VitePress plugin uses your sidebar for authoritative page ordering — no frontmatter heuristics.
 
+### Library with Docs Site (Docusaurus)
+
+```typescript
+import { extractDocusaurusDocs } from '@to-skills/docusaurus';
+
+const docs = extractDocusaurusDocs({ projectRoot: '.' });
+// Returns ExtractedDocument[] — merge into your skill
+```
+
+Reads `_category_.json` for folder labels and ordering. Excludes `api/` and `blog/` by default.
+
 ### Library with Prose Docs (any framework)
 
 ```json
