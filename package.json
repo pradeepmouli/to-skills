@@ -2,7 +2,7 @@
   "name": "to-skills",
   "version": "0.0.0",
   "private": true,
-  "description": "Compile-time creation of AI agent skills. Inline code docs and examples become single-source-of-truth SKILL.md files. Also supports CLI, config, and prose doc extraction.",
+  "description": "Compile-time generator of AI agent skills from your codebase. Inline docs, CLI definitions, config schemas, and examples compile into progressively disclosed SKILL.md files that any LLM can discover.",
   "license": "MIT",
   "author": "Pradeep Mouli",
   "repository": {

@@ -1,8 +1,8 @@
 # to-skills
 
-> **to-skills** — Compile inline documentation into AI agent skills. Your code is the source of truth.
+> **to-skills** — Compile-time generator of AI agent skills from your codebase.
 
-Write expert knowledge once, in your source code — to-skills extracts, structures, and distributes it as [SKILL.md](https://agentskills.io) files that AI agents can discover and use.
+Inline docs, CLI definitions, config schemas, and examples compile into progressively disclosed [SKILL.md](https://agentskills.io) files that any LLM can discover. Integrated with TypeDoc, with support for conventional repo docs, and plugins for Docusaurus and VitePress provided for what code can't cover.
 
 ## Why Inline?
 
