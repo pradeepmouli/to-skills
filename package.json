@@ -36,16 +36,16 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
-    "@changesets/cli": "^2.29.4",
-    "@types/node": "^25.5.0",
-    "@typescript/native-preview": "7.0.0-dev.20260323.1",
-    "@vitest/coverage-v8": "^4.1.1",
-    "lint-staged": "^15.5.1",
-    "oxlint": "^1.56.0",
-    "simple-git-hooks": "^2.12.1",
-    "typedoc": "^0.28.17",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.0"
+    "@changesets/cli": "^2.30.0",
+    "@types/node": "^25.6.0",
+    "@typescript/native-preview": "7.0.0-dev.20260414.1",
+    "@vitest/coverage-v8": "^4.1.4",
+    "lint-staged": "^16.4.0",
+    "oxlint": "^1.60.0",
+    "simple-git-hooks": "^2.13.1",
+    "typedoc": "^0.28.19",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",
