@@ -25,65 +25,142 @@ When an agent updates your code, inline docs update atomically. There's no separ
 export function loadConfig(path: string): Config { ... }
 ```
 
-`pnpm typedoc` → the generated skill tells every LLM _when_ to use this function, _what_ to watch out for, and _how_ to call it. The code is the single source of truth.
+`pnpm typedoc` → the generated skill tells every LLM _when_ to use this function, _what_ to watch out for, and _how_ to call it.
 
-## Quick Start
+## Quick Start by Project Type
+
+### TypeScript Library (most common)
 
 ```bash
-# Install (auto-discovered by TypeDoc — zero config)
 pnpm add -D typedoc-plugin-to-skills
-
-# Generate skills alongside your normal docs
 pnpm typedoc
 ```
 
-Skills are written to `skills/<package-name>/SKILL.md`, ready for discovery via:
+That's it. TypeDoc auto-discovers the plugin. Skills appear at `skills/<package-name>/SKILL.md`.
 
-```bash
-npx skills add your-org/your-repo
+### Monorepo
+
+```json
+// typedoc.json
+{
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/*"],
+  "plugin": ["typedoc-plugin-to-skills"],
+  "skillsPerPackage": true
+}
 ```
+
+One skill per package — each with its own SKILL.md, references, and config surfaces.
+
+### CLI Tool (commander/yargs)
+
+```typescript
+import { extractCliSkill } from '@to-skills/cli';
+import { renderSkill, writeSkills } from '@to-skills/core';
+
+const skill = await extractCliSkill({
+  program, // commander Program object
+  metadata: { name: 'my-tool', keywords: ['build', 'deploy'] }
+});
+writeSkills([renderSkill(skill)], { outDir: 'skills' });
+```
+
+Introspects command definitions and correlates flags with typed `*Options` interfaces for JSDoc enrichment.
+
+### Library with Docs Site (VitePress)
+
+```typescript
+// .vitepress/config.mts
+import { defineConfig } from 'vitepress';
+import { toSkills } from '@to-skills/vitepress';
+
+export default defineConfig({
+  vite: {
+    plugins: [toSkills({ skillsOutDir: 'skills' })]
+  },
+  themeConfig: { sidebar: [...] }
+});
+```
+
+The VitePress plugin uses your sidebar for authoritative page ordering — no frontmatter heuristics.
+
+### Library with Prose Docs (any framework)
+
+```json
+// typedoc.json — opt-in alongside API extraction
+{
+  "plugin": ["typedoc-plugin-to-skills"],
+  "skillsIncludeDocs": true,
+  "skillsDocsDir": "docs"
+}
+```
+
+Scans `docs/` directory for markdown files. Also picks up root-level docs (ARCHITECTURE.md, MIGRATION.md, TROUBLESHOOTING.md).
 
 ## What Gets Extracted
 
-| Source                            | What                                | Where It Goes                                 |
-| --------------------------------- | ----------------------------------- | --------------------------------------------- |
-| JSDoc summaries                   | Function/type descriptions          | SKILL.md Quick Reference + references         |
-| `@useWhen` / `@avoidWhen`         | Decision procedures                 | SKILL.md "When to Use"                        |
-| `@pitfalls`                       | Anti-patterns (NEVER + BECAUSE)     | SKILL.md "Pitfalls"                           |
-| `@remarks`                        | Expert knowledge beyond the summary | references/functions.md                       |
-| `@category`                       | Export grouping                     | Quick Reference + reference file structure    |
-| `@config` interfaces              | Config surface documentation        | SKILL.md Configuration + references/config.md |
-| `@example`                        | Usage examples                      | SKILL.md Quick Start + references/examples.md |
-| `@param` / `@returns` / `@throws` | API contract                        | references/functions.md                       |
-| README `## Features`              | Feature list                        | SKILL.md                                      |
-| `docs/` directory                 | Prose guides, tutorials             | references/ (one file per page)               |
-| Commander/yargs programs          | CLI commands, flags                 | references/commands.md                        |
+### Sources
 
-Everything that CAN be inline SHOULD be inline. Escape hatches (`@remarks`, `docs/`, README sections) handle the rest.
+| Source                         | Extractor                                        | What It Produces                                                        |
+| ------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| TypeScript source + JSDoc      | `typedoc-plugin-to-skills`                       | API reference — functions, classes, types, enums, variables             |
+| `@useWhen` / `@avoidWhen` tags | TypeDoc plugin                                   | Decision procedures in SKILL.md "When to Use"                           |
+| `@pitfalls` tag                | TypeDoc plugin                                   | Anti-patterns in SKILL.md "Pitfalls"                                    |
+| `@remarks` tag                 | TypeDoc plugin                                   | Expert knowledge in references                                          |
+| `@category` tag                | TypeDoc plugin                                   | Export grouping in Quick Reference + references                         |
+| `@config` interfaces           | TypeDoc plugin                                   | Configuration tables in SKILL.md + references/config.md                 |
+| Commander/yargs programs       | `@to-skills/cli`                                 | CLI commands + flags in references/commands.md                          |
+| `examples/` directory          | `@to-skills/core`                                | Linked to matching exports by import analysis                           |
+| `docs/` directory              | `@to-skills/core` or VitePress/Docusaurus plugin | Prose docs as reference files                                           |
+| Root `.md` files               | `@to-skills/core`                                | ARCHITECTURE.md, MIGRATION.md, etc. as references                       |
+| README.md                      | `@to-skills/core`                                | Blockquote description, ## Features, ## Quick Start, ## Troubleshooting |
+| package.json                   | TypeDoc plugin                                   | Name, description, keywords, repository, license                        |
 
-## Features
+### Audit Checks
 
-- **Code Is the Source of Truth** — write docs inline, generate skills mechanically. No separate files to maintain.
-- **Progressive Disclosure** — lean SKILL.md (~200 tokens) for discovery, detailed reference files loaded on demand
-- **Documentation Audit** — 25 checks across fatal/error/warning/alert with file:line references and fix suggestions
-- **Multi-Source Extraction** — TypeDoc for API, commander/yargs for CLI, VitePress/Docusaurus for prose docs
-- **Token Budgeting** — per-file token limits prevent context window overflow
-- **Config Surface Detection** — typed interfaces with `@config` tag rendered as configuration documentation
+The documentation audit runs automatically during `pnpm typedoc` and reports issues at four severity levels:
+
+| Severity    | What It Checks                                                                                                                          | CI Behavior           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **fatal**   | package.json description, 5+ keywords, README description, JSDoc on every export                                                        | Exit 1 (configurable) |
+| **error**   | @param prose, @returns on non-void, interface property JSDoc, at least one @example, repository URL                                     | Exit 1 (configurable) |
+| **warning** | @useWhen, @avoidWhen, @pitfalls presence, @remarks on complex functions, @category usage, README ## Features, README ## Troubleshooting | Exit 0 (logged)       |
+| **alert**   | Generic keywords, @param restates type, trivial @example, verbose Quick Start                                                           | Exit 0 (logged)       |
+
+Enable CI enforcement: `"skillsAuditFailOnError": true`
+
+### Generated Output
+
+```
+skills/<package-name>/
+  SKILL.md                     # Discovery file (~200 tokens)
+  references/
+    functions.md               # Grouped by @category or source module
+    types.md                   # Interfaces with properties, type aliases
+    classes.md                 # With inheritance, methods, properties
+    config.md                  # @config interfaces as option tables
+    commands.md                # CLI commands with flags (from @to-skills/cli)
+    variables.md               # Exported constants
+    examples.md                # From @example tags
+    architecture.md            # From root ARCHITECTURE.md
+    getting-started.md         # From docs/ pages
+    ...                        # One file per doc page
+```
+
+Each reference file is token-budgeted independently (default 4000 tokens).
 
 ## Packages
 
-| Package                                               | Description                                                  |
-| ----------------------------------------------------- | ------------------------------------------------------------ |
-| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper — just install, no config             |
-| [`@to-skills/core`](packages/core)                    | Shared types, renderer, audit engine, token budgeting        |
-| [`@to-skills/typedoc`](packages/typedoc)              | TypeDoc plugin — API extraction from the reflection tree     |
-| [`@to-skills/cli`](packages/cli)                      | CLI extraction — commander introspection + `--help` fallback |
-| [`@to-skills/vitepress`](packages/vitepress)          | VitePress plugin — sidebar-driven docs extraction            |
-| [`@to-skills/docusaurus`](packages/docusaurus)        | Docusaurus adapter — `_category_.json` + docs scanning       |
+| Package                                               | Description                                                            |
+| ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper — just install, no config                       |
+| [`@to-skills/core`](packages/core)                    | Types, renderer, audit engine, token budgeting, docs/examples scanning |
+| [`@to-skills/typedoc`](packages/typedoc)              | TypeDoc plugin — API + config extraction from the reflection tree      |
+| [`@to-skills/cli`](packages/cli)                      | Commander/yargs introspection + `--help` fallback + flag correlation   |
+| [`@to-skills/vitepress`](packages/vitepress)          | VitePress Vite plugin — sidebar-driven docs extraction                 |
+| [`@to-skills/docusaurus`](packages/docusaurus)        | Docusaurus adapter — `_category_.json` + docs scanning                 |
 
 ## Configuration
-
-Add to your `typedoc.json`:
 
 ```json
 {
@@ -107,18 +184,14 @@ Add to your `typedoc.json`:
 
 See the [full options reference](packages/typedoc/src/plugin.ts) for all 14 options.
 
-## How It Works
+## Examples
 
-```
-Source code (JSDoc + convention tags)
-    → TypeDoc parses into reflection tree
-    → @to-skills/typedoc extracts functions, types, config surfaces
-    → @to-skills/core renders SKILL.md + token-budgeted references
-    → Audit checks for completeness (25 checks, 4 severity levels)
-    → Skills written to skills/<name>/SKILL.md
-```
+See the [`examples/`](examples/) directory for runnable scripts:
 
-For CLI tools, `@to-skills/cli` introspects commander/yargs programs and correlates flags with typed option interfaces. For prose docs, `@to-skills/vitepress` reads VitePress sidebar configuration for authoritative page ordering.
+- **[basic-skill-generation.ts](examples/basic-skill-generation.ts)** — generate a SKILL.md from an ExtractedSkill object
+- **[audit-and-fix.ts](examples/audit-and-fix.ts)** — run the documentation audit and print results
+- **[cli-extraction.ts](examples/cli-extraction.ts)** — extract skills from a commander program
+- **[docs-scanning.ts](examples/docs-scanning.ts)** — include prose docs alongside API skills
 
 ## Ecosystem
 
