@@ -1,8 +1,8 @@
 # to-skills
 
-> Your code is the source of truth. Your documentation should be too.
+> **to-skills** — Compile inline documentation into AI agent skills. Your code is the source of truth.
 
-to-skills compiles inline documentation into structured [SKILL.md](https://agentskills.io) files that AI agents can discover and use. Write expert knowledge once, in your source code — to-skills extracts, structures, and distributes it.
+Write expert knowledge once, in your source code — to-skills extracts, structures, and distributes it as [SKILL.md](https://agentskills.io) files that AI agents can discover and use.
 
 ## Why Inline?
 
