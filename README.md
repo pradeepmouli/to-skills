@@ -55,14 +55,6 @@ Generates both `llms.txt` (summary with truncated descriptions) and `llms-full.t
 - **JSDoc Convention Tags** — @useWhen, @avoidWhen, @pitfalls for expert knowledge extraction
 - **Config Surface Detection** — interfaces with @config tag or \*Options suffix rendered as configuration docs
 
-## Pitfalls
-
-- **NEVER set skillsMaxTokens below 500** — reference files become truncated mid-signature, producing broken code blocks that confuse LLMs
-- **NEVER enable skillsAuditFailOnError in local development** — it blocks all typedoc output on any audit failure, use it only in CI
-- **NEVER use with Zod v3 for config extraction** — @config interface detection relies on TypeDoc's type resolution which requires v4 introspection APIs
-- **NEVER mix registerDeep and registerFlat on the same schema** — registry entries conflict silently producing incorrect field configs
-- **NEVER forget blockTags in typedoc.json** — custom tags like @useWhen, @avoidWhen, @pitfalls won't be extracted without declaring them
-
 ## Packages
 
 | Package                                               | Description                                                         |
