@@ -1,8 +1,31 @@
 # to-skills
 
-Generate structured AI agent skills ([SKILL.md](https://agentskills.io)) and [llms.txt](https://llmstxt.org) from your TypeScript API documentation.
+> Your code is the source of truth. Your documentation should be too.
 
-Install the TypeDoc plugin and your API docs become discoverable agent skills — compatible with Claude Code, Cursor, Copilot, and [500+ other agents](https://github.com/VoltAgent/awesome-agent-skills).
+to-skills compiles inline documentation into structured [SKILL.md](https://agentskills.io) files that AI agents can discover and use. Write expert knowledge once, in your source code — to-skills extracts, structures, and distributes it.
+
+## Why Inline?
+
+When an agent updates your code, inline docs update atomically. There's no separate file to remember, no coordination problem, no drift. The agent edits ONE location and the truth propagates mechanically.
+
+```typescript
+/**
+ * Parse a configuration file.
+ *
+ * @useWhen
+ * - Loading config from user-provided paths
+ * - Dynamic config resolution at startup
+ *
+ * @pitfalls
+ * - NEVER trust user paths without sanitization — resolves relative to cwd
+ *
+ * @param path Path to the config file
+ * @returns Parsed and validated configuration
+ */
+export function loadConfig(path: string): Config { ... }
+```
+
+`pnpm typedoc` → the generated skill tells every LLM _when_ to use this function, _what_ to watch out for, and _how_ to call it. The code is the single source of truth.
 
 ## Quick Start
 
@@ -14,91 +37,88 @@ pnpm add -D typedoc-plugin-to-skills
 pnpm typedoc
 ```
 
-That's it. TypeDoc finds the plugin automatically. Skills are written to `skills/<package-name>/SKILL.md`, ready for discovery via:
+Skills are written to `skills/<package-name>/SKILL.md`, ready for discovery via:
 
 ```bash
 npx skills add your-org/your-repo
 ```
 
-## What It Generates
+## What Gets Extracted
 
-### SKILL.md (Agent Skills)
+| Source                            | What                                | Where It Goes                                 |
+| --------------------------------- | ----------------------------------- | --------------------------------------------- |
+| JSDoc summaries                   | Function/type descriptions          | SKILL.md Quick Reference + references         |
+| `@useWhen` / `@avoidWhen`         | Decision procedures                 | SKILL.md "When to Use"                        |
+| `@pitfalls`                       | Anti-patterns (NEVER + BECAUSE)     | SKILL.md "Pitfalls"                           |
+| `@remarks`                        | Expert knowledge beyond the summary | references/functions.md                       |
+| `@category`                       | Export grouping                     | Quick Reference + reference file structure    |
+| `@config` interfaces              | Config surface documentation        | SKILL.md Configuration + references/config.md |
+| `@example`                        | Usage examples                      | SKILL.md Quick Start + references/examples.md |
+| `@param` / `@returns` / `@throws` | API contract                        | references/functions.md                       |
+| README `## Features`              | Feature list                        | SKILL.md                                      |
+| `docs/` directory                 | Prose guides, tutorials             | references/ (one file per page)               |
+| Commander/yargs programs          | CLI commands, flags                 | references/commands.md                        |
 
-Structured files following the [agentskills.io specification](https://agentskills.io/specification) with:
-
-- YAML frontmatter (name, description, license)
-- "When to Use" triggers derived from your API surface
-- Quick reference of all exports
-- Full function signatures, parameters, return types
-- Class members, types, enums
-- Usage examples from `@example` JSDoc tags
-- Token-budgeted output (default 4000 tokens per skill)
-
-### llms.txt (opt-in)
-
-Summary index and full API dump following the [llmstxt.org](https://llmstxt.org) specification:
-
-```bash
-# Enable in typedoc.json
-{ "llmsTxt": true }
-```
-
-Generates both `llms.txt` (summary with truncated descriptions) and `llms-full.txt` (complete API content).
+Everything that CAN be inline SHOULD be inline. Escape hatches (`@remarks`, `docs/`, README sections) handle the rest.
 
 ## Features
 
+- **Code Is the Source of Truth** — write docs inline, generate skills mechanically. No separate files to maintain.
 - **Progressive Disclosure** — lean SKILL.md (~200 tokens) for discovery, detailed reference files loaded on demand
-- **Multi-Extractor Architecture** — TypeDoc for API, CLI for commander/yargs, Docusaurus for prose docs
-- **Documentation Audit** — 25 checks across fatal/error/warning/alert severity levels with file:line references
+- **Documentation Audit** — 25 checks across fatal/error/warning/alert with file:line references and fix suggestions
+- **Multi-Source Extraction** — TypeDoc for API, commander/yargs for CLI, VitePress/Docusaurus for prose docs
 - **Token Budgeting** — per-file token limits prevent context window overflow
-- **Module Grouping** — exports grouped by source file or @category tag
-- **JSDoc Convention Tags** — @useWhen, @avoidWhen, @pitfalls for expert knowledge extraction
-- **Config Surface Detection** — interfaces with @config tag or \*Options suffix rendered as configuration docs
+- **Config Surface Detection** — typed interfaces with `@config` tag rendered as configuration documentation
 
 ## Packages
 
-| Package                                               | Description                                                         |
-| ----------------------------------------------------- | ------------------------------------------------------------------- |
-| [`@to-skills/core`](packages/core)                    | Shared types, SKILL.md renderer, llms.txt renderer, token budgeting |
-| [`@to-skills/typedoc`](packages/typedoc)              | TypeDoc plugin — extracts from the reflection tree                  |
-| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper (just install, no config)                    |
+| Package                                               | Description                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| [`typedoc-plugin-to-skills`](packages/typedoc-plugin) | Auto-discovery wrapper — just install, no config             |
+| [`@to-skills/core`](packages/core)                    | Shared types, renderer, audit engine, token budgeting        |
+| [`@to-skills/typedoc`](packages/typedoc)              | TypeDoc plugin — API extraction from the reflection tree     |
+| [`@to-skills/cli`](packages/cli)                      | CLI extraction — commander introspection + `--help` fallback |
+| [`@to-skills/vitepress`](packages/vitepress)          | VitePress plugin — sidebar-driven docs extraction            |
+| [`@to-skills/docusaurus`](packages/docusaurus)        | Docusaurus adapter — `_category_.json` + docs scanning       |
 
 ## Configuration
 
-Add options to your `typedoc.json`:
+Add to your `typedoc.json`:
 
 ```json
 {
   "plugin": ["typedoc-plugin-to-skills"],
   "skillsOutDir": "skills",
   "skillsPerPackage": true,
-  "skillsIncludeExamples": true,
-  "skillsIncludeSignatures": true,
-  "skillsMaxTokens": 4000,
-  "skillsLicense": "MIT",
-  "llmsTxt": false,
-  "llmsTxtOutDir": "."
+  "skillsAudit": true,
+  "blockTags": ["@useWhen", "@avoidWhen", "@pitfalls", "@config"]
 }
 ```
 
-| Option                    | Default    | Description                         |
-| ------------------------- | ---------- | ----------------------------------- |
-| `skillsOutDir`            | `"skills"` | Output directory for SKILL.md files |
-| `skillsPerPackage`        | `true`     | One skill per package in monorepos  |
-| `skillsIncludeExamples`   | `true`     | Include `@example` JSDoc tags       |
-| `skillsIncludeSignatures` | `true`     | Include type signatures             |
-| `skillsMaxTokens`         | `4000`     | Max token budget per skill          |
-| `skillsNamePrefix`        | `""`       | Custom prefix for skill names       |
-| `skillsLicense`           | auto       | License (reads from package.json)   |
-| `llmsTxt`                 | `false`    | Generate llms.txt and llms-full.txt |
-| `llmsTxtOutDir`           | `"."`      | Output directory for llms.txt files |
+| Option                   | Default    | Description                                     |
+| ------------------------ | ---------- | ----------------------------------------------- |
+| `skillsOutDir`           | `"skills"` | Output directory for SKILL.md files             |
+| `skillsPerPackage`       | `true`     | One skill per package in monorepos              |
+| `skillsMaxTokens`        | `4000`     | Max token budget per reference file             |
+| `skillsAudit`            | `true`     | Run documentation audit during generation       |
+| `skillsAuditFailOnError` | `false`    | Fail build on fatal/error audit issues (for CI) |
+| `skillsIncludeDocs`      | `false`    | Include prose docs from `docs/` directory       |
+| `llmsTxt`                | `false`    | Generate llms.txt and llms-full.txt             |
+
+See the [full options reference](packages/typedoc/src/plugin.ts) for all 14 options.
 
 ## How It Works
 
-1. TypeDoc parses your TypeScript source into a reflection tree
-2. `@to-skills/typedoc` extracts functions, classes, types, enums with their JSDoc
-3. `@to-skills/core` renders structured SKILL.md files with frontmatter
-4. Skills are written to `skills/<name>/SKILL.md` for discovery by [skills.sh](https://skills.sh)
+```
+Source code (JSDoc + convention tags)
+    → TypeDoc parses into reflection tree
+    → @to-skills/typedoc extracts functions, types, config surfaces
+    → @to-skills/core renders SKILL.md + token-budgeted references
+    → Audit checks for completeness (25 checks, 4 severity levels)
+    → Skills written to skills/<name>/SKILL.md
+```
+
+For CLI tools, `@to-skills/cli` introspects commander/yargs programs and correlates flags with typed option interfaces. For prose docs, `@to-skills/vitepress` reads VitePress sidebar configuration for authoritative page ordering.
 
 ## Ecosystem
 
