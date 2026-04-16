@@ -92,8 +92,25 @@ function renderCommandsSection(surfaces: ExtractedConfigSurface[]): string {
   return lines.join('\n');
 }
 
+/** Max config surfaces to render inline with full tables. Beyond this, render a summary list. */
+const MAX_INLINE_CONFIG_SURFACES = 5;
+
 function renderConfigSection(surfaces: ExtractedConfigSurface[]): string {
   const lines: string[] = ['## Configuration'];
+
+  // For large config surfaces (e.g. PixiJS with 80+ *Options interfaces),
+  // render a summary list instead of full tables — details in references/config.md
+  if (surfaces.length > MAX_INLINE_CONFIG_SURFACES) {
+    lines.push('');
+    lines.push(
+      `${surfaces.length} configuration interfaces — see references/config.md for details.\n`
+    );
+    for (const surface of surfaces) {
+      const desc = surface.description ? ` — ${surface.description}` : '';
+      lines.push(`- **${surface.name}**${desc}`);
+    }
+    return lines.join('\n');
+  }
 
   for (const surface of surfaces) {
     lines.push('');
