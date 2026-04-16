@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.10.2
+
+### Patch Changes
+
+- Aggregate @useWhen/@avoidWhen/@pitfalls from classes, not just functions. Added tags field to ExtractedClass.
+
 ## 0.10.1
 
 ### Patch Changes

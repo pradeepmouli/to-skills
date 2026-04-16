@@ -1,5 +1,14 @@
 # @to-skills/typedoc
 
+## 0.11.3
+
+### Patch Changes
+
+- Aggregate @useWhen/@avoidWhen/@pitfalls from classes, not just functions. Added tags field to ExtractedClass.
+
+- Updated dependencies []:
+  - @to-skills/core@0.10.2
+
 ## 0.11.2
 
 ### Patch Changes
