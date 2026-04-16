@@ -67,6 +67,8 @@ export interface ExtractedClass {
   methods: ExtractedFunction[];
   properties: ExtractedProperty[];
   examples: string[];
+  /** JSDoc block tags (e.g. @deprecated, @since, @useWhen, @pitfalls) */
+  tags: Record<string, string>;
   /** Base class name (from `extends`) */
   extends?: string;
   /** Implemented interface names (from `implements`) */

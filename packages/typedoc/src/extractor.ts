@@ -277,6 +277,7 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     methods,
     properties,
     examples: getExamples(decl.comment),
+    tags: getTagMap(decl.comment),
     extends: extendedTypes?.[0],
     implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined,
     sourceModule: getSourceModule(decl),
@@ -620,10 +621,18 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
   const avoidWhen: string[] = [];
   const pitfalls: string[] = [];
 
+  // Collect from functions
   for (const fn of skill.functions) {
     if (fn.tags['useWhen']) useWhen.push(...parseBulletList(fn.tags['useWhen']));
     if (fn.tags['avoidWhen']) avoidWhen.push(...parseBulletList(fn.tags['avoidWhen']));
     if (fn.tags['pitfalls']) pitfalls.push(...parseBulletList(fn.tags['pitfalls']));
+  }
+
+  // Collect from classes
+  for (const cls of skill.classes) {
+    if (cls.tags['useWhen']) useWhen.push(...parseBulletList(cls.tags['useWhen']));
+    if (cls.tags['avoidWhen']) avoidWhen.push(...parseBulletList(cls.tags['avoidWhen']));
+    if (cls.tags['pitfalls']) pitfalls.push(...parseBulletList(cls.tags['pitfalls']));
   }
 
   if (useWhen.length > 0) skill.useWhen = useWhen;
