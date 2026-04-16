@@ -204,6 +204,74 @@ See the [`examples/`](examples/) directory for runnable scripts:
 - **[cli-extraction.ts](examples/cli-extraction.ts)** — extract skills from a commander program
 - **[docs-scanning.ts](examples/docs-scanning.ts)** — include prose docs alongside API skills
 
+## Case Study: PixiJS (47K stars)
+
+We forked [PixiJS](https://github.com/pixijs/pixijs) and bootstrapped to-skills to measure the before/after impact on generated skill quality, scored against the [skill-judge](https://github.com/anthropics/skill-judge) rubric (120 points, 8 dimensions).
+
+### Results
+
+| Phase                 | Score  | Grade | What Changed                                                                       | Agent Cost  |
+| --------------------- | ------ | ----- | ---------------------------------------------------------------------------------- | ----------- |
+| **Baseline**          | 48/120 | F     | `npm install typedoc-plugin-to-skills` — zero config                               | 0 tokens    |
+| **Config fix**        | 69/120 | D+    | Fixed SKILL.md bloat (4,444 → 343 lines) — renderer improvement, no source changes | 0 tokens    |
+| **JSDoc conventions** | 97/120 | B-    | Added `@useWhen`/`@pitfalls` to 7 key classes (117 lines of JSDoc)                 | ~80K tokens |
+
+**+49 points (F → B-) with a plugin install and 117 lines of JSDoc annotations.**
+
+### What improved
+
+| Dimension                  | Before | After | What Drove It                                                                              |
+| -------------------------- | ------ | ----- | ------------------------------------------------------------------------------------------ |
+| D3: Anti-Patterns          | 2/15   | 12/15 | 13 NEVER rules from `@pitfalls` on Application, Sprite, Graphics, Text, Assets             |
+| D5: Progressive Disclosure | 3/15   | 12/15 | Config surface cap + per-module class splitting (`references/classes/scene.md`)            |
+| D2: Procedures             | 5/15   | 10/15 | `@useWhen`/`@avoidWhen` → decision guidance ("use Sprite for images, Graphics for shapes") |
+| D4: Description            | 7/15   | 12/15 | `@packageDocumentation` → "2D rendering engine for WebGL/WebGPU/Canvas"                    |
+| D8: Usability              | 9/15   | 13/15 | 12 "When to Use" triggers, 5 "Avoid when" entries, lean SKILL.md                           |
+
+### What the agent wrote (117 lines, ~80K tokens)
+
+```typescript
+// src/scene/sprite/Sprite.ts — 8 lines added to existing JSDoc
+/**
+ * @useWhen
+ * - Displaying images, texture regions, or sprite sheets
+ * - You need fast batched rendering of many images
+ * @avoidWhen
+ * - Drawing dynamic shapes — use Graphics instead
+ * - Rendering text — use Text or BitmapText
+ * @pitfalls
+ * - NEVER create Sprites from unloaded textures — always Assets.load() first
+ * - NEVER use Sprite.from() in hot loops — it creates new textures each call
+ */
+```
+
+Similar annotations on Application, Container, Graphics, Text, Assets, and AbstractRenderer. The `@packageDocumentation` block added 6 NEVER rules covering the most common v8 migration pitfalls.
+
+### Generated output structure
+
+```
+skills/pixi-js/
+  SKILL.md (383 lines)          # When to Use, Pitfalls, 119 config interfaces, Quick Reference
+  references/
+    classes/
+      app.md                    # Application, ResizePlugin, TickerPlugin
+      scene.md                  # Container, Sprite, Graphics, Text, ...
+      rendering.md              # Renderer, WebGL, WebGPU systems
+      assets.md                 # Assets loader, caching, bundles
+      ...14 module files
+    functions.md                # 19 utility functions
+    types.md                    # 223 types
+    config.md                   # 119 *Options interfaces with property docs
+    architecture.md             # From PixiJS __docs__/
+    scene-graph.md              # Conceptual guide
+    render-loop.md              # Frame lifecycle
+    performance-tips.md         # Batching, masks, texture management
+    v8-migration-guide.md       # v7 → v8 breaking changes
+    ...4 migration guides
+```
+
+Fork: [pradeepmouli/pixijs](https://github.com/pradeepmouli/pixijs/tree/dev/skills/pixi-js)
+
 ## Ecosystem
 
 - **[agentskills.io](https://agentskills.io)** — the SKILL.md specification
