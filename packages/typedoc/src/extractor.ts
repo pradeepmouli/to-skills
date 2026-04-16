@@ -305,7 +305,14 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     .filter((c) => c.kind === ReflectionKind.Property && !c.flags.isPrivate)
     .map(extractProperty);
 
-  const extendedTypes = decl.extendedTypes?.map((t) => t.toString());
+  // Filter out self-references from extendedTypes (PixiJS uses mixins that
+  // produce [ClassName, ActualParent] — the first entry is a self-reference)
+  const extendedTypes = decl.extendedTypes
+    ?.map((t) => t.toString())
+    .filter((t) => {
+      const baseName = t.replace(/<.*>$/, '');
+      return baseName !== decl.name;
+    });
   const implementedTypes = decl.implementedTypes?.map((t) => t.toString());
 
   return {
