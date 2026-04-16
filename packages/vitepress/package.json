@@ -5,8 +5,11 @@
   "keywords": [
     "agent-skills",
     "documentation",
+    "markdown",
     "sidebar",
     "skill-generation",
+    "skill-md",
+    "to-skills",
     "vite-plugin",
     "vitepress"
   ],

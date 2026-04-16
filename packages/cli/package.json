@@ -4,10 +4,15 @@
   "description": "Extract CLI command structure from commander/yargs for AI agent skill generation",
   "keywords": [
     "agent-skills",
+    "ai",
     "cli",
     "commander",
     "documentation",
+    "introspection",
     "skill-generation",
+    "skill-md",
+    "to-skills",
+    "typescript",
     "yargs"
   ],
   "license": "MIT",

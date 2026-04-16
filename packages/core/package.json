@@ -2,6 +2,21 @@
   "name": "@to-skills/core",
   "version": "0.10.3",
   "description": "Shared types, SKILL.md renderer, and token budgeting for to-skills plugins",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "api-documentation",
+    "documentation",
+    "jsdoc",
+    "llm",
+    "llms-txt",
+    "skill-generation",
+    "skill-md",
+    "to-skills",
+    "token-budgeting",
+    "typedoc",
+    "typescript"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -4,10 +4,13 @@
   "description": "Extract Docusaurus documentation structure for AI agent skill generation",
   "keywords": [
     "agent-skills",
+    "category-json",
     "documentation",
     "docusaurus",
     "markdown",
-    "skill-generation"
+    "skill-generation",
+    "skill-md",
+    "to-skills"
   ],
   "license": "MIT",
   "author": "Pradeep Mouli",

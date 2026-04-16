@@ -5,11 +5,17 @@
   "keywords": [
     "agent-skills",
     "ai",
+    "api-documentation",
     "documentation",
+    "jsdoc",
     "llm",
+    "skill-generation",
     "skill-md",
+    "to-skills",
+    "tsdoc",
     "typedoc",
-    "typedoc-plugin"
+    "typedoc-plugin",
+    "typescript"
   ],
   "license": "MIT",
   "repository": {
