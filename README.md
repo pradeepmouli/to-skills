@@ -210,13 +210,12 @@ We forked [PixiJS](https://github.com/pixijs/pixijs) and bootstrapped to-skills 
 
 ### Results
 
-| Phase                 | Score  | Grade | What Changed                                                                       | Agent Cost  |
-| --------------------- | ------ | ----- | ---------------------------------------------------------------------------------- | ----------- |
-| **Baseline**          | 48/120 | F     | `npm install typedoc-plugin-to-skills` — zero config                               | 0 tokens    |
-| **Config fix**        | 69/120 | D+    | Fixed SKILL.md bloat (4,444 → 343 lines) — renderer improvement, no source changes | 0 tokens    |
-| **JSDoc conventions** | 97/120 | B-    | Added `@useWhen`/`@pitfalls` to 7 key classes (117 lines of JSDoc)                 | ~80K tokens |
+| Phase                       | Score  | Grade | What Changed                                                       | Agent Cost  |
+| --------------------------- | ------ | ----- | ------------------------------------------------------------------ | ----------- |
+| **Baseline**                | 48/120 | F     | `npm install typedoc-plugin-to-skills` — zero config               | 0 tokens    |
+| **After JSDoc conventions** | 97/120 | B-    | Added `@useWhen`/`@pitfalls` to 7 key classes (117 lines of JSDoc) | ~80K tokens |
 
-**+49 points (F → B-) with a plugin install and 117 lines of JSDoc annotations.**
+**F → B- with a plugin install and 117 lines of JSDoc annotations.**
 
 ### What improved
 
