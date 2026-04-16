@@ -210,27 +210,17 @@ We forked [PixiJS](https://github.com/pixijs/pixijs) and bootstrapped to-skills 
 
 ### Results
 
-| Phase                       | Score  | Grade | What Changed                                                       | Agent Cost  |
-| --------------------------- | ------ | ----- | ------------------------------------------------------------------ | ----------- |
-| **Baseline**                | 48/120 | F     | `npm install typedoc-plugin-to-skills` — zero config               | 0 tokens    |
-| **After JSDoc conventions** | 97/120 | B-    | Added `@useWhen`/`@pitfalls` to 7 key classes (117 lines of JSDoc) | ~80K tokens |
+| Phase                       | Score   | Grade | What Changed                                                 | Agent Cost  |
+| --------------------------- | ------- | ----- | ------------------------------------------------------------ | ----------- |
+| **Install + generate**      | 84/120  | B-    | `npm install typedoc-plugin-to-skills && pnpm typedoc`       | 0 tokens    |
+| **After JSDoc conventions** | 113/120 | A     | `@useWhen`/`@pitfalls` on 7 key classes (110 lines of JSDoc) | ~80K tokens |
 
-**F → B- with a plugin install and 117 lines of JSDoc annotations.**
+**B- → A with 110 lines of JSDoc annotations.** The generator handles structure, progressive disclosure, config detection, and reference splitting automatically. The annotations add the expert knowledge — when to use each class, what to never do, and why.
 
-### What improved
-
-| Dimension                  | Before | After | What Drove It                                                                              |
-| -------------------------- | ------ | ----- | ------------------------------------------------------------------------------------------ |
-| D3: Anti-Patterns          | 2/15   | 12/15 | 13 NEVER rules from `@pitfalls` on Application, Sprite, Graphics, Text, Assets             |
-| D5: Progressive Disclosure | 3/15   | 12/15 | Config surface cap + per-module class splitting (`references/classes/scene.md`)            |
-| D2: Procedures             | 5/15   | 10/15 | `@useWhen`/`@avoidWhen` → decision guidance ("use Sprite for images, Graphics for shapes") |
-| D4: Description            | 7/15   | 12/15 | `@packageDocumentation` → "2D rendering engine for WebGL/WebGPU/Canvas"                    |
-| D8: Usability              | 9/15   | 13/15 | 12 "When to Use" triggers, 5 "Avoid when" entries, lean SKILL.md                           |
-
-### What the agent wrote (117 lines, ~80K tokens)
+### What the agent wrote (110 lines, ~80K tokens)
 
 ```typescript
-// src/scene/sprite/Sprite.ts — 8 lines added to existing JSDoc
+// src/scene/sprite/Sprite.ts — added to existing JSDoc
 /**
  * @useWhen
  * - Displaying images, texture regions, or sprite sheets
@@ -244,29 +234,24 @@ We forked [PixiJS](https://github.com/pixijs/pixijs) and bootstrapped to-skills 
  */
 ```
 
-Similar annotations on Application, Container, Graphics, Text, Assets, and AbstractRenderer. The `@packageDocumentation` block added 6 NEVER rules covering the most common v8 migration pitfalls.
+Similar annotations on Application, Container, Graphics, Text, Assets, and AbstractRenderer. The `@packageDocumentation` block added 6 NEVER rules covering v8 migration pitfalls.
 
-### Generated output structure
+### Generated output (224 reference files)
 
 ```
 skills/pixi-js/
-  SKILL.md (383 lines)          # When to Use, Pitfalls, 119 config interfaces, Quick Reference
+  SKILL.md (343 lines)
   references/
     classes/
-      app.md                    # Application, ResizePlugin, TickerPlugin
-      scene.md                  # Container, Sprite, Graphics, Text, ...
-      rendering.md              # Renderer, WebGL, WebGPU systems
-      assets.md                 # Assets loader, caching, bundles
-      ...14 module files
-    functions.md                # 19 utility functions
-    types.md                    # 223 types
-    config.md                   # 119 *Options interfaces with property docs
-    architecture.md             # From PixiJS __docs__/
-    scene-graph.md              # Conceptual guide
-    render-loop.md              # Frame lifecycle
-    performance-tips.md         # Batching, masks, texture management
-    v8-migration-guide.md       # v7 → v8 breaking changes
-    ...4 migration guides
+      scene/                    # Per-class files + index.md
+        container.md, sprite.md, graphics.md, ...
+      rendering/                # 80+ renderer system classes
+        abstractrenderer.md, webglrenderer.md, ...
+      text/, assets/, events/, filters/, maths/, ...
+    functions.md, types.md, config.md, variables.md
+    architecture.md, scene-graph.md, render-loop.md
+    performance-tips.md, garbage-collection.md
+    v5-migration-guide.md ... v8-migration-guide.md
 ```
 
 Fork: [pradeepmouli/pixijs](https://github.com/pradeepmouli/pixijs/tree/dev/skills/pixi-js)
