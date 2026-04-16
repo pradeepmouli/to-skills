@@ -67,21 +67,25 @@ export function renderSkill(
   const references: RenderedFile[] = [];
 
   if (skill.functions.length > 0) {
-    const content = renderFunctionsRef(skill.functions, opts);
-    references.push({
-      filename: `${basePath}/references/functions.md`,
-      content: truncateToTokenBudget(content, opts.maxTokens),
-      tokens: estimateTokens(content)
-    });
+    addGroupedReferences(
+      skill.functions,
+      basePath,
+      'functions',
+      opts,
+      (items) => renderFunctionsRef(items, opts),
+      references
+    );
   }
 
   if (skill.classes.length > 0) {
-    const content = renderClassesRef(skill.classes, opts);
-    references.push({
-      filename: `${basePath}/references/classes.md`,
-      content: truncateToTokenBudget(content, opts.maxTokens),
-      tokens: estimateTokens(content)
-    });
+    addGroupedReferences(
+      skill.classes,
+      basePath,
+      'classes',
+      opts,
+      (items) => renderClassesRef(items, opts),
+      references
+    );
   }
 
   if (skill.types.length > 0 || skill.enums.length > 0) {
@@ -489,6 +493,60 @@ function renderVariablesRef(variables: ExtractedVariable[]): string {
 // ===========================================================================
 // Shared helpers
 // ===========================================================================
+
+/**
+ * When rendered content exceeds the token budget, split into per-group reference files
+ * using @category or sourceModule. Falls back to a single truncated file if no groups.
+ */
+function addGroupedReferences<T extends { category?: string; sourceModule?: string }>(
+  items: T[],
+  basePath: string,
+  kind: string,
+  opts: SkillRenderOptions,
+  renderFn: (subset: T[]) => string,
+  references: RenderedFile[]
+): void {
+  const fullContent = renderFn(items);
+  const fullTokens = estimateTokens(fullContent);
+
+  // If it fits in the budget, emit as one file
+  if (fullTokens <= opts.maxTokens) {
+    references.push({
+      filename: `${basePath}/references/${kind}.md`,
+      content: fullContent,
+      tokens: fullTokens
+    });
+    return;
+  }
+
+  // Try splitting by group (category or sourceModule)
+  const grouped = groupByCategory(items);
+  if (grouped.size <= 1) {
+    // No groups — truncate as before
+    references.push({
+      filename: `${basePath}/references/${kind}.md`,
+      content: truncateToTokenBudget(fullContent, opts.maxTokens),
+      tokens: fullTokens
+    });
+    return;
+  }
+
+  // Emit one file per group in a subdirectory: references/<kind>/<group>.md
+  for (const [groupName, groupItems] of grouped) {
+    const slug = groupName
+      ? groupName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+      : 'other';
+    const content = renderFn(groupItems);
+    references.push({
+      filename: `${basePath}/references/${kind}/${slug}.md`,
+      content: truncateToTokenBudget(content, opts.maxTokens),
+      tokens: estimateTokens(content)
+    });
+  }
+}
 
 function buildDescription(skill: ExtractedSkill): string {
   const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
