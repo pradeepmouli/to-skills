@@ -32,14 +32,7 @@ Extract CLI command structure from commander/yargs for AI agent skill generation
 
 ## Configuration
 
-### CliExtractionOptions
-
-| Key              | Type                                                                                                 | Required | Default | Description                                        |
-| ---------------- | ---------------------------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------- |
-| `program`        | `any`                                                                                                | no       | —       | Commander program object (preferred)               |
-| `helpTexts`      | `Record<string, string>`                                                                             | no       | —       | Help text per command (fallback)                   |
-| `metadata`       | `{ name?: string; description?: string; keywords?: string[]; repository?: string; author?: string }` | no       | —       | Package metadata                                   |
-| `configSurfaces` | `ExtractedConfigSurface[]`                                                                           | no       | —       | Config surfaces from TypeDoc for JSDoc correlation |
+**CliExtractionOptions** (4 options — see references/config.md)
 
 ## Quick Reference
 

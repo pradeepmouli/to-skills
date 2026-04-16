@@ -45,37 +45,12 @@ Shared types, SKILL.md renderer, and token budgeting for to-skills plugins
 
 ## Configuration
 
-### SkillRenderOptions
+3 configuration interfaces — see references/config.md for details.
 
-Options controlling skill rendering
-
-| Key                 | Type      | Required | Default | Description                                                         |
-| ------------------- | --------- | -------- | ------- | ------------------------------------------------------------------- |
-| `outDir`            | `string`  | yes      | —       | Output directory for skill files (default: ".github/skills")        |
-| `includeExamples`   | `boolean` | yes      | —       | Include usage examples (default: true)                              |
-| `includeSignatures` | `boolean` | yes      | —       | Include type signatures (default: true)                             |
-| `maxTokens`         | `number`  | yes      | —       | Maximum approximate token budget per skill (default: 4000)          |
-| `namePrefix`        | `string`  | yes      | —       | Custom name prefix                                                  |
-| `license`           | `string`  | yes      | —       | License to include in frontmatter (default: read from package.json) |
-
-### LlmsTxtOptions
-
-| Key                  | Type     | Required | Default | Description                                   |
-| -------------------- | -------- | -------- | ------- | --------------------------------------------- |
-| `projectName`        | `string` | yes      | —       | Project name (falls back to first skill name) |
-| `projectDescription` | `string` | yes      | —       | Project description                           |
-
-### DocsExtractionOptions
-
-Configuration options that control how a docs directory is scanned and which
-markdown files are included in the extraction.
-
-| Key       | Type      | Required   | Default | Description                                                                        |
-| --------- | --------- | ---------- | ------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `docsDir` | `string`  | yes        | —       | Absolute or relative path to the directory containing markdown documentation files |
-| `include` | `string   | undefined` | yes     | —                                                                                  | Glob pattern selecting files to include; when `undefined` all `.md` files are included |
-| `exclude` | `string[] | undefined` | yes     | —                                                                                  | Glob patterns for files to exclude from extraction; `undefined` means no exclusions    |
-| `maxDocs` | `number   | undefined` | yes     | —                                                                                  | Maximum number of documents to return; `undefined` means no limit                      |
+- **SkillRenderOptions** — Options controlling skill rendering
+- **LlmsTxtOptions**
+- **DocsExtractionOptions** — Configuration options that control how a docs directory is scanned and which
+  markdown files are included in the extraction.
 
 ## Quick Reference
 

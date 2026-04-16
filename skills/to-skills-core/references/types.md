@@ -53,6 +53,7 @@ Extracted API surface for a single package/module
 - `methods: ExtractedFunction[]`
 - `properties: ExtractedProperty[]`
 - `examples: string[]`
+- `tags: Record<string, string>` — JSDoc block tags (e.g. @deprecated, @since, @useWhen, @pitfalls)
 - `extends: string` (optional) — Base class name (from `extends`)
 - `implements: string[]` (optional) — Implemented interface names (from `implements`)
 - `sourceModule: string` (optional) — Source module name derived from file path (e.g. "renderer", "tokens")

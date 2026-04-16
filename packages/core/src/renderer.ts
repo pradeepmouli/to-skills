@@ -532,19 +532,41 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
   }
 
   // Emit one file per group in a subdirectory: references/<kind>/<group>.md
+  // If a group still exceeds the budget, split into one file per item
   for (const [groupName, groupItems] of grouped) {
     const slug = groupName
       ? groupName
           .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/[^a-z0-9/]+/g, '-')
           .replace(/^-|-$/g, '')
       : 'other';
     const content = renderFn(groupItems);
-    references.push({
-      filename: `${basePath}/references/${kind}/${slug}.md`,
-      content: truncateToTokenBudget(content, opts.maxTokens),
-      tokens: estimateTokens(content)
-    });
+    const tokens = estimateTokens(content);
+
+    if (tokens <= opts.maxTokens || groupItems.length <= 1) {
+      references.push({
+        filename: `${basePath}/references/${kind}/${slug}.md`,
+        content: truncateToTokenBudget(content, opts.maxTokens),
+        tokens
+      });
+    } else {
+      // Group still too large — split into one file per item
+      for (const item of groupItems) {
+        const itemSlug =
+          'name' in item && typeof (item as any).name === 'string'
+            ? (item as any).name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '')
+            : 'item';
+        const itemContent = renderFn([item]);
+        references.push({
+          filename: `${basePath}/references/${kind}/${slug}/${itemSlug}.md`,
+          content: truncateToTokenBudget(itemContent, opts.maxTokens),
+          tokens: estimateTokens(itemContent)
+        });
+      }
+    }
   }
 }
 

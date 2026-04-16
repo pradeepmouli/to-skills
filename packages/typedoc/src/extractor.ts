@@ -217,16 +217,56 @@ function extractModule(
 }
 
 /**
- * Extract the source module name (filename without extension) from a declaration.
- * Returns undefined for "index" files or declarations with no sources.
+ * Extract the source module path from a declaration's source file.
+ * Uses the directory structure as the module hierarchy — the folder path
+ * between src/ (or the source root) and the file is the module.
+ *
+ * Examples:
+ * - src/scene/sprite/Sprite.ts → "scene/sprite"
+ * - src/app/Application.ts → "app"
+ * - src/rendering/renderers/shared/system/AbstractRenderer.ts → "rendering"
+ * - src/index.ts → undefined (root index)
+ *
+ * Falls back to the filename (without extension) when no meaningful
+ * directory structure exists. Returns undefined for index files at root.
  */
 function getSourceModule(decl: DeclarationReflection): string | undefined {
   const source = decl.sources?.[0];
   if (!source) return undefined;
   const fullPath = source.fullFileName ?? source.fileName;
   if (!fullPath) return undefined;
-  // Get the basename without extension
-  const base = fullPath.split('/').pop() ?? fullPath;
+
+  // Split into segments
+  const segments = fullPath.replace(/\\/g, '/').split('/');
+
+  // Find the src/ root (or packages/*/src/) to get the relative path
+  let srcIndex = -1;
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (segments[i] === 'src') {
+      srcIndex = i;
+      break;
+    }
+  }
+
+  if (srcIndex >= 0 && srcIndex < segments.length - 1) {
+    // Get path segments between src/ and the file
+    const relSegments = segments.slice(srcIndex + 1, -1); // exclude src/ and filename
+
+    if (relSegments.length === 0) {
+      // File directly in src/ — use filename
+      const name = (segments[segments.length - 1] ?? '').replace(/\.[^.]+$/, '');
+      return name === 'index' ? undefined : name || undefined;
+    }
+
+    // Use the first 2 directory levels for grouping
+    // src/scene/sprite/Sprite.ts → "scene/sprite"
+    // src/rendering/renderers/shared/system/X.ts → "rendering/renderers"
+    const modulePath = relSegments.slice(0, 2).join('/');
+    return modulePath || undefined;
+  }
+
+  // Fallback: use filename without extension
+  const base = segments[segments.length - 1] ?? '';
   const name = base.replace(/\.[^.]+$/, '');
   if (name === 'index') return undefined;
   return name || undefined;
