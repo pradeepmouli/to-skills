@@ -320,7 +320,12 @@ function renderFunctionsRef(fns: ExtractedFunction[], opts: SkillRenderOptions):
   return lines.join('\n');
 }
 
-function renderClassBody(cls: ExtractedClass, opts: SkillRenderOptions, lines: string[]): void {
+function renderClassBody(
+  cls: ExtractedClass,
+  opts: SkillRenderOptions,
+  lines: string[],
+  parentPropNames?: Set<string>
+): void {
   if (cls.description) lines.push(cls.description);
 
   if (cls.extends) {
@@ -335,10 +340,27 @@ function renderClassBody(cls: ExtractedClass, opts: SkillRenderOptions, lines: s
   }
 
   if (cls.properties.length > 0) {
-    lines.push('**Properties:**');
-    for (const p of cls.properties) {
-      const opt = p.optional ? ' (optional)' : '';
-      lines.push(`- \`${p.name}: ${p.type}\`${opt}${descSuffix(p.description)}`);
+    const ownProps = parentPropNames
+      ? cls.properties.filter((p) => !parentPropNames.has(p.name))
+      : cls.properties;
+    const inheritedCount = cls.properties.length - ownProps.length;
+
+    if (ownProps.length > 0) {
+      lines.push('**Properties:**');
+      for (const p of ownProps) {
+        const opt = p.optional ? ' (optional)' : '';
+        lines.push(`- \`${p.name}: ${p.type}\`${opt}${descSuffix(p.description)}`);
+      }
+    }
+
+    if (inheritedCount > 0 && cls.extends) {
+      const parentSlug = cls.extends
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      lines.push(
+        `*Inherits ${inheritedCount} properties from \`${cls.extends}\` — see [\`${cls.extends}\`](../${parentSlug}.md)*`
+      );
     }
   }
 
@@ -365,19 +387,30 @@ function renderClassBody(cls: ExtractedClass, opts: SkillRenderOptions, lines: s
 function renderClassesRef(classes: ExtractedClass[], opts: SkillRenderOptions): string {
   const lines = ['# Classes\n'];
 
+  // Build a map of class name → property name set for deduplication
+  const classPropMap = new Map<string, Set<string>>();
+  for (const cls of classes) {
+    classPropMap.set(cls.name, new Set(cls.properties.map((p) => p.name)));
+  }
+
+  function getParentProps(cls: ExtractedClass): Set<string> | undefined {
+    if (!cls.extends) return undefined;
+    return classPropMap.get(cls.extends);
+  }
+
   if (hasModuleInfo(classes)) {
     const groups = groupByModule(classes);
     for (const [mod, modClasses] of groups) {
       if (mod) lines.push(`## ${mod}\n`);
       for (const cls of modClasses) {
         lines.push(mod ? `### \`${cls.name}\`` : `## \`${cls.name}\``);
-        renderClassBody(cls, opts, lines);
+        renderClassBody(cls, opts, lines, getParentProps(cls));
       }
     }
   } else {
     for (const cls of classes) {
       lines.push(`## \`${cls.name}\``);
-      renderClassBody(cls, opts, lines);
+      renderClassBody(cls, opts, lines, getParentProps(cls));
     }
   }
 
@@ -551,21 +584,41 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
       });
     } else {
       // Group still too large — split into one file per item
+      const indexRows: string[] = [];
       for (const item of groupItems) {
-        const itemSlug =
-          'name' in item && typeof (item as any).name === 'string'
-            ? (item as any).name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '')
-            : 'item';
+        const itemName =
+          'name' in item && typeof (item as any).name === 'string' ? (item as any).name : 'item';
+        const itemDescription =
+          'description' in item && typeof (item as any).description === 'string'
+            ? (item as any).description
+            : '';
+        const itemSlug = itemName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
         const itemContent = renderFn([item]);
+        // Use 2× budget for individual item files — they're already scoped to one item
         references.push({
           filename: `${basePath}/references/${kind}/${slug}/${itemSlug}.md`,
-          content: truncateToTokenBudget(itemContent, opts.maxTokens),
+          content: truncateToTokenBudget(itemContent, opts.maxTokens * 2),
           tokens: estimateTokens(itemContent)
         });
+        indexRows.push(`| [${itemName}](${itemSlug}.md) | ${itemDescription} |`);
       }
+
+      // Emit an index.md for this subdirectory
+      const indexContent = [
+        `# ${groupName || slug}`,
+        '',
+        '| Class | Description |',
+        '|-------|-------------|',
+        ...indexRows
+      ].join('\n');
+      references.push({
+        filename: `${basePath}/references/${kind}/${slug}/index.md`,
+        content: indexContent,
+        tokens: estimateTokens(indexContent)
+      });
     }
   }
 }

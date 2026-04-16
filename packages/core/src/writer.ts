@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { RenderedFile, RenderedSkill, SkillRenderOptions } from './types.js';
 
@@ -15,6 +15,10 @@ export function writeSkills(
   options: Pick<SkillRenderOptions, 'outDir'>
 ): void {
   for (const skill of skills) {
+    // Clean the skill-specific output directory before writing to remove stale files
+    const skillDir = join(options.outDir, dirname(skill.skill.filename));
+    rmSync(skillDir, { recursive: true, force: true });
+
     // Write SKILL.md
     writeFile(options.outDir, skill.skill);
 
