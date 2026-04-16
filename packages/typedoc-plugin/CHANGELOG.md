@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.6.4
+
+### Patch Changes
+
+- Cap inline config surfaces at 5 in SKILL.md — large projects render a summary list
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.11.2
+
 ## 0.6.3
 
 ### Patch Changes

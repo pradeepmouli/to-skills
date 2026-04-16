@@ -141,26 +141,20 @@ describe('renderConfigSurfaceSection — config surfaces', () => {
     expect(result).toContain('## Configuration');
   });
 
-  it('renders interface name as a sub-heading', () => {
+  it('renders config name and description in summary', () => {
     const result = renderConfigSurfaceSection([makeConfigSurface()]);
-    expect(result).toContain('### BuildConfig');
+    expect(result).toContain('**BuildConfig**');
+    expect(result).toContain('Configures the build pipeline');
   });
 
-  it('renders options table with Key column (not Flag)', () => {
+  it('points to references/config.md for details', () => {
     const result = renderConfigSurfaceSection([makeConfigSurface()]);
-    expect(result).toContain('| Key |');
-    expect(result).not.toContain('| Flag |');
+    expect(result).toContain('references/config.md');
   });
 
-  it('renders config option rows', () => {
+  it('shows option count', () => {
     const result = renderConfigSurfaceSection([makeConfigSurface()]);
-    expect(result).toContain('outDir');
-    expect(result).toContain('minify');
-  });
-
-  it('renders required indicator', () => {
-    const result = renderConfigSurfaceSection([makeConfigSurface()]);
-    expect(result).toContain('yes');
+    expect(result).toContain('options');
   });
 });
 

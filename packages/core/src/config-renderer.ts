@@ -92,65 +92,36 @@ function renderCommandsSection(surfaces: ExtractedConfigSurface[]): string {
   return lines.join('\n');
 }
 
-/** Max config surfaces to render inline with full tables. Beyond this, render a summary list. */
-const MAX_INLINE_CONFIG_SURFACES = 5;
-
 function renderConfigSection(surfaces: ExtractedConfigSurface[]): string {
   const lines: string[] = ['## Configuration'];
 
-  // For large config surfaces (e.g. PixiJS with 80+ *Options interfaces),
-  // render a summary list instead of full tables — details in references/config.md
-  if (surfaces.length > MAX_INLINE_CONFIG_SURFACES) {
+  // Config tables always go in references/config.md — SKILL.md gets a summary list.
+  // A single config surface gets its name + description; multiple get a bullet list.
+  if (surfaces.length === 1) {
+    const s = surfaces[0]!;
+    const desc = s.description ? ` — ${s.description}` : '';
     lines.push('');
-    lines.push(
-      `${surfaces.length} configuration interfaces — see references/config.md for details.\n`
-    );
-    for (const surface of surfaces) {
-      const desc = surface.description ? ` — ${surface.description}` : '';
-      lines.push(`- **${surface.name}**${desc}`);
+    lines.push(`**${s.name}**${desc} (${s.options.length} options — see references/config.md)`);
+
+    if (s.pitfalls && s.pitfalls.length > 0) {
+      lines.push('');
+      lines.push('**Pitfalls:**');
+      for (const item of s.pitfalls) {
+        lines.push(`- ${item}`);
+      }
     }
+
     return lines.join('\n');
   }
 
+  lines.push('');
+  lines.push(
+    `${surfaces.length} configuration interfaces — see references/config.md for details.\n`
+  );
   for (const surface of surfaces) {
-    lines.push('');
-    lines.push(`### ${surface.name}`);
-
-    if (surface.description) {
-      lines.push('');
-      lines.push(surface.description);
-    }
-
-    if (surface.options.length > 0) {
-      lines.push('');
-      lines.push(renderOptionsTable(surface.options, 'config'));
-    }
-
-    if (surface.useWhen && surface.useWhen.length > 0) {
-      lines.push('');
-      lines.push('**Use when:**');
-      for (const item of surface.useWhen) {
-        lines.push(`- ${item}`);
-      }
-    }
-
-    if (surface.avoidWhen && surface.avoidWhen.length > 0) {
-      lines.push('');
-      lines.push('**Avoid when:**');
-      for (const item of surface.avoidWhen) {
-        lines.push(`- ${item}`);
-      }
-    }
-
-    if (surface.pitfalls && surface.pitfalls.length > 0) {
-      lines.push('');
-      lines.push('**Pitfalls:**');
-      for (const item of surface.pitfalls) {
-        lines.push(`- ${item}`);
-      }
-    }
+    const desc = surface.description ? ` — ${surface.description}` : '';
+    lines.push(`- **${surface.name}**${desc}`);
   }
-
   return lines.join('\n');
 }
 

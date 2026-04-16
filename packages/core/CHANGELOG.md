@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.10.1
+
+### Patch Changes
+
+- Cap inline config surfaces at 5 in SKILL.md — large projects render a summary list
+
 ## 0.10.0
 
 ### Minor Changes
