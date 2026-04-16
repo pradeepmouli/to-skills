@@ -1,5 +1,18 @@
 # typedoc-plugin-to-skills
 
+## 0.6.6
+
+### Patch Changes
+
+- Split oversized reference files by category/module into subdirectories
+
+  When rendered content exceeds the token budget and items have @category
+  or sourceModule grouping, emit one reference file per group in
+  references/<kind>/<group>.md instead of truncating into one file.
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.11.4
+
 ## 0.6.5
 
 ### Patch Changes

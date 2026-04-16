@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 0.10.3
+
+### Patch Changes
+
+- Split oversized reference files by category/module into subdirectories
+
+  When rendered content exceeds the token budget and items have @category
+  or sourceModule grouping, emit one reference file per group in
+  references/<kind>/<group>.md instead of truncating into one file.
+
 ## 0.10.2
 
 ### Patch Changes
