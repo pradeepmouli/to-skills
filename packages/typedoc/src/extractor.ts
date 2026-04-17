@@ -127,11 +127,17 @@ function mergeModules(
   let description = '';
 
   for (const mod of mods) {
+    // The module name from TypeDoc's reflection tree is the authoritative
+    // grouping. Use it as sourceModule for all children of this module,
+    // falling back to the file-path heuristic only when the module name
+    // is empty or a root-level barrel export.
+    const modName = mod.name || undefined;
+
     const children = collectChildren(mod);
-    allFunctions.push(
-      ...children.filter((c) => c.kind === ReflectionKind.Function).map((c) => extractFunction(c))
-    );
-    allClasses.push(...children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass));
+    const fns = children
+      .filter((c) => c.kind === ReflectionKind.Function)
+      .map((c) => extractFunction(c));
+    const classes = children.filter((c) => c.kind === ReflectionKind.Class).map(extractClass);
 
     const interfaceAndAliasChildren = children.filter(
       (c) => c.kind === ReflectionKind.Interface || c.kind === ReflectionKind.TypeAlias
@@ -139,16 +145,42 @@ function mergeModules(
     const configInterfaceChildren = interfaceAndAliasChildren.filter((c) => isConfigInterface(c));
     const regularTypeChildren = interfaceAndAliasChildren.filter((c) => !isConfigInterface(c));
 
-    allTypes.push(...regularTypeChildren.map(extractType));
-    allConfigSurfaces.push(...configInterfaceChildren.map(extractConfigSurface));
+    const types = regularTypeChildren.map(extractType);
+    const configSurfaces = configInterfaceChildren.map(extractConfigSurface);
+    const enums = children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum);
+    const variables = children
+      .filter((c) => c.kind === ReflectionKind.Variable)
+      .map(extractVariable);
 
-    allEnums.push(...children.filter((c) => c.kind === ReflectionKind.Enum).map(extractEnum));
-    allVariables.push(
-      ...children.filter((c) => c.kind === ReflectionKind.Variable).map(extractVariable)
-    );
+    // Stamp TypeDoc module name as sourceModule on items that don't already
+    // have one from the file-path heuristic or @category. The module name
+    // from the reflection tree respects the user's TypeDoc router config.
+    if (modName) {
+      for (const f of fns) {
+        f.sourceModule ??= modName;
+      }
+      for (const c of classes) {
+        c.sourceModule ??= modName;
+      }
+      for (const t of types) {
+        t.sourceModule ??= modName;
+      }
+      for (const e of enums) {
+        e.sourceModule ??= modName;
+      }
+      for (const v of variables) {
+        v.sourceModule ??= modName;
+      }
+    }
+
+    allFunctions.push(...fns);
+    allClasses.push(...classes);
+    allTypes.push(...types);
+    allConfigSurfaces.push(...configSurfaces);
+    allEnums.push(...enums);
+    allVariables.push(...variables);
     allExamples.push(...getExamples(mod.comment));
 
-    // Use the first non-empty description
     if (!description) {
       description = getCommentText(mod.comment);
     }
@@ -217,20 +249,11 @@ function extractModule(
 }
 
 /**
- * Extract the source module path from a declaration's source file.
- * Uses the directory structure as the module hierarchy — the folder path
- * between src/ (or the source root) and the file is the module.
- *
- * Examples:
- * - src/scene/sprite/Sprite.ts → "scene/sprite"
- * - src/app/Application.ts → "app"
- * - src/rendering/renderers/shared/system/AbstractRenderer.ts → "rendering"
- * - src/index.ts → undefined (root index)
- *
- * Falls back to the filename (without extension) when no meaningful
- * directory structure exists. Returns undefined for index files at root.
+ * Fallback: extract module path from a declaration's source file.
+ * Used when TypeDoc doesn't provide module context (single-package projects,
+ * CLI extractor, etc.).
  */
-function getSourceModule(decl: DeclarationReflection): string | undefined {
+function getSourceModuleFromPath(decl: DeclarationReflection): string | undefined {
   const source = decl.sources?.[0];
   if (!source) return undefined;
   const fullPath = source.fullFileName ?? source.fileName;
@@ -290,7 +313,7 @@ function extractFunction(
     examples: getExamples(sig?.comment ?? decl.comment),
     tags: getTagMap(sig?.comment ?? decl.comment),
     overloads: overloads.length > 0 ? overloads : undefined,
-    sourceModule: getSourceModule(parentDecl ?? decl),
+    sourceModule: getSourceModuleFromPath(parentDecl ?? decl),
     category: getCategory(sig?.comment ?? decl.comment)
   };
 }
@@ -327,7 +350,7 @@ function extractClass(decl: DeclarationReflection): ExtractedClass {
     tags: getTagMap(decl.comment),
     extends: extendedTypes?.[0],
     implements: implementedTypes && implementedTypes.length > 0 ? implementedTypes : undefined,
-    sourceModule: getSourceModule(decl),
+    sourceModule: getSourceModuleFromPath(decl),
     category: getCategory(decl.comment)
   };
 }
@@ -348,7 +371,7 @@ function extractType(decl: DeclarationReflection): ExtractedType {
     description: getCommentText(decl.comment),
     definition: decl.type?.toString() ?? '',
     properties: properties.length > 0 ? properties : undefined,
-    sourceModule: getSourceModule(decl),
+    sourceModule: getSourceModuleFromPath(decl),
     category: getCategory(decl.comment)
   };
 }
@@ -362,7 +385,7 @@ function extractEnum(decl: DeclarationReflection): ExtractedEnum {
       value: m.type?.toString() ?? '',
       description: getCommentText(m.comment)
     })),
-    sourceModule: getSourceModule(decl),
+    sourceModule: getSourceModuleFromPath(decl),
     category: getCategory(decl.comment)
   };
 }
@@ -373,7 +396,7 @@ function extractVariable(decl: DeclarationReflection): ExtractedVariable {
     type: decl.type?.toString() ?? 'unknown',
     description: getCommentText(decl.comment),
     isConst: decl.flags.isConst,
-    sourceModule: getSourceModule(decl),
+    sourceModule: getSourceModuleFromPath(decl),
     category: getCategory(decl.comment)
   };
 }
