@@ -243,20 +243,26 @@ function fileForModule(sourceModule: string | undefined): string {
   return `src/${sourceModule}`;
 }
 
-/** Classes and functions missing a given tag, sorted classes-first then by param count. */
+/** Classes and functions missing a given tag, sorted by importance (most methods/properties first). */
 function targetsForMissingTag(
   skill: ExtractedSkill,
   tag: string,
   maxClasses = 5,
   maxFunctions = 3
 ): ImprovementTarget[] {
+  // Sort classes by importance: most methods + properties first
   const classTargets: ImprovementTarget[] = skill.classes
     .filter((c) => !c.tags[tag])
+    .sort(
+      (a, b) => b.methods.length + b.properties.length - (a.methods.length + a.properties.length)
+    )
     .slice(0, maxClasses)
     .map((c) => ({ file: fileForModule(c.sourceModule), name: c.name, kind: 'class' }));
 
+  // Sort functions by importance: most parameters first
   const fnTargets: ImprovementTarget[] = skill.functions
     .filter((f) => !f.tags[tag])
+    .sort((a, b) => b.parameters.length - a.parameters.length)
     .slice(0, maxFunctions)
     .map((f) => ({ file: fileForModule(f.sourceModule), name: f.name, kind: 'function' }));
 
