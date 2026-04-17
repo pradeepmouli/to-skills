@@ -1,8 +1,25 @@
 import type { AuditResult } from './audit-types.js';
+import type { ExtractedSkill } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/**
+ * An agent-actionable improvement suggestion with specific file/export targets.
+ *
+ * @category Audit
+ */
+export interface ActionableImprovement {
+  /** Human-readable suggestion */
+  suggestion: string;
+  /** Points gained if fixed */
+  points: number;
+  /** Dimension affected (e.g. "D3") */
+  dimension: string;
+  /** Specific exports to annotate (file path → export name + kind) */
+  targets?: Array<{ file: string; name: string; kind: string }>;
+}
 
 /**
  * A skill-judge score estimate derived from audit check results.
@@ -38,7 +55,7 @@ export interface SkillJudgeEstimate {
   /** Letter grade based on percentage */
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
   /** Top 3 actionable improvement suggestions (may be fewer if all dimensions pass 80%) */
-  improvements: string[];
+  improvements: ActionableImprovement[];
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +99,7 @@ function clamp(value: number, max: number): number {
  * checks pass or fail. Dimensions are capped at their respective maxima.
  *
  * @param audit - The completed audit result to score
+ * @param skill - Optional extracted skill; when provided, improvements include specific file/export targets
  * @returns A {@link SkillJudgeEstimate} with dimension breakdown, total, grade, and improvements
  *
  * @category Audit
@@ -91,7 +109,10 @@ function clamp(value: number, max: number): number {
  * @avoidWhen
  * - Using as a hard CI gate — prefer explicit audit codes (F1, E4, etc.) for gating
  */
-export function estimateSkillJudgeScore(audit: AuditResult): SkillJudgeEstimate {
+export function estimateSkillJudgeScore(
+  audit: AuditResult,
+  skill?: ExtractedSkill
+): SkillJudgeEstimate {
   // --- D1: Knowledge Delta /20 ---
   let d1 = 14;
   if (passes(audit, 'W10')) d1 += 3; // @remarks on complex functions
@@ -151,16 +172,20 @@ export function estimateSkillJudgeScore(audit: AuditResult): SkillJudgeEstimate 
 
   const grade = percentageToGrade(percentage);
 
-  const improvements = buildImprovements(audit, {
-    d1,
-    d2,
-    d3,
-    d4,
-    d5,
-    d6,
-    d7,
-    d8
-  });
+  const improvements = buildImprovements(
+    audit,
+    {
+      d1,
+      d2,
+      d3,
+      d4,
+      d5,
+      d6,
+      d7,
+      d8
+    },
+    skill
+  );
 
   return {
     dimensions: {
@@ -207,25 +232,82 @@ interface DimScores {
   d8: number;
 }
 
+// ---------------------------------------------------------------------------
+// Target helpers
+// ---------------------------------------------------------------------------
+
+type ImprovementTarget = { file: string; name: string; kind: string };
+
+function fileForModule(sourceModule: string | undefined): string {
+  if (!sourceModule) return 'src/';
+  return `src/${sourceModule}`;
+}
+
+/** Classes and functions missing a given tag, sorted classes-first then by param count. */
+function targetsForMissingTag(
+  skill: ExtractedSkill,
+  tag: string,
+  maxClasses = 5,
+  maxFunctions = 3
+): ImprovementTarget[] {
+  const classTargets: ImprovementTarget[] = skill.classes
+    .filter((c) => !c.tags[tag])
+    .slice(0, maxClasses)
+    .map((c) => ({ file: fileForModule(c.sourceModule), name: c.name, kind: 'class' }));
+
+  const fnTargets: ImprovementTarget[] = skill.functions
+    .filter((f) => !f.tags[tag])
+    .slice(0, maxFunctions)
+    .map((f) => ({ file: fileForModule(f.sourceModule), name: f.name, kind: 'function' }));
+
+  return [...classTargets, ...fnTargets];
+}
+
+/** Functions with 3+ parameters missing @remarks */
+function targetsForRemarks(skill: ExtractedSkill): ImprovementTarget[] {
+  return skill.functions
+    .filter((f) => f.parameters.length >= 3 && !f.tags['remarks'])
+    .slice(0, 5)
+    .map((f) => ({
+      file: fileForModule(f.sourceModule),
+      name: f.name,
+      kind: `function, ${f.parameters.length} params`
+    }));
+}
+
 /**
  * For each dimension below 80% of its max, suggest the audit fix that would
  * help most. Return the top 3 by potential point gain.
  */
-function buildImprovements(audit: AuditResult, dims: DimScores): string[] {
-  const suggestions: Array<{ gain: number; text: string }> = [];
+function buildImprovements(
+  audit: AuditResult,
+  dims: DimScores,
+  skill?: ExtractedSkill
+): ActionableImprovement[] {
+  const suggestions: Array<{ gain: number; imp: ActionableImprovement }> = [];
 
   // D1: highest single-fix gain is W10 (+3) or W1 (+3)
   if (dims.d1 < MAX_D1 * 0.8) {
     if (!passes(audit, 'W10')) {
+      const targets = skill ? targetsForRemarks(skill) : undefined;
       suggestions.push({
         gain: 3,
-        text: 'Add @remarks to complex functions (3+ params) (+3 on D1)'
+        imp: {
+          suggestion: 'Add @remarks to complex functions (3+ params) (+3 on D1)',
+          points: 3,
+          dimension: 'D1',
+          targets: targets && targets.length > 0 ? targets : undefined
+        }
       });
     }
     if (!passes(audit, 'W1')) {
       suggestions.push({
         gain: 3,
-        text: 'Add detailed @packageDocumentation description >50 chars (+3 on D1)'
+        imp: {
+          suggestion: 'Add detailed @packageDocumentation description >50 chars (+3 on D1)',
+          points: 3,
+          dimension: 'D1'
+        }
       });
     }
   }
@@ -233,59 +315,158 @@ function buildImprovements(audit: AuditResult, dims: DimScores): string[] {
   // D2: highest gain is W7 (+5)
   if (dims.d2 < MAX_D2 * 0.8) {
     if (!passes(audit, 'W7')) {
-      suggestions.push({ gain: 5, text: 'Add @useWhen to key exports (+5 on D2)' });
+      const targets = skill ? targetsForMissingTag(skill, 'useWhen') : undefined;
+      suggestions.push({
+        gain: 5,
+        imp: {
+          suggestion: 'Add @useWhen to key exports (+5 on D2)',
+          points: 5,
+          dimension: 'D2',
+          targets: targets && targets.length > 0 ? targets : undefined
+        }
+      });
     }
     if (!passes(audit, 'W8')) {
-      suggestions.push({ gain: 3, text: 'Add @avoidWhen to key exports (+3 on D2)' });
+      const targets = skill ? targetsForMissingTag(skill, 'avoidWhen') : undefined;
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add @avoidWhen to key exports (+3 on D2)',
+          points: 3,
+          dimension: 'D2',
+          targets: targets && targets.length > 0 ? targets : undefined
+        }
+      });
     }
     if (!passes(audit, 'E4')) {
-      suggestions.push({ gain: 2, text: 'Add @example code blocks (+2 on D2)' });
+      suggestions.push({
+        gain: 2,
+        imp: {
+          suggestion: 'Add @example code blocks (+2 on D2)',
+          points: 2,
+          dimension: 'D2'
+        }
+      });
     }
   }
 
   // D3: highest gain is W9 (+8)
   if (dims.d3 < MAX_D3 * 0.8) {
     if (!passes(audit, 'W9')) {
-      suggestions.push({ gain: 8, text: 'Add @pitfalls to key exports (+8 on D3)' });
+      const targets = skill ? targetsForMissingTag(skill, 'pitfalls') : undefined;
+      suggestions.push({
+        gain: 8,
+        imp: {
+          suggestion: 'Add @pitfalls to key exports (+8 on D3)',
+          points: 8,
+          dimension: 'D3',
+          targets: targets && targets.length > 0 ? targets : undefined
+        }
+      });
     }
     if (!passes(audit, 'W3')) {
-      suggestions.push({ gain: 3, text: 'Add @deprecated/@since/@throws/@see tags (+3 on D3)' });
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add @deprecated/@since/@throws/@see tags (+3 on D3)',
+          points: 3,
+          dimension: 'D3'
+        }
+      });
     }
     if (!passes(audit, 'W6')) {
-      suggestions.push({ gain: 2, text: 'Add README Troubleshooting section (+2 on D3)' });
+      suggestions.push({
+        gain: 2,
+        imp: {
+          suggestion: 'Add README Troubleshooting section (+2 on D3)',
+          points: 2,
+          dimension: 'D3'
+        }
+      });
     }
   }
 
   // D4: highest gain is F1 (+4)
   if (dims.d4 < MAX_D4 * 0.8) {
     if (!passes(audit, 'F1')) {
-      suggestions.push({ gain: 4, text: 'Add meaningful package.json description (+4 on D4)' });
+      suggestions.push({
+        gain: 4,
+        imp: {
+          suggestion: 'Add meaningful package.json description (+4 on D4)',
+          points: 4,
+          dimension: 'D4'
+        }
+      });
     }
     if (!passes(audit, 'F3')) {
-      suggestions.push({ gain: 3, text: 'Add README description/blockquote (+3 on D4)' });
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add README description/blockquote (+3 on D4)',
+          points: 3,
+          dimension: 'D4'
+        }
+      });
     }
     if (!passes(audit, 'F2')) {
-      suggestions.push({ gain: 2, text: 'Add 5+ domain-specific keywords (+2 on D4)' });
+      suggestions.push({
+        gain: 2,
+        imp: {
+          suggestion: 'Add 5+ domain-specific keywords (+2 on D4)',
+          points: 2,
+          dimension: 'D4'
+        }
+      });
     }
     if (!passes(audit, 'E5')) {
-      suggestions.push({ gain: 1, text: 'Add repository URL to package.json (+1 on D4)' });
+      suggestions.push({
+        gain: 1,
+        imp: {
+          suggestion: 'Add repository URL to package.json (+1 on D4)',
+          points: 1,
+          dimension: 'D4'
+        }
+      });
     }
   }
 
   // D5: highest gain is W11 (+3)
   if (dims.d5 < MAX_D5 * 0.8) {
     if (!passes(audit, 'W11')) {
-      suggestions.push({ gain: 3, text: 'Add @category for grouping (+3 on D5, +3 on D7)' });
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add @category for grouping (+3 on D5, +3 on D7)',
+          points: 3,
+          dimension: 'D5'
+        }
+      });
     }
     if (!passes(audit, 'W5')) {
-      suggestions.push({ gain: 2, text: 'Add README Features section (+2 on D5)' });
+      suggestions.push({
+        gain: 2,
+        imp: {
+          suggestion: 'Add README Features section (+2 on D5)',
+          points: 2,
+          dimension: 'D5'
+        }
+      });
     }
   }
 
   // D6: only W8 (+3) — but D6 base is 12 so below 80% (12) rarely triggers unless W8 missing
   if (dims.d6 < MAX_D6 * 0.8) {
     if (!passes(audit, 'W8')) {
-      suggestions.push({ gain: 3, text: 'Add @avoidWhen to key exports (+3 on D6)' });
+      const targets = skill ? targetsForMissingTag(skill, 'avoidWhen') : undefined;
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add @avoidWhen to key exports (+3 on D6)',
+          points: 3,
+          dimension: 'D6',
+          targets: targets && targets.length > 0 ? targets : undefined
+        }
+      });
     }
   }
 
@@ -293,15 +474,35 @@ function buildImprovements(audit: AuditResult, dims: DimScores): string[] {
   if (dims.d7 < MAX_D7 * 0.8) {
     if (!passes(audit, 'W11')) {
       // Avoid duplicate if already added from D5
-      const alreadySuggested = suggestions.some((s) => s.text.includes('@category for grouping'));
+      const alreadySuggested = suggestions.some((s) =>
+        s.imp.suggestion.includes('@category for grouping')
+      );
       if (!alreadySuggested) {
-        suggestions.push({ gain: 3, text: 'Add @category for grouping (+3 on D5, +3 on D7)' });
+        suggestions.push({
+          gain: 3,
+          imp: {
+            suggestion: 'Add @category for grouping (+3 on D5, +3 on D7)',
+            points: 3,
+            dimension: 'D7'
+          }
+        });
       }
     }
     if (!passes(audit, 'W7')) {
-      const alreadySuggested = suggestions.some((s) => s.text.includes('@useWhen to key exports'));
+      const alreadySuggested = suggestions.some((s) =>
+        s.imp.suggestion.includes('@useWhen to key exports')
+      );
       if (!alreadySuggested) {
-        suggestions.push({ gain: 2, text: 'Add @useWhen to key exports (+2 on D7)' });
+        const targets = skill ? targetsForMissingTag(skill, 'useWhen') : undefined;
+        suggestions.push({
+          gain: 2,
+          imp: {
+            suggestion: 'Add @useWhen to key exports (+2 on D7)',
+            points: 2,
+            dimension: 'D7',
+            targets: targets && targets.length > 0 ? targets : undefined
+          }
+        });
       }
     }
   }
@@ -309,33 +510,71 @@ function buildImprovements(audit: AuditResult, dims: DimScores): string[] {
   // D8: E1 (+3), E2 (+3), E3 (+2), E4 (+2)
   if (dims.d8 < MAX_D8 * 0.8) {
     if (!passes(audit, 'E1')) {
-      suggestions.push({ gain: 3, text: 'Add @param descriptions to all parameters (+3 on D8)' });
-    }
-    if (!passes(audit, 'E2')) {
+      // Use audit issues to find specific symbols missing @param
+      const targets = audit.issues
+        .filter((i) => i.code === 'E1')
+        .slice(0, 5)
+        .map((i) => ({ file: i.file, name: i.symbol ?? '(unknown)', kind: 'function' }));
       suggestions.push({
         gain: 3,
-        text: 'Add @returns descriptions to non-void functions (+3 on D8)'
+        imp: {
+          suggestion: 'Add @param descriptions to all parameters (+3 on D8)',
+          points: 3,
+          dimension: 'D8',
+          targets: targets.length > 0 ? targets : undefined
+        }
+      });
+    }
+    if (!passes(audit, 'E2')) {
+      const targets = audit.issues
+        .filter((i) => i.code === 'E2')
+        .slice(0, 5)
+        .map((i) => ({ file: i.file, name: i.symbol ?? '(unknown)', kind: 'function' }));
+      suggestions.push({
+        gain: 3,
+        imp: {
+          suggestion: 'Add @returns descriptions to non-void functions (+3 on D8)',
+          points: 3,
+          dimension: 'D8',
+          targets: targets.length > 0 ? targets : undefined
+        }
       });
     }
     if (!passes(audit, 'E3')) {
-      suggestions.push({ gain: 2, text: 'Add JSDoc to all interface/type properties (+2 on D8)' });
+      suggestions.push({
+        gain: 2,
+        imp: {
+          suggestion: 'Add JSDoc to all interface/type properties (+2 on D8)',
+          points: 2,
+          dimension: 'D8'
+        }
+      });
     }
     if (!passes(audit, 'E4')) {
-      const alreadySuggested = suggestions.some((s) => s.text.includes('@example code blocks'));
+      const alreadySuggested = suggestions.some((s) =>
+        s.imp.suggestion.includes('@example code blocks')
+      );
       if (!alreadySuggested) {
-        suggestions.push({ gain: 2, text: 'Add @example code blocks (+2 on D8)' });
+        suggestions.push({
+          gain: 2,
+          imp: {
+            suggestion: 'Add @example code blocks (+2 on D8)',
+            points: 2,
+            dimension: 'D8'
+          }
+        });
       }
     }
   }
 
-  // Sort by gain desc, deduplicate by text, take top 3
+  // Sort by gain desc, deduplicate by suggestion text, take top 3
   suggestions.sort((a, b) => b.gain - a.gain);
   const seen = new Set<string>();
-  const top: string[] = [];
+  const top: ActionableImprovement[] = [];
   for (const s of suggestions) {
-    if (!seen.has(s.text) && top.length < 3) {
-      seen.add(s.text);
-      top.push(s.text);
+    if (!seen.has(s.imp.suggestion) && top.length < 3) {
+      seen.add(s.imp.suggestion);
+      top.push(s.imp);
     }
   }
 

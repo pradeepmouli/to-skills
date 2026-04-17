@@ -191,9 +191,16 @@ export function formatScoreEstimate(estimate: SkillJudgeEstimate): string {
   if (estimate.improvements.length > 0) {
     lines.push('');
     lines.push('  Top improvements:');
-    for (let i = 0; i < estimate.improvements.length; i++) {
-      lines.push(`  ${i + 1}. ${estimate.improvements[i]}`);
-    }
+    estimate.improvements.forEach((imp, i) => {
+      const hasTargets = imp.targets && imp.targets.length > 0;
+      const suffix = hasTargets ? ' — missing on:' : '';
+      lines.push(`  ${i + 1}. ${imp.suggestion}${suffix}`);
+      if (hasTargets && imp.targets) {
+        for (const t of imp.targets) {
+          lines.push(`     ${t.file} → ${t.name} (${t.kind})`);
+        }
+      }
+    });
   }
 
   return lines.join('\n');

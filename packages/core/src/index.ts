@@ -51,7 +51,7 @@ export { auditSkill } from './audit.js';
 export { formatAuditText, formatAuditJson, formatScoreEstimate } from './audit-formatter.js';
 
 export { estimateSkillJudgeScore } from './audit-score.js';
-export type { SkillJudgeEstimate } from './audit-score.js';
+export type { SkillJudgeEstimate, ActionableImprovement } from './audit-score.js';
 
 export type {
   ConfigSourceType,

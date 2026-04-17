@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { estimateSkillJudgeScore, formatScoreEstimate } from '@to-skills/core';
-import type { AuditResult, SkillJudgeEstimate } from '@to-skills/core';
+import type { AuditResult, SkillJudgeEstimate, ActionableImprovement } from '@to-skills/core';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -145,12 +145,12 @@ describe('missing @useWhen and @pitfalls', () => {
   });
 
   it('improvements list includes @useWhen suggestion', () => {
-    const hasUseWhen = estimate.improvements.some((s) => s.includes('@useWhen'));
+    const hasUseWhen = estimate.improvements.some((s) => s.suggestion.includes('@useWhen'));
     expect(hasUseWhen).toBe(true);
   });
 
   it('improvements list includes @pitfalls suggestion', () => {
-    const hasPitfalls = estimate.improvements.some((s) => s.includes('@pitfalls'));
+    const hasPitfalls = estimate.improvements.some((s) => s.suggestion.includes('@pitfalls'));
     expect(hasPitfalls).toBe(true);
   });
 });
@@ -296,14 +296,14 @@ describe('improvements list', () => {
     // @pitfalls (+8) should appear in improvements if D3 is below 80%
     const d3max = 15;
     if (estimate.dimensions.d3_antiPatterns < d3max * 0.8) {
-      expect(estimate.improvements[0]).toContain('@pitfalls');
+      expect(estimate.improvements[0].suggestion).toContain('@pitfalls');
     }
   });
 
   it('does not include duplicate suggestions', () => {
     const audit = makeResult([], ['F4']);
     const estimate = estimateSkillJudgeScore(audit);
-    const seen = new Set(estimate.improvements);
+    const seen = new Set(estimate.improvements.map((s) => s.suggestion));
     expect(seen.size).toBe(estimate.improvements.length);
   });
 });
@@ -500,7 +500,12 @@ describe('formatScoreEstimate', () => {
   it('numbers improvements 1. 2. 3.', () => {
     const estimate = estimateSkillJudgeScore(makeResult([], ['F4']));
     estimate.improvements.splice(0);
-    estimate.improvements.push('Fix A', 'Fix B', 'Fix C');
+    const fakeImprovements: ActionableImprovement[] = [
+      { suggestion: 'Fix A', points: 3, dimension: 'D1' },
+      { suggestion: 'Fix B', points: 2, dimension: 'D2' },
+      { suggestion: 'Fix C', points: 1, dimension: 'D3' }
+    ];
+    estimate.improvements.push(...fakeImprovements);
     const text = formatScoreEstimate(estimate);
     expect(text).toContain('1. Fix A');
     expect(text).toContain('2. Fix B');

@@ -335,7 +335,7 @@ export function load(app: Application): void {
         }
 
         // Log skill-judge score estimate
-        const estimate = estimateSkillJudgeScore(auditResult);
+        const estimate = estimateSkillJudgeScore(auditResult, skill);
         const scoreText = formatScoreEstimate(estimate);
         for (const line of scoreText.split('\n')) {
           if (line.trim()) app.logger.info(line);
