@@ -243,36 +243,39 @@ function fileForModule(sourceModule: string | undefined): string {
   return `src/${sourceModule}`;
 }
 
-/** Classes and functions missing a given tag, sorted by importance (most methods/properties first). */
+/** Depth in source tree — fewer segments = higher priority (top-level exports first). */
+function sourceDepth(sourceModule: string | undefined): number {
+  if (!sourceModule) return 0; // no source info = treat as top-level
+  return sourceModule.split('/').length;
+}
+
+/** Classes and functions missing a given tag, sorted by source tree depth (top-level first). */
 function targetsForMissingTag(
   skill: ExtractedSkill,
   tag: string,
   maxClasses = 5,
   maxFunctions = 3
 ): ImprovementTarget[] {
-  // Sort classes by importance: most methods + properties first
   const classTargets: ImprovementTarget[] = skill.classes
     .filter((c) => !c.tags[tag])
-    .sort(
-      (a, b) => b.methods.length + b.properties.length - (a.methods.length + a.properties.length)
-    )
+    .sort((a, b) => sourceDepth(a.sourceModule) - sourceDepth(b.sourceModule))
     .slice(0, maxClasses)
     .map((c) => ({ file: fileForModule(c.sourceModule), name: c.name, kind: 'class' }));
 
-  // Sort functions by importance: most parameters first
   const fnTargets: ImprovementTarget[] = skill.functions
     .filter((f) => !f.tags[tag])
-    .sort((a, b) => b.parameters.length - a.parameters.length)
+    .sort((a, b) => sourceDepth(a.sourceModule) - sourceDepth(b.sourceModule))
     .slice(0, maxFunctions)
     .map((f) => ({ file: fileForModule(f.sourceModule), name: f.name, kind: 'function' }));
 
   return [...classTargets, ...fnTargets];
 }
 
-/** Functions with 3+ parameters missing @remarks */
+/** Functions with 3+ parameters missing @remarks, sorted by source tree depth. */
 function targetsForRemarks(skill: ExtractedSkill): ImprovementTarget[] {
   return skill.functions
     .filter((f) => f.parameters.length >= 3 && !f.tags['remarks'])
+    .sort((a, b) => sourceDepth(a.sourceModule) - sourceDepth(b.sourceModule))
     .slice(0, 5)
     .map((f) => ({
       file: fileForModule(f.sourceModule),
