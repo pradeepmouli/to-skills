@@ -48,7 +48,10 @@ export { parseReadme } from './readme-parser.js';
 
 export { auditSkill } from './audit.js';
 
-export { formatAuditText, formatAuditJson } from './audit-formatter.js';
+export { formatAuditText, formatAuditJson, formatScoreEstimate } from './audit-formatter.js';
+
+export { estimateSkillJudgeScore } from './audit-score.js';
+export type { SkillJudgeEstimate } from './audit-score.js';
 
 export type {
   ConfigSourceType,

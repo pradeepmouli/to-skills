@@ -11,7 +11,9 @@ import {
   formatAuditJson,
   parseReadme,
   scanDocs,
-  docsToExtractedDocuments
+  docsToExtractedDocuments,
+  estimateSkillJudgeScore,
+  formatScoreEstimate
 } from '@to-skills/core';
 import type { AuditContext } from '@to-skills/core';
 import { extractSkills } from './extractor.js';
@@ -330,6 +332,13 @@ export function load(app: Application): void {
           } else if (line.trim()) {
             app.logger.info(line);
           }
+        }
+
+        // Log skill-judge score estimate
+        const estimate = estimateSkillJudgeScore(auditResult);
+        const scoreText = formatScoreEstimate(estimate);
+        for (const line of scoreText.split('\n')) {
+          if (line.trim()) app.logger.info(line);
         }
 
         // Write JSON report if configured

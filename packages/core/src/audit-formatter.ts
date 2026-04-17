@@ -1,4 +1,5 @@
 import type { AuditIssue, AuditResult, AuditSeverity } from './audit-types.js';
+import type { SkillJudgeEstimate } from './audit-score.js';
 
 // ---------------------------------------------------------------------------
 // Severity display configuration
@@ -113,4 +114,87 @@ export function formatAuditText(result: AuditResult): string {
  */
 export function formatAuditJson(result: AuditResult): string {
   return JSON.stringify(result, null, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Dimension metadata for formatting
+// ---------------------------------------------------------------------------
+
+const DIMENSION_LABELS: Array<{
+  key: keyof SkillJudgeEstimate['dimensions'];
+  label: string;
+  max: number;
+  hint: string;
+}> = [
+  {
+    key: 'd1_knowledgeDelta',
+    label: 'D1 Knowledge Delta',
+    max: 20,
+    hint: 'add @remarks to complex functions'
+  },
+  { key: 'd2_procedures', label: 'D2 Procedures', max: 15, hint: 'add @useWhen' },
+  { key: 'd3_antiPatterns', label: 'D3 Anti-Patterns', max: 15, hint: 'add @pitfalls' },
+  { key: 'd4_description', label: 'D4 Description', max: 15, hint: 'add package.json description' },
+  {
+    key: 'd5_progressiveDisclosure',
+    label: 'D5 Progressive Disclosure',
+    max: 15,
+    hint: 'add @category'
+  },
+  { key: 'd6_freedom', label: 'D6 Freedom', max: 15, hint: 'add @avoidWhen' },
+  { key: 'd7_pattern', label: 'D7 Pattern', max: 10, hint: 'add @category' },
+  { key: 'd8_usability', label: 'D8 Usability', max: 15, hint: 'add @param/@returns' }
+];
+
+// Width of the longest label (for alignment)
+const LABEL_WIDTH = Math.max(...DIMENSION_LABELS.map((d) => d.label.length));
+
+/**
+ * Format a {@link SkillJudgeEstimate} as human-readable text.
+ *
+ * Shows total score, grade, per-dimension breakdown with inline suggestions
+ * for dimensions below 80% of their max, and a numbered improvement list.
+ *
+ * @example
+ * ```typescript
+ * const estimate = estimateSkillJudgeScore(auditResult);
+ * console.log(formatScoreEstimate(estimate));
+ * ```
+ *
+ * @category Audit
+ */
+export function formatScoreEstimate(estimate: SkillJudgeEstimate): string {
+  const lines: string[] = [];
+
+  // Header
+  lines.push(
+    `📊 Skill-Judge Estimate: ${estimate.total}/${120} (${estimate.percentage}%) — Grade ${estimate.grade}`
+  );
+  lines.push('');
+
+  // Per-dimension rows
+  for (const dim of DIMENSION_LABELS) {
+    const score = estimate.dimensions[dim.key];
+    const pctOfMax = score / dim.max;
+    const needsHint = pctOfMax < 0.8;
+
+    const labelPadded = dim.label.padEnd(LABEL_WIDTH);
+    const scoreStr = `${score}/${dim.max}`;
+    // Right-align score within a 5-char field
+    const scoreField = scoreStr.padStart(5);
+    const hintStr = needsHint ? `  ← ${dim.hint}` : '';
+
+    lines.push(`  ${labelPadded}: ${scoreField}${hintStr}`);
+  }
+
+  // Top improvements
+  if (estimate.improvements.length > 0) {
+    lines.push('');
+    lines.push('  Top improvements:');
+    for (let i = 0; i < estimate.improvements.length; i++) {
+      lines.push(`  ${i + 1}. ${estimate.improvements[i]}`);
+    }
+  }
+
+  return lines.join('\n');
 }
