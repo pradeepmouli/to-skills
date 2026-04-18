@@ -689,7 +689,7 @@ function renderLinks(skill: ExtractedSkill): string {
 }
 
 function renderWhenToUse(skill: ExtractedSkill): string {
-  const triggers: string[] = [];
+  const lines: string[] = [];
 
   if (skill.keywords && skill.keywords.length > 0) {
     const useful = skill.keywords.filter(
@@ -699,23 +699,52 @@ function renderWhenToUse(skill: ExtractedSkill): string {
         )
     );
     if (useful.length > 0) {
-      triggers.push(`- Working with ${useful.join(', ')}`);
+      lines.push(`- Working with ${useful.join(', ')}`);
     }
   }
 
-  // @useWhen triggers from JSDoc
-  if (skill.useWhen && skill.useWhen.length > 0) {
+  // @useWhen triggers: render as decision table when multiple sources (different classes/functions)
+  if (skill.useWhenSources && skill.useWhenSources.length > 0) {
+    const sources = skill.useWhenSources;
+    // Check if items come from multiple distinct named sources
+    const distinctSources = new Set(sources.map((s) => s.sourceName));
+    if (distinctSources.size > 1) {
+      // Decision table: | Task | Use | Why |
+      // We'll emit it after the keyword bullet (if any)
+      const tableLines: string[] = ['| Task | Use | Why |', '|------|-----|-----|'];
+      for (const src of sources) {
+        // "text" is the useWhen item, sourceName is the class/function name
+        // Split on " — " if present to get task vs why, otherwise use text as task
+        const dashIdx = src.text.indexOf(' — ');
+        if (dashIdx !== -1) {
+          const task = src.text.slice(0, dashIdx).trim();
+          const why = src.text.slice(dashIdx + 3).trim();
+          tableLines.push(`| ${task} | \`${src.sourceName}\` | ${why} |`);
+        } else {
+          tableLines.push(`| ${src.text} | \`${src.sourceName}\` | — |`);
+        }
+      }
+      lines.push('');
+      lines.push(...tableLines);
+    } else {
+      // Single source — flat list as before
+      for (const src of sources) {
+        lines.push(`- ${src.text}`);
+      }
+    }
+  } else if (skill.useWhen && skill.useWhen.length > 0) {
+    // Fallback: flat list (skill was not produced by extractor with source tracking)
     for (const item of skill.useWhen) {
-      triggers.push(`- ${item}`);
+      lines.push(`- ${item}`);
     }
   }
 
   // @avoidWhen triggers from JSDoc
   if (skill.avoidWhen && skill.avoidWhen.length > 0) {
-    triggers.push('');
-    triggers.push('**Avoid when:**');
+    lines.push('');
+    lines.push('**Avoid when:**');
     for (const item of skill.avoidWhen) {
-      triggers.push(`- ${item}`);
+      lines.push(`- ${item}`);
     }
   }
 
@@ -727,11 +756,11 @@ function renderWhenToUse(skill: ExtractedSkill): string {
   if (skill.variables && skill.variables.length > 0)
     apiCategories.push(`${skill.variables.length} constants`);
   if (apiCategories.length > 0) {
-    triggers.push(`- API surface: ${apiCategories.join(', ')}`);
+    lines.push(`- API surface: ${apiCategories.join(', ')}`);
   }
 
-  if (triggers.length === 0) return '';
-  return '## When to Use\n\n' + triggers.join('\n');
+  if (lines.length === 0) return '';
+  return '## When to Use\n\n' + lines.join('\n');
 }
 
 function renderPitfalls(skill: ExtractedSkill): string {
@@ -741,6 +770,24 @@ function renderPitfalls(skill: ExtractedSkill): string {
     lines.push(`- ${item}`);
   }
   return lines.join('\n');
+}
+
+/** Extract the first sentence (or first meaningful phrase) from a description */
+function firstSentence(desc: string): string {
+  if (!desc) return '';
+  const match = desc.match(/^[^.!?]*[.!?]/);
+  if (match) return match[0].trim().replace(/[.!?]$/, '');
+  // No sentence terminator — use up to first comma or 60 chars
+  const commaIdx = desc.indexOf(',');
+  if (commaIdx > 0 && commaIdx <= 60) return desc.slice(0, commaIdx).trim();
+  if (desc.length <= 60) return desc.trim();
+  return desc.slice(0, 57).trim() + '...';
+}
+
+/** Format an item as "`Name` (desc)" — omit desc when empty */
+function compactItem(name: string, description: string): string {
+  const label = firstSentence(description);
+  return label ? `\`${name}\` (${label})` : `\`${name}\``;
 }
 
 function renderQuickReference(skill: ExtractedSkill): string {
@@ -755,47 +802,46 @@ function renderQuickReference(skill: ExtractedSkill): string {
   if (allItems.length === 0) return '';
 
   if (hasModuleInfo(allItems)) {
-    // Group all items by module and list names per module
+    // Group all items by module and render compact entries with descriptions
     const groups = groupByModule(allItems);
     const lines: string[] = [];
     for (const [mod, modItems] of groups) {
-      const names = modItems.map((item) => `\`${'name' in item ? item.name : ''}\``).join(', ');
+      const entries = modItems.map((item) => {
+        const name = 'name' in item ? (item as { name: string }).name : '';
+        const desc = 'description' in item ? (item as { description: string }).description : '';
+        return compactItem(name, desc);
+      });
       if (mod) {
-        lines.push(`**${mod}:** ${names}`);
+        lines.push(`**${mod}:** ${entries.join(', ')}`);
       } else {
-        lines.push(names);
+        lines.push(entries.join(', '));
       }
     }
     return '## Quick Reference\n\n' + lines.join('\n');
   }
 
-  // Flat by kind (existing behavior)
+  // Flat by kind — compact format with descriptions
   const items: string[] = [];
 
   if (skill.functions.length > 0) {
-    items.push(
-      `**${skill.functions.length} functions** — ${skill.functions.map((f) => `\`${f.name}\``).join(', ')}`
-    );
+    const entries = skill.functions.map((f) => compactItem(f.name, f.description));
+    items.push(`**${skill.functions.length} functions** — ${entries.join(', ')}`);
   }
   if (skill.classes.length > 0) {
-    items.push(
-      `**${skill.classes.length} classes** — ${skill.classes.map((c) => `\`${c.name}\``).join(', ')}`
-    );
+    const entries = skill.classes.map((c) => compactItem(c.name, c.description));
+    items.push(`**${skill.classes.length} classes** — ${entries.join(', ')}`);
   }
   if (skill.types.length > 0) {
-    items.push(
-      `**${skill.types.length} types** — ${skill.types.map((t) => `\`${t.name}\``).join(', ')}`
-    );
+    const entries = skill.types.map((t) => compactItem(t.name, t.description));
+    items.push(`**${skill.types.length} types** — ${entries.join(', ')}`);
   }
   if (skill.enums.length > 0) {
-    items.push(
-      `**${skill.enums.length} enums** — ${skill.enums.map((e) => `\`${e.name}\``).join(', ')}`
-    );
+    const entries = skill.enums.map((e) => compactItem(e.name, e.description));
+    items.push(`**${skill.enums.length} enums** — ${entries.join(', ')}`);
   }
   if (skill.variables && skill.variables.length > 0) {
-    items.push(
-      `**${skill.variables.length} variables** — ${skill.variables.map((v) => `\`${v.name}\``).join(', ')}`
-    );
+    const entries = skill.variables.map((v) => compactItem(v.name, v.description));
+    items.push(`**${skill.variables.length} variables** — ${entries.join(', ')}`);
   }
 
   return '## Quick Reference\n\n' + items.join('\n');

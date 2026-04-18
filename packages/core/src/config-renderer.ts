@@ -95,8 +95,9 @@ function renderCommandsSection(surfaces: ExtractedConfigSurface[]): string {
 function renderConfigSection(surfaces: ExtractedConfigSurface[]): string {
   const lines: string[] = ['## Configuration'];
 
-  // Config tables always go in references/config.md — SKILL.md gets a summary list.
-  // A single config surface gets its name + description; multiple get a bullet list.
+  // Config tables always go in references/config.md — SKILL.md gets a compact pointer.
+  // A single config surface: show name + description + option count + pitfalls.
+  // Multiple config surfaces: just point to the reference file.
   if (surfaces.length === 1) {
     const s = surfaces[0]!;
     const desc = s.description ? ` — ${s.description}` : '';
@@ -114,14 +115,9 @@ function renderConfigSection(surfaces: ExtractedConfigSurface[]): string {
     return lines.join('\n');
   }
 
+  // Multiple surfaces: skip the bullet list — just point to config.md
   lines.push('');
-  lines.push(
-    `${surfaces.length} configuration interfaces — see references/config.md for details.\n`
-  );
-  for (const surface of surfaces) {
-    const desc = surface.description ? ` — ${surface.description}` : '';
-    lines.push(`- **${surface.name}**${desc}`);
-  }
+  lines.push(`${surfaces.length} configuration interfaces — see references/config.md for details.`);
   return lines.join('\n');
 }
 

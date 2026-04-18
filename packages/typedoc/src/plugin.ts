@@ -277,6 +277,19 @@ export function load(app: Application): void {
       }
     }
 
+    // --- README parsing (shared between skill enrichment and audit) ---
+    const readmeContent = readReadmeFile();
+    const readme = readmeContent ? parseReadme(readmeContent) : undefined;
+
+    // Enrich skills with README Quick Start as first example when no examples exist
+    if (readme?.quickStart) {
+      for (const skill of skills) {
+        if (skill.examples.length === 0) {
+          skill.examples.push(readme.quickStart);
+        }
+      }
+    }
+
     // Accumulate for llms.txt
     allSkills.push(...skills);
 
@@ -305,9 +318,6 @@ export function load(app: Application): void {
     // --- Audit ---
     const auditEnabled = app.options.getValue('skillsAudit') as boolean;
     if (auditEnabled) {
-      const readmeContent = readReadmeFile();
-      const readme = readmeContent ? parseReadme(readmeContent) : undefined;
-
       const auditContext: AuditContext = {
         packageDescription: pkg.description,
         keywords: pkg.keywords,

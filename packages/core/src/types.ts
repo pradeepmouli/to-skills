@@ -32,6 +32,8 @@ export interface ExtractedSkill {
   examples: string[];
   /** Aggregated @useWhen triggers from all exports */
   useWhen?: string[];
+  /** Aggregated @useWhen with source info for decision tables */
+  useWhenSources?: Array<{ text: string; sourceName: string; sourceKind: string }>;
   /** Aggregated @avoidWhen triggers from all exports */
   avoidWhen?: string[];
   /** Aggregated @pitfalls from all exports */

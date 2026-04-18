@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { renderSkill } from '@to-skills/core';
-import type { ExtractedSkill } from '@to-skills/core';
+import { renderSkill, renderConfigSurfaceSection } from '@to-skills/core';
+import type { ExtractedSkill, ExtractedConfigSurface } from '@to-skills/core';
 
 const minimalSkill: ExtractedSkill = {
   name: 'my-lib',
@@ -1466,5 +1466,221 @@ describe('renderSkill — @pitfalls in SKILL.md', () => {
     const quickRefIdx = content.indexOf('## Quick Reference');
     expect(whenIdx).toBeLessThan(pitfallsIdx);
     expect(pitfallsIdx).toBeLessThan(quickRefIdx);
+  });
+});
+
+// ===========================================================================
+// New behavior: decision tables, compact Quick Reference, config pointer
+// ===========================================================================
+
+describe('renderSkill — decision table from useWhenSources', () => {
+  it('renders flat list when useWhenSources has only one distinct source', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Validating input', 'Checking format'],
+      useWhenSources: [
+        { text: 'Validating input', sourceName: 'validate', sourceKind: 'function' },
+        { text: 'Checking format', sourceName: 'validate', sourceKind: 'function' }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('- Validating input');
+    expect(s.content).toContain('- Checking format');
+    // Should NOT render as a table when only one source
+    expect(s.content).not.toContain('| Task | Use | Why |');
+  });
+
+  it('renders decision table when useWhenSources has multiple distinct sources', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Display images', 'Draw shapes'],
+      useWhenSources: [
+        { text: 'Display images', sourceName: 'Sprite', sourceKind: 'class' },
+        { text: 'Draw shapes', sourceName: 'Graphics', sourceKind: 'class' }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('| Task | Use | Why |');
+    expect(s.content).toContain('|------|-----|-----|');
+    expect(s.content).toContain('`Sprite`');
+    expect(s.content).toContain('`Graphics`');
+    expect(s.content).toContain('Display images');
+    expect(s.content).toContain('Draw shapes');
+  });
+
+  it('splits "task — why" format in decision table rows', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Display images — Fast batched rendering', 'Draw shapes — Retained vector API'],
+      useWhenSources: [
+        {
+          text: 'Display images — Fast batched rendering',
+          sourceName: 'Sprite',
+          sourceKind: 'class'
+        },
+        {
+          text: 'Draw shapes — Retained vector API',
+          sourceName: 'Graphics',
+          sourceKind: 'class'
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('| Display images | `Sprite` | Fast batched rendering |');
+    expect(s.content).toContain('| Draw shapes | `Graphics` | Retained vector API |');
+  });
+
+  it('uses "—" as why column when no dash separator in useWhenSources text', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Need sprites', 'Need graphics'],
+      useWhenSources: [
+        { text: 'Need sprites', sourceName: 'Sprite', sourceKind: 'class' },
+        { text: 'Need graphics', sourceName: 'Graphics', sourceKind: 'class' }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('| Need sprites | `Sprite` | — |');
+    expect(s.content).toContain('| Need graphics | `Graphics` | — |');
+  });
+
+  it('falls back to flat list when useWhenSources is absent', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      useWhen: ['Item one', 'Item two']
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('- Item one');
+    expect(s.content).toContain('- Item two');
+    expect(s.content).not.toContain('| Task | Use | Why |');
+  });
+});
+
+describe('renderSkill — compact Quick Reference with descriptions', () => {
+  it('shows first sentence of description in parentheses for flat items', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'validate',
+          description: 'Validates input. Returns true on success.',
+          signature: '',
+          parameters: [],
+          returnType: 'boolean',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('`validate` (Validates input)');
+  });
+
+  it('omits parenthetical when description is empty', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'noop',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    // Should just show `noop` with no trailing empty parens
+    expect(s.content).toContain('`noop`');
+    expect(s.content).not.toContain('`noop` ()');
+  });
+
+  it('shows description in grouped Quick Reference by module', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'render',
+          description: 'Renders the scene to canvas. Call each frame.',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {},
+          sourceModule: 'renderer'
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('**renderer:**');
+    expect(s.content).toContain('`render` (Renders the scene to canvas)');
+  });
+
+  it('truncates very long descriptions at 60 chars', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description:
+            'This is a very long description without any sentence terminators in it at all right here',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill);
+    // Should not include the full long description
+    expect(s.content).not.toContain('right here');
+    // Should include start of description
+    expect(s.content).toContain('This is a very long');
+  });
+});
+
+describe('renderConfigSurfaceSection — multi-surface config pointer', () => {
+  it('shows compact pointer for multiple config surfaces without bullet list', () => {
+    const surfaces: ExtractedConfigSurface[] = [
+      {
+        name: 'AppConfig',
+        description: 'Application config',
+        sourceType: 'config',
+        options: [{ name: 'port', type: 'number', description: 'Server port', required: false }]
+      },
+      {
+        name: 'BuildConfig',
+        description: 'Build config',
+        sourceType: 'config',
+        options: [{ name: 'outDir', type: 'string', description: 'Output dir', required: false }]
+      },
+      {
+        name: 'LogConfig',
+        description: 'Logger config',
+        sourceType: 'config',
+        options: [{ name: 'level', type: 'string', description: 'Log level', required: false }]
+      }
+    ];
+
+    const result = renderConfigSurfaceSection(surfaces);
+    expect(result).toContain('## Configuration');
+    expect(result).toContain('3 configuration interfaces');
+    expect(result).toContain('references/config.md');
+    // Should NOT have a bullet list of all surface names
+    expect(result).not.toContain('- **AppConfig**');
+    expect(result).not.toContain('- **BuildConfig**');
+    expect(result).not.toContain('- **LogConfig**');
   });
 });
