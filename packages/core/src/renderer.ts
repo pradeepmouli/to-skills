@@ -178,9 +178,24 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
     sections.push(skill.description);
   }
 
+  // Features section from README — inline in SKILL.md
+  if (skill.readmeFeatures) {
+    sections.push('## Features\n\n' + skill.readmeFeatures);
+  }
+
   // Quick Start example (first module-level example)
   if (opts.includeExamples && skill.examples.length > 0) {
     sections.push('## Quick Start\n\n' + skill.examples[0]);
+  }
+
+  // Additional examples beyond Quick Start
+  if (opts.includeExamples && skill.examples.length > 1) {
+    const lines = ['## Examples\n'];
+    for (const ex of skill.examples.slice(1)) {
+      lines.push(ex);
+      lines.push('\n---\n');
+    }
+    sections.push(lines.join('\n'));
   }
 
   const whenToUse = renderWhenToUse(skill);
@@ -188,6 +203,11 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
 
   const pitfalls = renderPitfalls(skill);
   if (pitfalls) sections.push(pitfalls);
+
+  // Troubleshooting section from README — inline in SKILL.md
+  if (skill.readmeTroubleshooting) {
+    sections.push('## Troubleshooting\n\n' + skill.readmeTroubleshooting);
+  }
 
   const configSection = renderConfigSurfaceSection(skill.configSurfaces);
   if (configSection) sections.push(configSection);

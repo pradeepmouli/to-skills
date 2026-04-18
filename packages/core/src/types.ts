@@ -40,6 +40,10 @@ export interface ExtractedSkill {
   pitfalls?: string[];
   /** Configuration surfaces (CLI commands, config files) */
   configSurfaces?: ExtractedConfigSurface[];
+  /** Features section from README — rendered inline in SKILL.md */
+  readmeFeatures?: string;
+  /** Troubleshooting section from README — rendered inline in SKILL.md */
+  readmeTroubleshooting?: string;
 }
 
 export interface ExtractedFunction {

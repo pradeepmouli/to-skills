@@ -290,6 +290,18 @@ export function load(app: Application): void {
       }
     }
 
+    // Enrich skills with README Features and Troubleshooting for inline SKILL.md rendering
+    if (readme?.features) {
+      for (const skill of skills) {
+        skill.readmeFeatures ??= readme.features;
+      }
+    }
+    if (readme?.troubleshooting) {
+      for (const skill of skills) {
+        skill.readmeTroubleshooting ??= readme.troubleshooting;
+      }
+    }
+
     // Accumulate for llms.txt
     allSkills.push(...skills);
 

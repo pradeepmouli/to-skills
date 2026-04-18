@@ -1651,6 +1651,158 @@ describe('renderSkill — compact Quick Reference with descriptions', () => {
   });
 });
 
+describe('renderSkill — readmeFeatures in SKILL.md', () => {
+  it('renders Features section when readmeFeatures is set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      readmeFeatures: '- Zero dependencies\n- TypeScript-first\n- Tree-shakeable'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Features');
+    expect(s.content).toContain('- Zero dependencies');
+    expect(s.content).toContain('- TypeScript-first');
+    expect(s.content).toContain('- Tree-shakeable');
+  });
+
+  it('omits Features section when readmeFeatures is absent', () => {
+    const { skill: s } = renderSkill(minimalSkill);
+    expect(s.content).not.toContain('## Features');
+  });
+
+  it('renders Features after body intro and before Quick Start', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      packageDescription: 'BODY_INTRO',
+      readmeFeatures: 'FEATURES_CONTENT',
+      examples: ['```ts\nconst x = 1;\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: true });
+    const content = s.content;
+    const bodyIdx = content.indexOf('BODY_INTRO');
+    const featuresIdx = content.indexOf('## Features');
+    const quickStartIdx = content.indexOf('## Quick Start');
+    expect(bodyIdx).toBeLessThan(featuresIdx);
+    expect(featuresIdx).toBeLessThan(quickStartIdx);
+  });
+});
+
+describe('renderSkill — readmeTroubleshooting in SKILL.md', () => {
+  it('renders Troubleshooting section when readmeTroubleshooting is set', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      readmeTroubleshooting: '### Error: module not found\n\nRun `npm install` first.'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Troubleshooting');
+    expect(s.content).toContain('Error: module not found');
+    expect(s.content).toContain('Run `npm install` first.');
+  });
+
+  it('omits Troubleshooting section when readmeTroubleshooting is absent', () => {
+    const { skill: s } = renderSkill(minimalSkill);
+    expect(s.content).not.toContain('## Troubleshooting');
+  });
+
+  it('renders Troubleshooting after Pitfalls and before Quick Reference', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      pitfalls: ['Watch out'],
+      readmeTroubleshooting: 'TROUBLESHOOTING_CONTENT'
+    };
+
+    const { skill: s } = renderSkill(skill);
+    const content = s.content;
+    const pitfallsIdx = content.indexOf('## Pitfalls');
+    const troubleshootingIdx = content.indexOf('## Troubleshooting');
+    const quickRefIdx = content.indexOf('## Quick Reference');
+    expect(pitfallsIdx).toBeLessThan(troubleshootingIdx);
+    expect(troubleshootingIdx).toBeLessThan(quickRefIdx);
+  });
+});
+
+describe('renderSkill — additional examples in SKILL.md', () => {
+  it('renders Examples section for skill.examples beyond the first', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      examples: [
+        '```ts\n// Quick Start\nconst x = 1;\n```',
+        '```ts\n// Example Two\nconst y = 2;\n```',
+        '```ts\n// Example Three\nconst z = 3;\n```'
+      ]
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: true });
+    expect(s.content).toContain('## Quick Start');
+    expect(s.content).toContain('## Examples');
+    expect(s.content).toContain('Example Two');
+    expect(s.content).toContain('Example Three');
+    // Quick Start shows only the first example
+    expect(s.content).not.toContain('// Quick Start\n```\n\n## Quick Start');
+  });
+
+  it('does not render Examples section when only one example (Quick Start only)', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      examples: ['```ts\nconst x = 1;\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: true });
+    expect(s.content).toContain('## Quick Start');
+    expect(s.content).not.toContain('## Examples');
+  });
+
+  it('does not render Examples section when includeExamples is false', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      examples: ['```ts\nconst x = 1;\n```', '```ts\nconst y = 2;\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: false });
+    expect(s.content).not.toContain('## Quick Start');
+    expect(s.content).not.toContain('## Examples');
+  });
+
+  it('renders Examples section after Quick Start and before When to Use', () => {
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description: '',
+          signature: '',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      examples: ['```ts\nconst a = 1;\n```', '```ts\nconst b = 2;\n```']
+    };
+
+    const { skill: s } = renderSkill(skill, { includeExamples: true });
+    const content = s.content;
+    const quickStartIdx = content.indexOf('## Quick Start');
+    const examplesIdx = content.indexOf('## Examples');
+    const whenToUseIdx = content.indexOf('## When to Use');
+    expect(quickStartIdx).toBeLessThan(examplesIdx);
+    expect(examplesIdx).toBeLessThan(whenToUseIdx);
+  });
+});
+
 describe('renderConfigSurfaceSection — multi-surface config pointer', () => {
   it('shows compact pointer for multiple config surfaces without bullet list', () => {
     const surfaces: ExtractedConfigSurface[] = [
