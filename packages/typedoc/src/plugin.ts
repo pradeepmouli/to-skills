@@ -227,6 +227,34 @@ export function load(app: Application): void {
     defaultValue: 'docs'
   });
 
+  // --- Auto-register custom tags ---
+  // Ensure @useWhen, @avoidWhen, @pitfalls, @config are in blockTags (not modifierTags).
+  // Runs at EVENT_BEGIN — after user's typedoc.json is read, before parsing starts.
+  const CUSTOM_BLOCK_TAGS = ['@useWhen', '@avoidWhen', '@pitfalls', '@config'];
+  app.converter.on(Converter.EVENT_BEGIN, () => {
+    const blockTags = app.options.getValue('blockTags') as string[];
+    const modifierTags = app.options.getValue('modifierTags') as string[];
+
+    // Add to blockTags if missing
+    const missing = CUSTOM_BLOCK_TAGS.filter((t) => !blockTags.includes(t));
+    if (missing.length > 0) {
+      app.options.setValue('blockTags', [...blockTags, ...missing]);
+    }
+
+    // Remove from modifierTags — being in modifierTags silently strips content
+    const misplaced = CUSTOM_BLOCK_TAGS.filter((t) => modifierTags.includes(t));
+    if (misplaced.length > 0) {
+      app.logger.warn(
+        `[skills] Moved ${misplaced.join(', ')} from modifierTags to blockTags — ` +
+          `modifierTags strips tag content, which prevents skill generation from reading it`
+      );
+      app.options.setValue(
+        'modifierTags',
+        modifierTags.filter((t) => !CUSTOM_BLOCK_TAGS.includes(t))
+      );
+    }
+  });
+
   // --- State ---
   // Accumulate skills across converter runs for llms.txt (project-wide).
   // Skills files are written immediately per converter run (per-package scope).

@@ -116,10 +116,44 @@ export function renderSkill(
   }
 
   if (skill.documents && skill.documents.length > 0) {
+    // Group docs by category for index files
+    const byCategory = new Map<string, typeof skill.documents>();
     for (const doc of skill.documents) {
-      const content = `# ${doc.title}\n\n${doc.content}`;
+      const cat = doc.category ?? '_uncategorized';
+      const list = byCategory.get(cat) ?? [];
+      list.push(doc);
+      byCategory.set(cat, list);
+    }
+
+    // Generate per-category index files
+    for (const [cat, docs] of byCategory) {
+      if (cat === '_uncategorized' && docs.length < 3) continue; // skip tiny uncategorized groups
+      const subdir = cat === '_uncategorized' ? 'docs' : `docs/${cat}`;
+      const indexLines = [`# ${cat === '_uncategorized' ? 'Documentation' : cat}\n`];
+      for (const doc of docs) {
+        const desc = doc.description ? ` — ${doc.description}` : '';
+        indexLines.push(`- [${doc.title}](${toFilename(doc.title)}.md)${desc}`);
+      }
       references.push({
-        filename: `${basePath}/references/${toFilename(doc.title)}.md`,
+        filename: `${basePath}/references/${subdir}/index.md`,
+        content: indexLines.join('\n'),
+        tokens: estimateTokens(indexLines.join('\n'))
+      });
+    }
+
+    // Generate individual doc files
+    for (const doc of skill.documents) {
+      let footer = '';
+      if (doc.apiRefs && doc.apiRefs.length > 0) {
+        footer = '\n\n---\n\n**See also:** ' + doc.apiRefs.map((r) => `\`${r}\``).join(', ');
+      }
+      const hasHeading = /^#\s/.test(doc.content);
+      const content = hasHeading
+        ? `${doc.content}${footer}`
+        : `# ${doc.title}\n\n${doc.content}${footer}`;
+      const subdir = doc.category ? `docs/${doc.category}` : 'docs';
+      references.push({
+        filename: `${basePath}/references/${subdir}/${toFilename(doc.title)}.md`,
         content: truncateToTokenBudget(content, opts.maxTokens),
         tokens: estimateTokens(content)
       });
@@ -692,11 +726,44 @@ function extractFirstSentence(text: string): string {
 function renderDocumentation(skill: ExtractedSkill): string {
   if (!skill.documents || skill.documents.length === 0) return '';
   const lines = ['## Documentation\n'];
+
+  // Group by category
+  const categorized = new Map<string, typeof skill.documents>();
+  const uncategorized: typeof skill.documents = [];
   for (const doc of skill.documents) {
-    const firstSentence = extractFirstSentence(doc.content);
-    const desc = firstSentence ? ` — ${firstSentence}` : '';
-    lines.push(`- **${doc.title}**${desc}`);
+    if (doc.category) {
+      const list = categorized.get(doc.category) ?? [];
+      list.push(doc);
+      categorized.set(doc.category, list);
+    } else {
+      uncategorized.push(doc);
+    }
   }
+
+  if (categorized.size > 1) {
+    // Progressive disclosure: category summary → index files → individual docs
+    // Use parent doc's description for category summary, fall back to doc title list
+    for (const [category, docs] of categorized) {
+      const parentDoc = docs.find((d) => d.isParent);
+      const desc = parentDoc?.description ?? docs.map((d) => d.title).join(', ');
+      lines.push(`- **${category}** (${docs.length}) — ${desc}`);
+    }
+    if (uncategorized.length > 0) {
+      for (const doc of uncategorized) {
+        const desc = doc.description ?? extractFirstSentence(doc.content);
+        lines.push(`- **${doc.title}**${desc ? ` — ${desc}` : ''}`);
+      }
+    }
+  } else {
+    // Few docs — flat list with descriptions
+    for (const doc of skill.documents) {
+      const desc = doc.description ?? extractFirstSentence(doc.content);
+      lines.push(`- **${doc.title}**${desc ? ` — ${desc}` : ''}`);
+    }
+  }
+
+  lines.push('');
+  lines.push(`See \`references/docs/\` for full guides (${skill.documents.length} total).`);
   return lines.join('\n');
 }
 
@@ -759,8 +826,33 @@ function renderWhenToUse(skill: ExtractedSkill): string {
     }
   }
 
-  // @avoidWhen triggers from JSDoc
-  if (skill.avoidWhen && skill.avoidWhen.length > 0) {
+  // @avoidWhen triggers from JSDoc — decision table when multiple sources
+  if (skill.avoidWhenSources && skill.avoidWhenSources.length > 0) {
+    const sources = skill.avoidWhenSources;
+    const distinctSources = new Set(sources.map((s) => s.sourceName));
+    lines.push('');
+    if (distinctSources.size > 1) {
+      lines.push('**Avoid when:**');
+      lines.push('');
+      lines.push("| Don't Use | When | Use Instead |");
+      lines.push('|-----------|------|-------------|');
+      for (const src of sources) {
+        const dashIdx = src.text.indexOf(' — ');
+        if (dashIdx !== -1) {
+          const scenario = src.text.slice(0, dashIdx).trim();
+          const alternative = src.text.slice(dashIdx + 3).trim();
+          lines.push(`| \`${src.sourceName}\` | ${scenario} | ${alternative} |`);
+        } else {
+          lines.push(`| \`${src.sourceName}\` | ${src.text} | — |`);
+        }
+      }
+    } else {
+      lines.push('**Avoid when:**');
+      for (const src of sources) {
+        lines.push(`- ${src.text}`);
+      }
+    }
+  } else if (skill.avoidWhen && skill.avoidWhen.length > 0) {
     lines.push('');
     lines.push('**Avoid when:**');
     for (const item of skill.avoidWhen) {

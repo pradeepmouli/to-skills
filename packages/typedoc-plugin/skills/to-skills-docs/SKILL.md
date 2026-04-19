@@ -106,11 +106,7 @@ export interface Config {
 
 These three custom tags are what separate a "passing" skill from a genuinely useful one. They provide the expert knowledge that Claude doesn't already have — decision procedures, anti-patterns, and freedom calibration.
 
-Add to your `typedoc.json`:
-
-```json
-{ "blockTags": ["@useWhen", "@avoidWhen", "@pitfalls"] }
-```
+The plugin auto-registers these as `blockTags` at load time — no `typedoc.json` config needed. If they're accidentally placed in `modifierTags`, the plugin auto-moves them with a warning (modifierTags strips content).
 
 ### `@useWhen` — When to reach for this function
 
@@ -262,8 +258,18 @@ Generated skills are evaluated on 8 dimensions. The biggest gaps without convent
 
 ## Workflow
 
-1. Run `pnpm typedoc` — see audit output
-2. Fix fatals (5 minutes of work)
-3. Fix errors (the biggest quality jump)
-4. Re-run — verify improvements
-5. Check `skills/<name>/SKILL.md` — does the description make sense?
+1. Run `pnpm typedoc` — see audit output and score estimate
+2. Fix fatals first (package.json description, missing JSDoc)
+3. Add @useWhen/@avoidWhen/@pitfalls to key exports (biggest quality jump)
+4. Fix errors — @param/@returns on non-self-documenting params
+5. Re-run — verify score improvement
+6. Iterate until audit estimate plateaus
+7. **Mandatory: Run skill-judge** on the generated `skills/<name>/SKILL.md` — the audit estimate is a heuristic (~15-point gap from actual skill-judge scores). Skill-judge catches issues the audit misses: Quick Reference token bloat, description trigger quality, missing Quick Start examples, redundant type dumps.
+
+The audit estimate correlates with skill-judge but consistently overestimates by 10-20 points. Common gaps:
+
+- Audit doesn't penalize Quick Reference dumping every type inline (~5K tokens wasted)
+- Audit checks description exists, not whether it has effective WHEN triggers
+- Audit can't assess prose quality or code example usefulness
+
+A skill is not ready to ship until skill-judge confirms Grade B (96+) or higher.

@@ -36,6 +36,8 @@ export interface ExtractedSkill {
   useWhenSources?: Array<{ text: string; sourceName: string; sourceKind: string }>;
   /** Aggregated @avoidWhen triggers from all exports */
   avoidWhen?: string[];
+  /** Aggregated @avoidWhen with source info for decision tables */
+  avoidWhenSources?: Array<{ text: string; sourceName: string; sourceKind: string }>;
   /** Aggregated @pitfalls from all exports */
   pitfalls?: string[];
   /** Configuration surfaces (CLI commands, config files) */
@@ -137,6 +139,14 @@ export interface ExtractedDocument {
   title: string;
   /** Document content (markdown) */
   content: string;
+  /** Category from frontmatter — used to disambiguate duplicate titles and organize into subdirs */
+  category?: string;
+  /** Frontmatter description — used for category summaries in SKILL.md */
+  description?: string;
+  /** True when this doc has children (is a parent/overview doc) */
+  isParent?: boolean;
+  /** API class/type names from {@link} tags in "## API reference" sections — enables bidirectional linking */
+  apiRefs?: string[];
 }
 
 /** A single rendered file */

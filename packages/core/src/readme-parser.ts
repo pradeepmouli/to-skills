@@ -20,10 +20,11 @@ function isHeading(line: string): boolean {
   return /^#{1,6}\s/.test(line);
 }
 
-/** Extract the heading text (lowercased, no leading `## `). */
+/** Extract the heading text (lowercased, no leading `## ` or emoji prefixes). */
 function headingText(line: string): string {
   return line
     .replace(/^#{1,6}\s+/, '')
+    .replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F]+\s*/u, '')
     .toLowerCase()
     .trim();
 }

@@ -467,27 +467,102 @@ function getExamples(comment: Comment | undefined): string[] {
     .filter(Boolean);
 }
 
-/** Extract projectDocuments from the TypeDoc reflection tree */
+/** A document reflection from TypeDoc's tree (typed loosely to avoid version coupling) */
+interface DocReflection {
+  name: string;
+  content?: Array<{ kind?: string; text: string; target?: { name?: string } }>;
+  children?: DocReflection[];
+  frontmatter?: Record<string, unknown>;
+}
+
+/** Extract projectDocuments from the TypeDoc reflection tree, recursing into children */
 function extractDocuments(project: ProjectReflection): ExtractedDocument[] {
   const docs: ExtractedDocument[] = [];
-
-  // TypeDoc 0.28+ stores documents on reflections
-  const projectDocs = (
-    project as unknown as { documents?: Array<{ name: string; content?: Array<{ text: string }> }> }
-  ).documents;
+  const projectDocs = (project as unknown as { documents?: DocReflection[] }).documents;
   if (projectDocs) {
-    for (const doc of projectDocs) {
-      const content = doc.content
-        ?.map((part) => part.text)
-        .join('')
-        .trim();
-      if (content) {
-        docs.push({ title: doc.name, content });
-      }
+    collectDocuments(projectDocs, docs);
+  }
+
+  // Deduplicate titles — append category when names collide (e.g. multiple "Overview" docs)
+  const titleCounts = new Map<string, number>();
+  for (const doc of docs) {
+    titleCounts.set(doc.title, (titleCounts.get(doc.title) ?? 0) + 1);
+  }
+  for (const doc of docs) {
+    if ((titleCounts.get(doc.title) ?? 0) > 1 && doc.category) {
+      doc.title = `${doc.category} — ${doc.title}`;
     }
   }
 
   return docs;
+}
+
+function collectDocuments(reflections: DocReflection[], out: ExtractedDocument[]): void {
+  for (const doc of reflections) {
+    const content = renderDocContent(doc.content);
+    if (content) {
+      const category =
+        typeof doc.frontmatter?.['category'] === 'string' ? doc.frontmatter['category'] : undefined;
+      const description =
+        typeof doc.frontmatter?.['description'] === 'string'
+          ? doc.frontmatter['description']
+          : undefined;
+      const isParent = (doc.children?.length ?? 0) > 0;
+
+      // Extract API references from "## API reference" section ({@link Foo} items)
+      const apiRefs = extractApiReferences(doc.content);
+
+      out.push({
+        title: doc.name,
+        content,
+        category,
+        description,
+        isParent: isParent || undefined,
+        apiRefs: apiRefs.length > 0 ? apiRefs : undefined
+      });
+    }
+    // Recurse into children (TypeDoc's @document children frontmatter)
+    if (doc.children?.length) {
+      collectDocuments(doc.children, out);
+    }
+  }
+}
+
+/** Render document content parts, converting {@link} tags to backtick-wrapped names */
+function renderDocContent(
+  parts?: Array<{ kind?: string; text: string; target?: { name?: string } }>
+): string {
+  if (!parts) return '';
+  return parts
+    .map((part) => {
+      if (part.kind === 'inline-tag') {
+        // Use target.name if available (resolved link), otherwise extract from text
+        const name = part.target?.name ?? part.text?.trim();
+        return name ? `\`${name}\`` : part.text;
+      }
+      return part.text;
+    })
+    .join('')
+    .trim();
+}
+
+/** Extract class/type names from {@link} tags in the "## API reference" section */
+function extractApiReferences(
+  parts?: Array<{ kind?: string; text: string; target?: { name?: string } }>
+): string[] {
+  if (!parts) return [];
+  const refs: string[] = [];
+  let inApiSection = false;
+  for (const part of parts) {
+    if (part.text?.includes('## API reference')) {
+      inApiSection = true;
+    }
+    if (inApiSection && part.kind === 'inline-tag') {
+      const name = part.target?.name ?? part.text?.trim();
+      if (name) refs.push(name);
+    }
+  }
+  return refs;
 }
 
 /**
@@ -690,6 +765,7 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
   const useWhen: string[] = [];
   const useWhenSources: Array<{ text: string; sourceName: string; sourceKind: string }> = [];
   const avoidWhen: string[] = [];
+  const avoidWhenSources: Array<{ text: string; sourceName: string; sourceKind: string }> = [];
   const pitfalls: string[] = [];
 
   // Collect from functions
@@ -701,7 +777,13 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
         useWhenSources.push({ text: item, sourceName: fn.name, sourceKind: 'function' });
       }
     }
-    if (fn.tags['avoidWhen']) avoidWhen.push(...parseBulletList(fn.tags['avoidWhen']));
+    if (fn.tags['avoidWhen']) {
+      const items = parseBulletList(fn.tags['avoidWhen']);
+      avoidWhen.push(...items);
+      for (const item of items) {
+        avoidWhenSources.push({ text: item, sourceName: fn.name, sourceKind: 'function' });
+      }
+    }
     if (fn.tags['pitfalls']) pitfalls.push(...parseBulletList(fn.tags['pitfalls']));
   }
 
@@ -714,12 +796,19 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
         useWhenSources.push({ text: item, sourceName: cls.name, sourceKind: 'class' });
       }
     }
-    if (cls.tags['avoidWhen']) avoidWhen.push(...parseBulletList(cls.tags['avoidWhen']));
+    if (cls.tags['avoidWhen']) {
+      const items = parseBulletList(cls.tags['avoidWhen']);
+      avoidWhen.push(...items);
+      for (const item of items) {
+        avoidWhenSources.push({ text: item, sourceName: cls.name, sourceKind: 'class' });
+      }
+    }
     if (cls.tags['pitfalls']) pitfalls.push(...parseBulletList(cls.tags['pitfalls']));
   }
 
   if (useWhen.length > 0) skill.useWhen = useWhen;
   if (useWhenSources.length > 0) skill.useWhenSources = useWhenSources;
   if (avoidWhen.length > 0) skill.avoidWhen = avoidWhen;
+  if (avoidWhenSources.length > 0) skill.avoidWhenSources = avoidWhenSources;
   if (pitfalls.length > 0) skill.pitfalls = pitfalls;
 }

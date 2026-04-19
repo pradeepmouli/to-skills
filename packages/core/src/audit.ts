@@ -229,6 +229,55 @@ function isTrivialParamDesc(desc: string, paramName: string): boolean {
   return normalized === paramName.toLowerCase();
 }
 
+/** Check if a parameter is self-documenting from its name + type */
+function isSelfDocumenting(name: string, type: string): boolean {
+  const lowerName = name.toLowerCase();
+  const lowerType = type.toLowerCase().replace(/[<>[\]|&? ]/g, '');
+
+  // Name matches or contains the type name: texture: Texture, renderer: Renderer
+  if (
+    lowerType &&
+    lowerName.includes(lowerType.replace(/partial|readonly|array/gi, '').toLowerCase())
+  )
+    return true;
+  if (lowerType && lowerType.includes(lowerName)) return true;
+
+  // Well-known options/config pattern: options: SpriteOptions, config: AppConfig
+  if (
+    /^(options|config|settings|props|params|args)$/i.test(name) &&
+    /options|config|settings|props/i.test(type)
+  )
+    return true;
+
+  // Common positional/dimensional names with numeric types
+  if (
+    /^(x|y|z|w|h|width|height|depth|index|count|length|size|offset|start|end|min|max|top|left|right|bottom|radius|angle|alpha|scale|rotation|delta|time|duration|delay|speed|priority)$/i.test(
+      name
+    ) &&
+    /number|float|int/i.test(type)
+  )
+    return true;
+
+  // Boolean flags where name implies meaning: visible, enabled, active, force
+  if (
+    /boolean/i.test(type) &&
+    /^(is|has|can|should|will|force|enable|disable|visible|active|readonly|optional|required|recursive|deep|strict|lazy|async|sync|auto|skip|include|exclude)/.test(
+      lowerName
+    )
+  )
+    return true;
+
+  // Callback/handler pattern: callback: () => void, handler: EventHandler
+  if (
+    /^(callback|handler|listener|fn|func|predicate|comparator|reducer|mapper|filter|resolver|reject|resolve)$/i.test(
+      name
+    )
+  )
+    return true;
+
+  return false;
+}
+
 function checkE1(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
   let allGood = true;
 
@@ -238,7 +287,7 @@ function checkE1(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass
     params: (typeof skill.functions)[0]['parameters']
   ) => {
     for (const param of params) {
-      if (!param.description?.trim()) {
+      if (!param.description?.trim() && !isSelfDocumenting(param.name, param.type)) {
         allGood = false;
         issues.push(
           issue(
@@ -278,6 +327,18 @@ function checkE2(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass
 
   const checkFn = (fn: (typeof skill.functions)[0], context: string, sourceModule?: string) => {
     if (fn.returnType && fn.returnType !== 'void' && !fn.returnsDescription?.trim()) {
+      // Skip self-documenting returns: type matches function name, boolean predicates, this-returns
+      const rt = fn.returnType.toLowerCase();
+      const fnName = fn.name.toLowerCase();
+      const isSelfDoc =
+        rt.includes(fnName) ||
+        fnName.includes(rt.replace(/[[\]<>|& ?]/g, '')) ||
+        (rt === 'boolean' &&
+          /^(is|has|can|should|contains|includes|equals|matches)/.test(fnName)) ||
+        rt === 'this' ||
+        rt === 'promise<void>';
+      if (isSelfDoc) return;
+
       allGood = false;
       issues.push(
         issue(
