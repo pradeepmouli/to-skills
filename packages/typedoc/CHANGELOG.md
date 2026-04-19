@@ -1,5 +1,27 @@
 # @to-skills/typedoc
 
+## 0.12.0
+
+### Minor Changes
+
+- Document extraction overhaul, auto-tag registration, self-documenting params
+  - Extract @document children recursively (was only top-level)
+  - Deduplicate document titles using frontmatter category
+  - Render {@link Foo} as `Foo` in extracted docs
+  - Extract API references from "## API reference" sections for cross-linking
+  - Organize doc references by category with per-category index files
+  - Progressive disclosure in SKILL.md Documentation section
+  - Auto-register custom blockTags and auto-move from modifierTags with warning
+  - Wire avoidWhenSources for decision table rendering
+  - Skip self-documenting params/returns in audit
+  - Fix emoji-prefixed README headings
+  - Add skill-judge as mandatory end gate in bundled skill workflow
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.11.0
+
 ## 0.11.4
 
 ### Patch Changes
