@@ -306,7 +306,9 @@ export function load(app: Application): void {
     }
 
     // --- README parsing (shared between skill enrichment and audit) ---
-    const readmeContent = readReadmeFile();
+    // Try per-package README first (packages/<dir>/README.md), fall back to root.
+    // Prevents monorepo root README from being injected into every package skill.
+    const readmeContent = readReadmeForProject(project.name) ?? readReadmeFile();
     const readme = readmeContent ? parseReadme(readmeContent) : undefined;
 
     // Enrich skills with README Quick Start as first example when no examples exist
@@ -521,10 +523,43 @@ function getWorkspacePackageNames(rootName?: string): Set<string> {
   return names;
 }
 
+/** Read the root README.md */
 function readReadmeFile(): string | undefined {
+  return readReadmeAt(process.cwd());
+}
+
+/** Try to find a README in the workspace package directory matching projectName */
+function readReadmeForProject(projectName: string): string | undefined {
+  const packagesDir = join(process.cwd(), 'packages');
+  if (!existsSync(packagesDir)) return undefined;
+
+  try {
+    const dirs = readdirSync(packagesDir, { withFileTypes: true });
+    for (const dir of dirs) {
+      if (!dir.isDirectory()) continue;
+      const pkgPath = join(packagesDir, dir.name, 'package.json');
+      if (existsSync(pkgPath)) {
+        try {
+          const p = JSON.parse(readFileSync(pkgPath, 'utf-8')) as PackageJson;
+          if (p.name === projectName) {
+            return readReadmeAt(join(packagesDir, dir.name));
+          }
+        } catch {
+          // skip
+        }
+      }
+    }
+  } catch {
+    // skip
+  }
+
+  return undefined;
+}
+
+function readReadmeAt(dir: string): string | undefined {
   const names = ['README.md', 'readme.md', 'Readme.md'];
   for (const name of names) {
-    const readmePath = join(process.cwd(), name);
+    const readmePath = join(dir, name);
     if (existsSync(readmePath)) {
       try {
         return readFileSync(readmePath, 'utf-8');

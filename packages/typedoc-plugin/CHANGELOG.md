@@ -1,5 +1,19 @@
 # typedoc-plugin-to-skills
 
+## 0.7.1
+
+### Patch Changes
+
+- Use per-package README in monorepos instead of always reading root README
+
+  In monorepo mode (entryPointStrategy: "packages"), the plugin now tries to read
+  each package's own README.md first, falling back to the root README only when
+  no per-package README exists. This prevents the root README's Features, Quick Start,
+  and Troubleshooting sections from being duplicated into every package skill.
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.12.1
+
 ## 0.7.0
 
 ### Minor Changes
