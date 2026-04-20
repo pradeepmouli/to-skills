@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.9.2
+
+### Patch Changes
+
+- Prefer longer JSDoc description over package.json for richer trigger keywords
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.14.2
+
 ## 0.9.1
 
 ### Patch Changes

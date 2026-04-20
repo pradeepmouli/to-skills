@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.13.2
+
+### Patch Changes
+
+- Prefer longer JSDoc description over package.json for richer trigger keywords
+
 ## 0.13.1
 
 ### Patch Changes

@@ -704,7 +704,12 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
+  // Prefer the longer of packageDescription (package.json) vs description (@packageDocumentation)
+  // The JSDoc description often has richer keywords for agent activation
+  const pkgDesc = skill.packageDescription || '';
+  const jsdocDesc = skill.description || '';
+  const desc =
+    jsdocDesc.length > pkgDesc.length ? jsdocDesc : pkgDesc || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
 
   // Prefer @useWhen triggers for activation scenarios (agent-friendly)
