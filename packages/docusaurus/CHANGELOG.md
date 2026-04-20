@@ -1,5 +1,12 @@
 # @to-skills/docusaurus
 
+## 0.2.16
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.16.2
+
 ## 0.2.15
 
 ### Patch Changes

@@ -264,7 +264,7 @@ The generator pulls content from multiple sources. When the auto-generated skill
 | -------- | ------------------------------------ | ------------------------------------ | ------------------------------------- |
 | 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples       |
 | 2        | `@useWhen` / `@avoidWhen`            | Decision tables in "When to Use"     | Key exports (5-7 classes/functions)   |
-| 3        | `@never`                             | NEVER rules in "Pitfalls"            | Any export with non-obvious footguns  |
+| 3        | `@never`                             | NEVER rules in "When to Use"         | Any export with non-obvious footguns  |
 | 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context     |
 | 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models |
 | 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`         |

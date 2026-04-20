@@ -1,5 +1,18 @@
 # typedoc-plugin-to-skills
 
+## 0.12.3
+
+### Patch Changes
+
+- Description uses keywords, not @useWhen sentences
+
+  @useWhen content stays in the body "When to Use" section (decision tables).
+  Description field uses package.json tagline + domain keywords for agent activation.
+  Prevents run-on descriptions from concatenating full @useWhen sentences.
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.17.3
+
 ## 0.12.2
 
 ### Patch Changes

@@ -717,18 +717,14 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  // Description = package.json tagline + @useWhen triggers.
-  // @packageDocumentation summary goes in the body, not here.
-  // package.json is a curated one-liner; JSDoc descriptions are often multi-paragraph.
+  // Description = package.json tagline + domain keywords for agent activation.
+  // @useWhen goes in the body "When to Use" section, not here — those are full
+  // sentences written for decision tables, not short trigger keywords.
   const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
 
-  // Prefer @useWhen triggers for activation scenarios (agent-friendly)
-  // Fall back to keyword list only when no triggers exist
-  if (skill.useWhen && skill.useWhen.length > 0) {
-    const triggers = skill.useWhen.slice(0, 3).join('; ');
-    parts.push(`Use when: ${triggers}.`);
-  } else if (skill.keywords && skill.keywords.length > 0) {
+  // Append domain keywords for activation matching
+  if (skill.keywords && skill.keywords.length > 0) {
     const useful = skill.keywords.filter(
       (k) =>
         !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(

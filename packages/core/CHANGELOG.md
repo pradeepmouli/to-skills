@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 0.16.2
+
+### Patch Changes
+
+- Description uses keywords, not @useWhen sentences
+
+  @useWhen content stays in the body "When to Use" section (decision tables).
+  Description field uses package.json tagline + domain keywords for agent activation.
+  Prevents run-on descriptions from concatenating full @useWhen sentences.
+
 ## 0.16.1
 
 ### Patch Changes
