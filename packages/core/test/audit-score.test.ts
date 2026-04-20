@@ -115,11 +115,11 @@ describe('all fatals failing (F1, F2, F3 in issues, F4 as fatal)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Missing @useWhen/@pitfalls → D2/D3 low
+// Missing @useWhen/@never → D2/D3 low
 // ---------------------------------------------------------------------------
 
-describe('missing @useWhen and @pitfalls', () => {
-  // Pass everything EXCEPT W7 (@useWhen) and W9 (@pitfalls)
+describe('missing @useWhen and @never', () => {
+  // Pass everything EXCEPT W7 (@useWhen) and W9 (@never)
   const passingWithout = ALL_CODES.filter((c) => c !== 'W7' && c !== 'W9');
   const audit = makeResult(passingWithout);
   const estimate = estimateSkillJudgeScore(audit);
@@ -149,9 +149,9 @@ describe('missing @useWhen and @pitfalls', () => {
     expect(hasUseWhen).toBe(true);
   });
 
-  it('improvements list includes @pitfalls suggestion', () => {
-    const hasPitfalls = estimate.improvements.some((s) => s.suggestion.includes('@pitfalls'));
-    expect(hasPitfalls).toBe(true);
+  it('improvements list includes @never suggestion', () => {
+    const hasNEVER = estimate.improvements.some((s) => s.suggestion.includes('@never'));
+    expect(hasNEVER).toBe(true);
   });
 });
 
@@ -290,13 +290,13 @@ describe('improvements list', () => {
 
   it('ranks highest-gain suggestions first', () => {
     // W9 missing → +8 on D3 is the highest single gain
-    const withoutPitfalls = ALL_CODES.filter((c) => c !== 'W9');
-    const audit = makeResult(withoutPitfalls);
+    const withoutNEVER = ALL_CODES.filter((c) => c !== 'W9');
+    const audit = makeResult(withoutNEVER);
     const estimate = estimateSkillJudgeScore(audit);
-    // @pitfalls (+8) should appear in improvements if D3 is below 80%
+    // @never (+8) should appear in improvements if D3 is below 80%
     const d3max = 15;
     if (estimate.dimensions.d3_antiPatterns < d3max * 0.8) {
-      expect(estimate.improvements[0].suggestion).toContain('@pitfalls');
+      expect(estimate.improvements[0].suggestion).toContain('@never');
     }
   });
 

@@ -55,7 +55,7 @@ function collectChildren(mod: DeclarationReflection): DeclarationReflection[] {
  * @useWhen
  * - You are building a custom TypeDoc plugin that needs ExtractedSkill data without the full plugin pipeline
  * - You want to post-process or filter extracted skills before rendering
- * @pitfalls
+ * @never
  * - NEVER call with an empty project reflection — produces a skill with no exports, which the audit flags as fatal
  * - NEVER assume module names match package.json names — TypeDoc may use directory names as module identifiers
  */
@@ -688,7 +688,7 @@ function extractConfigOption(decl: DeclarationReflection): ExtractedConfigOption
   const comment = decl.comment;
   const useWhenTag = comment?.getTag('@useWhen');
   const avoidWhenTag = comment?.getTag('@avoidWhen');
-  const pitfallsTag = comment?.getTag('@pitfalls');
+  const pitfallsTag = comment?.getTag('@never');
   const remarksTag = comment?.getTag('@remarks');
 
   const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
@@ -731,7 +731,7 @@ function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurfa
   const comment = decl.comment;
   const useWhenTag = comment?.getTag('@useWhen');
   const avoidWhenTag = comment?.getTag('@avoidWhen');
-  const pitfallsTag = comment?.getTag('@pitfalls');
+  const pitfallsTag = comment?.getTag('@never');
   const remarksTag = comment?.getTag('@remarks');
 
   const useWhenText = useWhenTag?.content.map((p) => p.text).join('') ?? '';
@@ -825,7 +825,7 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
         });
       }
     }
-    if (fn.tags['pitfalls']) pitfalls.push(...parseBulletList(fn.tags['pitfalls']));
+    if (fn.tags['never']) pitfalls.push(...parseBulletList(fn.tags['never']));
   }
 
   // Collect from classes
@@ -854,7 +854,7 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
         });
       }
     }
-    if (cls.tags['pitfalls']) pitfalls.push(...parseBulletList(cls.tags['pitfalls']));
+    if (cls.tags['never']) pitfalls.push(...parseBulletList(cls.tags['never']));
   }
 
   if (useWhen.length > 0) skill.useWhen = useWhen;

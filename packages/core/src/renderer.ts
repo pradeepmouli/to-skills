@@ -31,7 +31,7 @@ const DEFAULT_OPTIONS: SkillRenderOptions = {
  * @useWhen
  * - You have one or more ExtractedSkill objects and need SKILL.md + references/ output
  * - Building a custom extraction pipeline that bypasses the TypeDoc plugin
- * @pitfalls
+ * @never
  * - NEVER set maxTokens below 500 — reference files become truncated mid-signature, producing broken code blocks that confuse LLMs
  * - NEVER pass skills with empty `name` — the output directory becomes a bare `/` path
  */
@@ -49,7 +49,7 @@ export function renderSkills(
  * @category Rendering
  * @useWhen
  * - You need fine-grained control over rendering a single skill
- * @pitfalls
+ * @never
  * - NEVER set maxTokens below 500 — reference files become truncated mid-signature, producing broken code blocks
  */
 export function renderSkill(
@@ -255,10 +255,11 @@ function renderSkillMd(
   }
 
   const whenToUse = renderWhenToUse(skill);
-  if (whenToUse) sections.push(whenToUse);
-
-  const pitfalls = renderPitfalls(skill);
-  if (pitfalls) sections.push(pitfalls);
+  // Fold @never rules into When to Use section (matches hand-written skill pattern)
+  const neverRules = renderNeverRules(skill);
+  if (whenToUse || neverRules) {
+    sections.push([whenToUse, neverRules].filter(Boolean).join('\n\n'));
+  }
 
   // Troubleshooting section from README — inline in SKILL.md
   if (skill.readmeTroubleshooting) {
@@ -961,9 +962,9 @@ function renderWhenToUse(skill: ExtractedSkill): string {
   return '## When to Use\n\n' + lines.join('\n');
 }
 
-function renderPitfalls(skill: ExtractedSkill): string {
+function renderNeverRules(skill: ExtractedSkill): string {
   if (!skill.pitfalls || skill.pitfalls.length === 0) return '';
-  const lines = ['## Pitfalls\n'];
+  const lines = ['**NEVER:**\n'];
   for (const item of skill.pitfalls) {
     lines.push(`- ${item}`);
   }

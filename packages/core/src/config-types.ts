@@ -53,7 +53,7 @@ export interface ExtractedConfigSurface {
 
   /**
    * Known pitfalls, footguns, or common mistakes for this surface.
-   * Mirrors the @pitfalls JSDoc pattern used elsewhere in ExtractedSkill.
+   * Mirrors the @never JSDoc pattern used elsewhere in ExtractedSkill.
    */
   pitfalls?: string[];
 
@@ -134,7 +134,7 @@ export interface ExtractedConfigOption {
 
   /**
    * Known pitfalls or common mistakes when using this option.
-   * Mirrors the @pitfalls JSDoc pattern.
+   * Mirrors the @never JSDoc pattern.
    */
   pitfalls?: string[];
 

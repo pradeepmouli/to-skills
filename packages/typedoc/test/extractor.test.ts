@@ -905,9 +905,9 @@ describe('parseBulletList', () => {
   });
 });
 
-// ── @useWhen / @avoidWhen / @pitfalls aggregation ─────────────────────────
+// ── @useWhen / @avoidWhen / @never aggregation ─────────────────────────
 
-describe('extractSkills — @useWhen/@avoidWhen/@pitfalls aggregation', () => {
+describe('extractSkills — @useWhen/@avoidWhen/@never aggregation', () => {
   it('aggregates @useWhen from function tags into skill.useWhen', () => {
     const blockTags = [
       { tag: '@useWhen', content: [{ text: '- Need validation\n- Schema compliance' }] }
@@ -930,9 +930,9 @@ describe('extractSkills — @useWhen/@avoidWhen/@pitfalls aggregation', () => {
     expect(skill.avoidWhen).toEqual(['Performance critical', 'Already validated']);
   });
 
-  it('aggregates @pitfalls from function tags into skill.pitfalls', () => {
+  it('aggregates @never from function tags into skill.pitfalls', () => {
     const blockTags = [
-      { tag: '@pitfalls', content: [{ text: '- Forget to await\n- Null not handled' }] }
+      { tag: '@never', content: [{ text: '- Forget to await\n- Null not handled' }] }
     ];
     const sig = mockSig([], 'void', mockComment('Fn', [], undefined, blockTags));
     const fn = mockDecl('fn', ReflectionKind.Function, { signatures: [sig] });
@@ -1159,12 +1159,12 @@ describe('extractSkills — config interface detection', () => {
     expect(opt.useWhen).toEqual(['During development', 'Hot reload needed']);
   });
 
-  it('extracts @pitfalls from config interface property', () => {
+  it('extracts @never from config interface property', () => {
     const prop = mockDecl('cache', ReflectionKind.Property, {
       flags: { isOptional: true },
       type: { toString: () => 'boolean' },
       comment: mockComment('Enable cache', [], undefined, [], {
-        pitfalls: '- Can serve stale data\n- Requires manual invalidation'
+        never: '- Can serve stale data\n- Requires manual invalidation'
       })
     });
     const iface = mockDecl('CacheOptions', ReflectionKind.Interface, {
@@ -1195,11 +1195,11 @@ describe('extractSkills — config interface detection', () => {
     expect(opt.avoidWhen).toEqual(['Production builds', 'CI pipelines']);
   });
 
-  it('extracts @useWhen/@pitfalls from config interface itself (surface level)', () => {
+  it('extracts @useWhen/@never from config interface itself (surface level)', () => {
     const iface = mockDecl('DeployConfig', ReflectionKind.Interface, {
       comment: mockComment('Deployment config', [], undefined, [], {
         useWhen: '- Deploying to production',
-        pitfalls: '- Missing env vars cause silent failures'
+        never: '- Missing env vars cause silent failures'
       }),
       children: []
     });

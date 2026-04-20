@@ -1433,25 +1433,25 @@ describe('renderSkill — Documentation section in SKILL.md', () => {
   });
 });
 
-describe('renderSkill — @pitfalls in SKILL.md', () => {
-  it('renders Pitfalls section when pitfalls are present', () => {
+describe('renderSkill — @never in SKILL.md', () => {
+  it('renders NEVER section when pitfalls are present', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       pitfalls: ['Forgetting to await async calls', 'Not handling null returns']
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('## Pitfalls');
+    expect(s.content).toContain('**NEVER:**');
     expect(s.content).toContain('- Forgetting to await async calls');
     expect(s.content).toContain('- Not handling null returns');
   });
 
-  it('omits Pitfalls section when pitfalls is empty/absent', () => {
+  it('omits NEVER section when pitfalls is empty/absent', () => {
     const { skill: s } = renderSkill(minimalSkill);
-    expect(s.content).not.toContain('## Pitfalls');
+    expect(s.content).not.toContain('**NEVER:**');
   });
 
-  it('renders Pitfalls after When to Use and before Quick Reference', () => {
+  it('renders NEVER after When to Use and before Quick Reference', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       functions: [
@@ -1471,7 +1471,7 @@ describe('renderSkill — @pitfalls in SKILL.md', () => {
     const { skill: s } = renderSkill(skill);
     const content = s.content;
     const whenIdx = content.indexOf('## When to Use');
-    const pitfallsIdx = content.indexOf('## Pitfalls');
+    const pitfallsIdx = content.indexOf('**NEVER:**');
     const quickRefIdx = content.indexOf('## Quick Reference');
     expect(whenIdx).toBeLessThan(pitfallsIdx);
     expect(pitfallsIdx).toBeLessThan(quickRefIdx);
@@ -1717,7 +1717,7 @@ describe('renderSkill — readmeTroubleshooting in SKILL.md', () => {
     expect(s.content).not.toContain('## Troubleshooting');
   });
 
-  it('renders Troubleshooting after Pitfalls and before Quick Reference', () => {
+  it('renders Troubleshooting after NEVER and before Quick Reference', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       functions: [
@@ -1737,7 +1737,7 @@ describe('renderSkill — readmeTroubleshooting in SKILL.md', () => {
 
     const { skill: s } = renderSkill(skill);
     const content = s.content;
-    const pitfallsIdx = content.indexOf('## Pitfalls');
+    const pitfallsIdx = content.indexOf('**NEVER:**');
     const troubleshootingIdx = content.indexOf('## Troubleshooting');
     const quickRefIdx = content.indexOf('## Quick Reference');
     expect(pitfallsIdx).toBeLessThan(troubleshootingIdx);

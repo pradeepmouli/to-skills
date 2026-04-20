@@ -1006,15 +1006,15 @@ describe('W8: @avoidWhen on at least one export', () => {
 });
 
 // ---------------------------------------------------------------------------
-// W9: @pitfalls on at least one export
+// W9: @never on at least one export
 // ---------------------------------------------------------------------------
 
-describe('W9: @pitfalls on at least one export', () => {
+describe('W9: @never on at least one export', () => {
   it('fails when skill.pitfalls is undefined', () => {
     const issues = getIssues(makeSkill({ pitfalls: undefined }), makeContext(), 'W9');
     expect(issues).toHaveLength(1);
     expect(issues[0].severity).toBe('warning');
-    expect(issues[0].message).toContain('@pitfalls');
+    expect(issues[0].message).toContain('@never');
   });
 
   it('fails when skill.pitfalls is an empty array', () => {

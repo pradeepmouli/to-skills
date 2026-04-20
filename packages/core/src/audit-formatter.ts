@@ -133,7 +133,7 @@ const DIMENSION_LABELS: Array<{
     hint: 'add @remarks to complex functions'
   },
   { key: 'd2_procedures', label: 'D2 Procedures', max: 15, hint: 'add @useWhen' },
-  { key: 'd3_antiPatterns', label: 'D3 Anti-Patterns', max: 15, hint: 'add @pitfalls' },
+  { key: 'd3_antiPatterns', label: 'D3 Anti-Patterns', max: 15, hint: 'add @never' },
   { key: 'd4_description', label: 'D4 Description', max: 15, hint: 'add package.json description' },
   {
     key: 'd5_progressiveDisclosure',

@@ -16,7 +16,7 @@ import type { ExtractedConfigSurface, ExtractedConfigOption } from '@to-skills/c
  * @category Correlation
  * @useWhen
  * - You have both CLI surfaces (from introspection/help) and typed config interfaces (from TypeDoc)
- * - You want JSDoc @useWhen/@avoidWhen/@pitfalls tags to appear on CLI options in the generated skill
+ * - You want JSDoc @useWhen/@avoidWhen/@never tags to appear on CLI options in the generated skill
  */
 export function correlateFlags(
   cliSurface: ExtractedConfigSurface,

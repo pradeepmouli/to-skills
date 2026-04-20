@@ -129,7 +129,7 @@ export function estimateSkillJudgeScore(
 
   // --- D3: Anti-Patterns /15 ---
   let d3 = 2;
-  if (passes(audit, 'W9')) d3 += 8; // @pitfalls
+  if (passes(audit, 'W9')) d3 += 8; // @never
   if (passes(audit, 'W3')) d3 += 3; // notable tags
   if (passes(audit, 'W6')) d3 += 2; // README troubleshooting
   d3 = clamp(d3, MAX_D3);
@@ -366,7 +366,7 @@ function buildImprovements(
       suggestions.push({
         gain: 8,
         imp: {
-          suggestion: 'Add @pitfalls to key exports (+8 on D3)',
+          suggestion: 'Add @never to key exports (+8 on D3)',
           points: 8,
           dimension: 'D3',
           targets: targets && targets.length > 0 ? targets : undefined

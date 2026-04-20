@@ -1,6 +1,6 @@
 ---
 name: to-skills-docs
-description: "Documentation conventions for generating high-quality AI agent skills from TypeScript source. Use when preparing a library for skill generation, auditing JSDoc quality, fixing audit warnings, writing @useWhen/@avoidWhen/@pitfalls tags, or asking about documentation conventions for skills. Use this even if the user just says 'audit my docs', 'improve my JSDoc', or 'make my skills better'."
+description: "Documentation conventions for generating high-quality AI agent skills from TypeScript source. Use when preparing a library for skill generation, auditing JSDoc quality, fixing audit warnings, writing @useWhen/@avoidWhen/@never tags, or asking about documentation conventions for skills. Use this even if the user just says 'audit my docs', 'improve my JSDoc', or 'make my skills better'."
 ---
 
 # Documentation Conventions for Skill Generation
@@ -132,13 +132,13 @@ Prevents misuse. Aggregated into SKILL.md "When to Use" as negative triggers.
  */
 ```
 
-### `@pitfalls` — Anti-patterns from experience
+### `@never` — Anti-patterns from experience
 
 NEVER + BECAUSE format. This is the highest-leverage tag — it directly scores on skill-judge D3 (Anti-Patterns, 15 points).
 
 ```typescript
 /**
- * @pitfalls
+ * @never
  * - NEVER pass functions as constructor args — V8 serialization silently drops them
  * - NEVER call $terminate() inside a proxied method — creates IPC deadlock
  */
@@ -193,7 +193,7 @@ export function estimateTokens(...) {}
  * - The class has non-serializable state
  * - You need sub-millisecond latency
  *
- * @pitfalls
+ * @never
  * - NEVER pass functions as constructor args — silently dropped by V8
  * - NEVER call $terminate() inside a proxied method — IPC deadlock
  *
@@ -208,9 +208,9 @@ export function estimateTokens(...) {}
 
 ### Impact on Generated Skill Quality
 
-| Without Tags            | With Tags    | What Changes                                                                                      |
-| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| Skill-judge ~42/120 (F) | ~94/120 (C+) | @useWhen/@avoidWhen → decision procedures, @pitfalls → anti-patterns, @remarks → expert knowledge |
+| Without Tags            | With Tags    | What Changes                                                                                   |
+| ----------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
+| Skill-judge ~42/120 (F) | ~94/120 (C+) | @useWhen/@avoidWhen → decision procedures, @never → anti-patterns, @remarks → expert knowledge |
 
 The remaining gap to Grade B requires hand-tuned prose quality — but the tags create the scaffolding.
 
@@ -264,7 +264,7 @@ The generator pulls content from multiple sources. When the auto-generated skill
 | -------- | ------------------------------------ | ------------------------------------ | ------------------------------------- |
 | 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples       |
 | 2        | `@useWhen` / `@avoidWhen`            | Decision tables in "When to Use"     | Key exports (5-7 classes/functions)   |
-| 3        | `@pitfalls`                          | NEVER rules in "Pitfalls"            | Any export with non-obvious footguns  |
+| 3        | `@never`                             | NEVER rules in "Pitfalls"            | Any export with non-obvious footguns  |
 | 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context     |
 | 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models |
 | 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`         |
@@ -276,7 +276,7 @@ The generator pulls content from multiple sources. When the auto-generated skill
 
 - **D1 Knowledge Delta low?** → Add `@remarks` with trade-offs, design decisions
 - **D2 Procedures low?** → Add `@packageDocumentation @remarks` with "before X, ask yourself..." frameworks
-- **D3 Anti-Patterns low?** → Add `@pitfalls` with NEVER + BECAUSE rules
+- **D3 Anti-Patterns low?** → Add `@never` with NEVER + BECAUSE rules
 - **D8 Usability low?** → Add `@example` with worked code patterns
 
 ## Workflow
@@ -284,7 +284,7 @@ The generator pulls content from multiple sources. When the auto-generated skill
 1. Run `pnpm typedoc` — see audit output and score estimate
 2. Fix fatals first (package.json description, missing JSDoc)
 3. Add `@example` to key exports (surfaces as Quick Start and worked examples)
-4. Add `@useWhen`/`@avoidWhen`/`@pitfalls` to key exports (biggest quality jump)
+4. Add `@useWhen`/`@avoidWhen`/`@never` to key exports (biggest quality jump)
 5. Add `@remarks` to `@packageDocumentation` — architectural context and thinking frameworks
 6. Fix errors — `@param`/`@returns` on non-self-documenting params
 7. Re-run — verify score improvement

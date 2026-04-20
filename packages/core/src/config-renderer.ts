@@ -244,7 +244,7 @@ function renderCommandsReference(surfaces: ExtractedConfigSurface[]): string {
 
     if (surface.pitfalls && surface.pitfalls.length > 0) {
       lines.push('');
-      lines.push('### Pitfalls');
+      lines.push('### NEVER');
       for (const item of surface.pitfalls) {
         lines.push(`- ${item}`);
       }
@@ -292,7 +292,7 @@ function renderConfigDetailReference(surfaces: ExtractedConfigSurface[]): string
 
     if (surface.pitfalls && surface.pitfalls.length > 0) {
       lines.push('');
-      lines.push('### Pitfalls');
+      lines.push('### NEVER');
       for (const item of surface.pitfalls) {
         lines.push(`- ${item}`);
       }

@@ -31,7 +31,7 @@ export interface CliExtractionOptions {
  * - You have raw --help output and no runtime access to the program object
  * @avoidWhen
  * - Your CLI is built with a framework other than Commander — use parseHelpOutput directly instead
- * @pitfalls
+ * @never
  * - NEVER pass both `program` and `helpTexts` — program takes precedence and helpTexts is silently ignored
  * - NEVER forget to pass configSurfaces when you have typed option interfaces — JSDoc metadata won't be correlated
  */

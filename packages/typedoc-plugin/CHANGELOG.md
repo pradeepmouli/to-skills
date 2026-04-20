@@ -1,5 +1,20 @@
 # typedoc-plugin-to-skills
 
+## 0.10.0
+
+### Minor Changes
+
+- Rename @pitfalls to @never, fold NEVER rules into When to Use section
+
+  Breaking: @pitfalls tag renamed to @never. The tag content is unchanged — NEVER + BECAUSE format.
+  NEVER rules now render inside "## When to Use" as a **NEVER:** subsection instead of a separate
+  "## Pitfalls" heading, matching hand-written skill conventions.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.15.0
+
 ## 0.9.4
 
 ### Patch Changes

@@ -63,7 +63,7 @@ export interface SkillsPluginOptions {
 
   /** Maximum approximate token budget per skill file
    * @defaultValue 4000
-   * @pitfalls
+   * @never
    * - NEVER set below 500 — reference files become truncated mid-signature, producing broken code blocks
    */
   skillsMaxTokens?: number;
@@ -103,7 +103,7 @@ export interface SkillsPluginOptions {
    * @defaultValue false
    * @useWhen
    * - CI enforcement — block PRs with undocumented exports
-   * @pitfalls
+   * @never
    * - NEVER enable during local development — it blocks all typedoc output on audit failures
    */
   skillsAuditFailOnError?: boolean;
@@ -228,9 +228,9 @@ export function load(app: Application): void {
   });
 
   // --- Auto-register custom tags ---
-  // Ensure @useWhen, @avoidWhen, @pitfalls, @config are in blockTags (not modifierTags).
+  // Ensure @useWhen, @avoidWhen, @never, @config are in blockTags (not modifierTags).
   // Runs at EVENT_BEGIN — after user's typedoc.json is read, before parsing starts.
-  const CUSTOM_BLOCK_TAGS = ['@useWhen', '@avoidWhen', '@pitfalls', '@config'];
+  const CUSTOM_BLOCK_TAGS = ['@useWhen', '@avoidWhen', '@never', '@config'];
   app.converter.on(Converter.EVENT_BEGIN, () => {
     const blockTags = app.options.getValue('blockTags') as string[];
     const modifierTags = app.options.getValue('modifierTags') as string[];

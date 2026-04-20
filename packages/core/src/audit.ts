@@ -641,7 +641,7 @@ function checkW8(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass
 }
 
 // ---------------------------------------------------------------------------
-// W9: @pitfalls on at least one export
+// W9: @never on at least one export
 // ---------------------------------------------------------------------------
 function checkW9(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass[]): void {
   const hasPitfalls = (skill.pitfalls ?? []).length > 0;
@@ -654,12 +654,12 @@ function checkW9(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass
         `${skill.name}.ts`,
         null,
         skill.name,
-        'No exports have a @pitfalls tag',
-        'Add @pitfalls <description> to at least one exported function to document known traps'
+        'No exports have a @never tag',
+        'Add @never <description> to at least one exported function to document known traps'
       )
     );
   } else {
-    passing.push(pass('W9', 'At least one export has a @pitfalls tag'));
+    passing.push(pass('W9', 'At least one export has a @never tag'));
   }
 }
 

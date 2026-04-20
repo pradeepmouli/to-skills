@@ -50,7 +50,7 @@ export interface ExtractedSkill {
     sourceKind: string;
     sourceDescription?: string;
   }>;
-  /** Aggregated @pitfalls from all exports */
+  /** Aggregated @never from all exports */
   pitfalls?: string[];
   /** Configuration surfaces (CLI commands, config files) */
   configSurfaces?: ExtractedConfigSurface[];
@@ -87,7 +87,7 @@ export interface ExtractedClass {
   methods: ExtractedFunction[];
   properties: ExtractedProperty[];
   examples: string[];
-  /** JSDoc block tags (e.g. @deprecated, @since, @useWhen, @pitfalls) */
+  /** JSDoc block tags (e.g. @deprecated, @since, @useWhen, @never) */
   tags: Record<string, string>;
   /** Base class name (from `extends`) */
   extends?: string;

@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 0.14.0
+
+### Minor Changes
+
+- Rename @pitfalls to @never, fold NEVER rules into When to Use section
+
+  Breaking: @pitfalls tag renamed to @never. The tag content is unchanged — NEVER + BECAUSE format.
+  NEVER rules now render inside "## When to Use" as a **NEVER:** subsection instead of a separate
+  "## Pitfalls" heading, matching hand-written skill conventions.
+
 ## 0.13.4
 
 ### Patch Changes
