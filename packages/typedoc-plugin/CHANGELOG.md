@@ -1,5 +1,20 @@
 # typedoc-plugin-to-skills
 
+## 0.12.0
+
+### Minor Changes
+
+- Audit recommends primary sources when secondary sources are insufficient
+  - A4: when README Quick Start >20 lines and no @example exists, recommend adding @example (warning)
+  - W5: when README Features missing, recommend @packageDocumentation @remarks as primary alternative
+  - W6: when README Troubleshooting missing, recommend @never tags as primary alternative
+  - Quick Start capped at 30 lines in SKILL.md body with pointer to references
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.17.0
+
 ## 0.11.0
 
 ### Minor Changes

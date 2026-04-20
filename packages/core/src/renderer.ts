@@ -239,9 +239,19 @@ function renderSkillMd(
     sections.push('## Features\n\n' + skill.readmeFeatures);
   }
 
-  // Quick Start example (first module-level example)
+  // Quick Start example (first module-level example) — cap at 30 lines
   if (opts.includeExamples && skill.examples.length > 0) {
-    sections.push('## Quick Start\n\n' + skill.examples[0]);
+    const qs = skill.examples[0]!;
+    const qsLines = qs.split('\n');
+    if (qsLines.length > 30) {
+      sections.push(
+        '## Quick Start\n\n' +
+          qsLines.slice(0, 30).join('\n') +
+          '\n\n*See references/ for full examples.*'
+      );
+    } else {
+      sections.push('## Quick Start\n\n' + qs);
+    }
   }
 
   // Additional examples beyond Quick Start

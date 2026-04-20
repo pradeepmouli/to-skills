@@ -555,17 +555,25 @@ function checkW4(context: AuditContext, issues: AuditIssue[], passing: AuditPass
 // ---------------------------------------------------------------------------
 // W5: README Features — context.readme?.features must exist
 // ---------------------------------------------------------------------------
-function checkW5(context: AuditContext, issues: AuditIssue[], passing: AuditPass[]): void {
+function checkW5(
+  context: AuditContext,
+  skill: ExtractedSkill,
+  issues: AuditIssue[],
+  passing: AuditPass[]
+): void {
   if (!context.readme?.features?.trim()) {
+    const hasRemarks = !!skill.remarks;
     issues.push(
       issue(
         'warning',
         'W5',
-        'README.md',
+        hasRemarks ? `${skill.name}.ts` : 'README.md',
         null,
         'features',
         'README is missing a Features section',
-        'Add a "## Features" or "## Highlights" section to README.md'
+        hasRemarks
+          ? 'README ## Features is a secondary source — already have @packageDocumentation @remarks as primary'
+          : 'Add "## Features" to README.md, or add @packageDocumentation @remarks with capabilities overview (primary source, takes priority)'
       )
     );
   } else {
@@ -576,17 +584,25 @@ function checkW5(context: AuditContext, issues: AuditIssue[], passing: AuditPass
 // ---------------------------------------------------------------------------
 // W6: README Troubleshooting — context.readme?.troubleshooting must exist
 // ---------------------------------------------------------------------------
-function checkW6(context: AuditContext, issues: AuditIssue[], passing: AuditPass[]): void {
+function checkW6(
+  context: AuditContext,
+  skill: ExtractedSkill,
+  issues: AuditIssue[],
+  passing: AuditPass[]
+): void {
   if (!context.readme?.troubleshooting?.trim()) {
+    const hasNever = (skill.pitfalls ?? []).length > 0;
     issues.push(
       issue(
         'warning',
         'W6',
-        'README.md',
+        hasNever ? `${skill.name}.ts` : 'README.md',
         null,
         'troubleshooting',
         'README is missing a Troubleshooting section',
-        'Add a "## Troubleshooting", "## Common Issues", or "## FAQ" section to README.md'
+        hasNever
+          ? 'README ## Troubleshooting is a secondary source — already have @never tags as primary anti-patterns'
+          : 'Add "## Troubleshooting" to README.md, or add @never tags to key exports with NEVER + Fix patterns (primary source)'
       )
     );
   } else {
@@ -856,10 +872,36 @@ function checkA3(skill: ExtractedSkill, issues: AuditIssue[], passing: AuditPass
 }
 
 // ---------------------------------------------------------------------------
-// A4: Verbose Quick Start — context.readme?.quickStart has a code block >15 lines
+// A4: Quick Start quality — recommend @example when README fallback is too long
 // ---------------------------------------------------------------------------
-function checkA4(context: AuditContext, issues: AuditIssue[], passing: AuditPass[]): void {
+function checkA4(
+  context: AuditContext,
+  skill: ExtractedSkill,
+  issues: AuditIssue[],
+  passing: AuditPass[]
+): void {
   const quickStart = context.readme?.quickStart;
+  const hasCodeExample = skill.functions.some((f) => f.examples.length > 0);
+
+  // If README Quick Start is long and no @example exists, recommend the primary source
+  if (quickStart && !hasCodeExample) {
+    const quickStartLines = quickStart.split('\n').length;
+    if (quickStartLines > 20) {
+      issues.push(
+        issue(
+          'warning',
+          'A4',
+          `${skill.name}.ts`,
+          null,
+          'quickStart',
+          `README Quick Start is ${quickStartLines} lines — too long for inline SKILL.md rendering`,
+          'Add @example to a key exported function with a focused 5-10 line snippet. @example takes priority over README Quick Start and produces a leaner SKILL.md'
+        )
+      );
+      return;
+    }
+  }
+
   if (!quickStart) {
     passing.push(pass('A4', 'No Quick Start section to check'));
     return;
@@ -882,7 +924,7 @@ function checkA4(context: AuditContext, issues: AuditIssue[], passing: AuditPass
           null,
           'quickStart',
           `Quick Start code block is ${lines} lines (recommended ≤15)`,
-          'Trim the Quick Start example to the essential steps; move detailed examples to a dedicated section'
+          'Add @example to a key export with a focused snippet — @example trumps README Quick Start'
         )
       );
     }
@@ -932,8 +974,8 @@ export function auditSkill(skill: ExtractedSkill, context: AuditContext): AuditR
   checkW2(skill, issues, passing);
   checkW3(skill, issues, passing);
   checkW4(context, issues, passing);
-  checkW5(context, issues, passing);
-  checkW6(context, issues, passing);
+  checkW5(context, skill, issues, passing);
+  checkW6(context, skill, issues, passing);
   checkW7(skill, issues, passing);
   checkW8(skill, issues, passing);
   checkW9(skill, issues, passing);
@@ -944,7 +986,7 @@ export function auditSkill(skill: ExtractedSkill, context: AuditContext): AuditR
   checkA1(context, issues, passing);
   checkA2(skill, issues, passing);
   checkA3(skill, issues, passing);
-  checkA4(context, issues, passing);
+  checkA4(context, skill, issues, passing);
 
   const summary: Record<AuditSeverity, number> = { fatal: 0, error: 0, warning: 0, alert: 0 };
   for (const iss of issues) summary[iss.severity]++;

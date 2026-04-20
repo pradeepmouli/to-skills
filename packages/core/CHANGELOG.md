@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 0.16.0
+
+### Minor Changes
+
+- Audit recommends primary sources when secondary sources are insufficient
+  - A4: when README Quick Start >20 lines and no @example exists, recommend adding @example (warning)
+  - W5: when README Features missing, recommend @packageDocumentation @remarks as primary alternative
+  - W6: when README Troubleshooting missing, recommend @never tags as primary alternative
+  - Quick Start capped at 30 lines in SKILL.md body with pointer to references
+
 ## 0.15.0
 
 ### Minor Changes

@@ -1534,10 +1534,36 @@ describe('A4: Verbose Quick Start', () => {
     expect(passing[0].message).toContain('concise');
   });
 
-  it('flags code block with >15 lines', () => {
-    const verboseCode = '```\n' + 'line\n'.repeat(20) + '```';
+  it('recommends @example when Quick Start is long and no examples exist', () => {
+    const longQuickStart = 'line\n'.repeat(25);
     const issues = getIssues(
       makeSkill(),
+      makeContext({
+        readme: { blockquote: 'A useful library.', quickStart: longQuickStart }
+      }),
+      'A4'
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(issues[0].suggestion).toContain('@example');
+  });
+
+  it('falls back to per-block check when @example exists', () => {
+    const verboseCode = '```\n' + 'line\n'.repeat(20) + '```';
+    const issues = getIssues(
+      makeSkill({
+        functions: [
+          {
+            name: 'foo',
+            description: 'Foo',
+            signature: 'foo()',
+            parameters: [],
+            returnType: 'void',
+            examples: ['```ts\nfoo()\n```'],
+            tags: {}
+          }
+        ]
+      }),
       makeContext({
         readme: { blockquote: 'A useful library.', quickStart: verboseCode }
       }),
@@ -1545,20 +1571,6 @@ describe('A4: Verbose Quick Start', () => {
     );
     expect(issues).toHaveLength(1);
     expect(issues[0].severity).toBe('alert');
-    expect(issues[0].message).toContain('lines');
-  });
-
-  it('flags each verbose code block independently', () => {
-    const verboseCode =
-      '```\n' + 'line\n'.repeat(20) + '```\n\nSome prose\n\n```\n' + 'line\n'.repeat(20) + '```';
-    const issues = getIssues(
-      makeSkill(),
-      makeContext({
-        readme: { blockquote: 'A useful library.', quickStart: verboseCode }
-      }),
-      'A4'
-    );
-    expect(issues).toHaveLength(2);
   });
 });
 
