@@ -256,20 +256,39 @@ Generated skills are evaluated on 8 dimensions. The biggest gaps without convent
 - **Anti-Patterns**: Without a ## Troubleshooting section, skills score ~2/15 on anti-pattern quality.
 - **Description**: Without proper package.json description + keywords, skills never trigger.
 
+## Content Priority
+
+The generator pulls content from multiple sources. When the auto-generated skill is thin on a dimension, add content at the highest-priority source:
+
+| Priority | Source                               | What it provides                     | When to use                           |
+| -------- | ------------------------------------ | ------------------------------------ | ------------------------------------- |
+| 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples       |
+| 2        | `@useWhen` / `@avoidWhen`            | Decision tables in "When to Use"     | Key exports (5-7 classes/functions)   |
+| 3        | `@pitfalls`                          | NEVER rules in "Pitfalls"            | Any export with non-obvious footguns  |
+| 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context     |
+| 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models |
+| 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`         |
+| 7        | README `## Features`                 | Features section in SKILL.md         | Describe capabilities                 |
+| 8        | README `## Troubleshooting`          | Troubleshooting section in SKILL.md  | Common errors and fixes               |
+| 9        | README `## Quick Start` / `## Usage` | Quick Start fallback                 | When no `@example` exists anywhere    |
+
+`@example` and `@remarks` are escape hatches — when the auto-generated output scores low on a skill-judge dimension, add inline content at the right priority level:
+
+- **D1 Knowledge Delta low?** → Add `@remarks` with trade-offs, design decisions
+- **D2 Procedures low?** → Add `@packageDocumentation @remarks` with "before X, ask yourself..." frameworks
+- **D3 Anti-Patterns low?** → Add `@pitfalls` with NEVER + BECAUSE rules
+- **D8 Usability low?** → Add `@example` with worked code patterns
+
 ## Workflow
 
 1. Run `pnpm typedoc` — see audit output and score estimate
 2. Fix fatals first (package.json description, missing JSDoc)
-3. Add @useWhen/@avoidWhen/@pitfalls to key exports (biggest quality jump)
-4. Fix errors — @param/@returns on non-self-documenting params
-5. Re-run — verify score improvement
-6. Iterate until audit estimate plateaus
-7. **Mandatory: Run skill-judge** on the generated `skills/<name>/SKILL.md` — the audit estimate is a heuristic (~15-point gap from actual skill-judge scores). Skill-judge catches issues the audit misses: Quick Reference token bloat, description trigger quality, missing Quick Start examples, redundant type dumps.
-
-The audit estimate correlates with skill-judge but consistently overestimates by 10-20 points. Common gaps:
-
-- Audit doesn't penalize Quick Reference dumping every type inline (~5K tokens wasted)
-- Audit checks description exists, not whether it has effective WHEN triggers
-- Audit can't assess prose quality or code example usefulness
+3. Add `@example` to key exports (surfaces as Quick Start and worked examples)
+4. Add `@useWhen`/`@avoidWhen`/`@pitfalls` to key exports (biggest quality jump)
+5. Add `@remarks` to `@packageDocumentation` — architectural context and thinking frameworks
+6. Fix errors — `@param`/`@returns` on non-self-documenting params
+7. Re-run — verify score improvement
+8. Iterate until audit estimate plateaus
+9. **Mandatory: Run skill-judge** on the generated `skills/<name>/SKILL.md` — the audit estimate overestimates by 10-20 points. Skill-judge catches: token bloat, missing thinking frameworks, description trigger quality, orphaned references.
 
 A skill is not ready to ship until skill-judge confirms Grade B (96+) or higher.
