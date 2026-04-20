@@ -1,5 +1,23 @@
 # @to-skills/typedoc
 
+## 1.0.0
+
+### Major Changes
+
+- Switch When to Use from tables to bullet lists, matching published skill conventions
+
+  BREAKING: When to Use section now uses bullet lists instead of markdown tables.
+  - Multi-source attribution: "Display images → use `Sprite`" (not table rows)
+  - Avoid when: "**Do NOT use when:**" bullet list
+  - NEVER rules: own "## NEVER" section (not folded into When to Use)
+  - parseBulletList joins non-bulleted paragraphs (fixes multi-row table corruption)
+  - Description: package.json tagline + first @useWhen (truncated to 80 chars) + keywords
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@1.0.0
+
 ## 0.17.3
 
 ### Patch Changes

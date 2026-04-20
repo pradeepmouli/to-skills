@@ -44,6 +44,7 @@ describe('renderSkill — SKILL.md (discovery)', () => {
   it('renders When to Use section', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
+      useWhen: ['Greeting users'],
       functions: [
         {
           name: 'greet',
@@ -608,6 +609,7 @@ describe('renderSkill — variables in SKILL.md', () => {
   it('shows variables in When to Use', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
+      useWhen: ['Accessing built-in processors'],
       variables: [
         {
           name: 'builtinProcessors',
@@ -677,6 +679,7 @@ describe('renderSkill — new description and content behaviour', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       keywords: ['validation', 'schema'],
+      useWhen: ['Working with validation, schema'],
       functions: [
         {
           name: 'validate',
@@ -700,6 +703,7 @@ describe('renderSkill — new description and content behaviour', () => {
   it('When to Use shows API surface counts not individual names', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
+      useWhen: ['Need fn1 or fn2'],
       functions: [
         {
           name: 'fn1',
@@ -1300,14 +1304,14 @@ describe('renderSkill — @useWhen/@avoidWhen in SKILL.md', () => {
     expect(s.content).toContain('- Checking schema compliance');
   });
 
-  it('renders @avoidWhen with "Avoid when:" header', () => {
+  it('renders @avoidWhen with "Do NOT use when:" header', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       avoidWhen: ['Performance is critical', 'Simple truthy checks suffice']
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('**Avoid when:**');
+    expect(s.content).toContain('**Do NOT use when:**');
     expect(s.content).toContain('- Performance is critical');
     expect(s.content).toContain('- Simple truthy checks suffice');
   });
@@ -1322,20 +1326,22 @@ describe('renderSkill — @useWhen/@avoidWhen in SKILL.md', () => {
     const { skill: s } = renderSkill(skill);
     const content = s.content;
     expect(content).toContain('- Need strict validation');
-    expect(content).toContain('**Avoid when:**');
+    expect(content).toContain('**Do NOT use when:**');
     expect(content).toContain('- Already validated upstream');
     // useWhen should appear before avoidWhen
-    expect(content.indexOf('Need strict validation')).toBeLessThan(content.indexOf('Avoid when'));
+    expect(content.indexOf('Need strict validation')).toBeLessThan(
+      content.indexOf('Do NOT use when')
+    );
   });
 
-  it('omits Avoid when section when avoidWhen is empty/absent', () => {
+  it('omits Do NOT use when section when avoidWhen is empty/absent', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       useWhen: ['Always use this']
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).not.toContain('**Avoid when:**');
+    expect(s.content).not.toContain('**Do NOT use when:**');
   });
 });
 
@@ -1441,19 +1447,20 @@ describe('renderSkill — @never in SKILL.md', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('**NEVER:**');
+    expect(s.content).toContain('## NEVER');
     expect(s.content).toContain('- Forgetting to await async calls');
     expect(s.content).toContain('- Not handling null returns');
   });
 
   it('omits NEVER section when pitfalls is empty/absent', () => {
     const { skill: s } = renderSkill(minimalSkill);
-    expect(s.content).not.toContain('**NEVER:**');
+    expect(s.content).not.toContain('## NEVER');
   });
 
   it('renders NEVER after When to Use and before Quick Reference', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
+      useWhen: ['Use fn for processing'],
       functions: [
         {
           name: 'fn',
@@ -1471,7 +1478,7 @@ describe('renderSkill — @never in SKILL.md', () => {
     const { skill: s } = renderSkill(skill);
     const content = s.content;
     const whenIdx = content.indexOf('## When to Use');
-    const pitfallsIdx = content.indexOf('**NEVER:**');
+    const pitfallsIdx = content.indexOf('## NEVER');
     const quickRefIdx = content.indexOf('## Quick Reference');
     expect(whenIdx).toBeLessThan(pitfallsIdx);
     expect(pitfallsIdx).toBeLessThan(quickRefIdx);
@@ -1500,7 +1507,7 @@ describe('renderSkill — decision table from useWhenSources', () => {
     expect(s.content).not.toContain('| Task | Use | Why |');
   });
 
-  it('renders decision table when useWhenSources has multiple distinct sources', () => {
+  it('renders bullet list with attribution when useWhenSources has multiple distinct sources', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       useWhen: ['Display images', 'Draw shapes'],
@@ -1511,16 +1518,14 @@ describe('renderSkill — decision table from useWhenSources', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    // No " — " in text → 2-column table (no Why column)
-    expect(s.content).toContain('| Task | Use |');
-    expect(s.content).toContain('|------|-----|');
-    expect(s.content).toContain('`Sprite`');
-    expect(s.content).toContain('`Graphics`');
-    expect(s.content).toContain('Display images');
-    expect(s.content).toContain('Draw shapes');
+    // Multi-source → bullet list with "→ use `Source`" attribution (no tables)
+    expect(s.content).toContain('- Display images → use `Sprite`');
+    expect(s.content).toContain('- Draw shapes → use `Graphics`');
+    expect(s.content).not.toContain('| Task | Use |');
+    expect(s.content).not.toContain('|------|-----|');
   });
 
-  it('splits "task — why" format in decision table rows', () => {
+  it('splits "task — why" format in bullet list rows', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       useWhen: ['Display images — Fast batched rendering', 'Draw shapes — Retained vector API'],
@@ -1539,11 +1544,11 @@ describe('renderSkill — decision table from useWhenSources', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('| Display images | `Sprite` | Fast batched rendering |');
-    expect(s.content).toContain('| Draw shapes | `Graphics` | Retained vector API |');
+    expect(s.content).toContain('- Display images → use `Sprite` — Fast batched rendering');
+    expect(s.content).toContain('- Draw shapes → use `Graphics` — Retained vector API');
   });
 
-  it('uses "—" as why column when no dash separator in useWhenSources text', () => {
+  it('renders bullet list with attribution when no dash separator in useWhenSources text', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
       useWhen: ['Need sprites', 'Need graphics'],
@@ -1554,9 +1559,9 @@ describe('renderSkill — decision table from useWhenSources', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    // No " — " in text → 2-column table (no Why column)
-    expect(s.content).toContain('| Need sprites | `Sprite` |');
-    expect(s.content).toContain('| Need graphics | `Graphics` |');
+    // Multi-source → bullet list with "→ use `Source`" attribution (no tables)
+    expect(s.content).toContain('- Need sprites → use `Sprite`');
+    expect(s.content).toContain('- Need graphics → use `Graphics`');
   });
 
   it('falls back to flat list when useWhenSources is absent', () => {
@@ -1790,6 +1795,7 @@ describe('renderSkill — additional examples in SKILL.md', () => {
   it('renders Examples section after Quick Start and before When to Use', () => {
     const skill: ExtractedSkill = {
       ...minimalSkill,
+      useWhen: ['Use fn for processing'],
       functions: [
         {
           name: 'fn',

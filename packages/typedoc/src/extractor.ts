@@ -761,21 +761,31 @@ function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurfa
 
 /** Parse a multi-line bullet list from a tag value into individual items */
 export function parseBulletList(text: string): string[] {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const hasBullets = lines.some((l) => /^[-*]\s/.test(l));
+
+  // No bullets anywhere — split on blank-line-separated paragraphs
+  if (!hasBullets) {
+    return text
+      .split(/\n\s*\n/)
+      .map((p) => p.replace(/\n/g, ' ').trim())
+      .filter(Boolean);
+  }
+
+  // Has bullets — parse with continuation line joining
   const items: string[] = [];
   let lastWasBullet = false;
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (/^[-*]\s/.test(trimmed)) {
-      // New bullet — start a new item
-      items.push(trimmed.replace(/^[-*]\s*/, '').trim());
+  for (const line of lines) {
+    if (/^[-*]\s/.test(line)) {
+      items.push(line.replace(/^[-*]\s*/, '').trim());
       lastWasBullet = true;
     } else if (lastWasBullet && items.length > 0) {
-      // Continuation of a bulleted item — join to previous
-      items[items.length - 1] += ' ' + trimmed;
+      items[items.length - 1] += ' ' + line;
     } else {
-      // Standalone line (no bullets in context)
-      items.push(trimmed);
+      items.push(line);
       lastWasBullet = false;
     }
   }

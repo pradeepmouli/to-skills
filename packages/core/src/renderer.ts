@@ -267,11 +267,10 @@ function renderSkillMd(
   }
 
   const whenToUse = renderWhenToUse(skill);
-  // Fold @never rules into When to Use section (matches hand-written skill pattern)
+  if (whenToUse) sections.push(whenToUse);
+
   const neverRules = renderNeverRules(skill);
-  if (whenToUse || neverRules) {
-    sections.push([whenToUse, neverRules].filter(Boolean).join('\n\n'));
-  }
+  if (neverRules) sections.push(neverRules);
 
   // Troubleshooting section from README — inline in SKILL.md
   if (skill.readmeTroubleshooting) {
@@ -717,11 +716,16 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  // Description = package.json tagline + domain keywords for agent activation.
-  // @useWhen goes in the body "When to Use" section, not here — those are full
-  // sentences written for decision tables, not short trigger keywords.
+  // Description = package.json tagline + short WHEN clause + domain keywords.
   const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
+
+  // Add a short scenario-based WHEN from @useWhen (first item only, truncated to 80 chars)
+  if (skill.useWhen && skill.useWhen.length > 0) {
+    const first = skill.useWhen[0]!;
+    const short = first.length > 80 ? first.slice(0, first.lastIndexOf(' ', 77)) + '...' : first;
+    parts.push(`Use when: ${short}.`);
+  }
 
   // Append domain keywords for activation matching
   if (skill.keywords && skill.keywords.length > 0) {
@@ -732,7 +736,7 @@ function buildDescription(skill: ExtractedSkill): string {
         )
     );
     if (useful.length > 0) {
-      parts.push(`Use when working with ${useful.join(', ')}.`);
+      parts.push(`Also: ${useful.join(', ')}.`);
     }
   }
 
@@ -847,104 +851,55 @@ function renderLinks(skill: ExtractedSkill): string {
 }
 
 function renderWhenToUse(skill: ExtractedSkill): string {
-  const lines: string[] = [];
+  const useLines: string[] = [];
+  const avoidLines: string[] = [];
 
-  // Only show keyword bullet when no @useWhen triggers exist (avoids redundancy)
-  const hasUseTriggers =
-    (skill.useWhenSources && skill.useWhenSources.length > 0) ||
-    (skill.useWhen && skill.useWhen.length > 0);
-  if (!hasUseTriggers && skill.keywords && skill.keywords.length > 0) {
-    const useful = skill.keywords.filter(
-      (k) =>
-        !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(
-          k.toLowerCase()
-        )
-    );
-    if (useful.length > 0) {
-      lines.push(`- Working with ${useful.join(', ')}`);
-    }
-  }
-
-  // @useWhen triggers: render as decision table when multiple sources (different classes/functions)
+  // @useWhen — bullet list with source attribution when multiple sources exist
   if (skill.useWhenSources && skill.useWhenSources.length > 0) {
     const sources = skill.useWhenSources;
-    // Check if items come from multiple distinct named sources
     const distinctSources = new Set(sources.map((s) => s.sourceName));
-    if (distinctSources.size > 1) {
-      // Check if any entries have explicit " — " reasons
-      const hasExplicitReasons = sources.some((s) => s.text.includes(' — '));
-
-      if (hasExplicitReasons) {
-        // 3-column table with Why from explicit " — " delimiter
-        const tableLines: string[] = ['| Task | Use | Why |', '|------|-----|-----|'];
-        for (const src of sources) {
-          const dashIdx = src.text.indexOf(' — ');
-          if (dashIdx !== -1) {
-            const task = src.text.slice(0, dashIdx).trim();
-            const why = src.text.slice(dashIdx + 3).trim();
-            tableLines.push(`| ${task} | \`${src.sourceName}\` | ${why} |`);
-          } else {
-            tableLines.push(`| ${src.text} | \`${src.sourceName}\` | — |`);
-          }
-        }
-        lines.push('');
-        lines.push(...tableLines);
+    for (const src of sources) {
+      const attribution = distinctSources.size > 1 ? ` → use \`${src.sourceName}\`` : '';
+      const dashIdx = src.text.indexOf(' — ');
+      if (dashIdx !== -1) {
+        useLines.push(
+          `- ${src.text.slice(0, dashIdx).trim()}${attribution} — ${src.text.slice(dashIdx + 3).trim()}`
+        );
       } else {
-        // 2-column table — no Why column (avoids repetitive descriptions)
-        const tableLines: string[] = ['| Task | Use |', '|------|-----|'];
-        for (const src of sources) {
-          tableLines.push(`| ${src.text} | \`${src.sourceName}\` |`);
-        }
-        lines.push('');
-        lines.push(...tableLines);
-      }
-    } else {
-      // Single source — flat list as before
-      for (const src of sources) {
-        lines.push(`- ${src.text}`);
+        useLines.push(`- ${src.text}${attribution}`);
       }
     }
   } else if (skill.useWhen && skill.useWhen.length > 0) {
-    // Fallback: flat list (skill was not produced by extractor with source tracking)
     for (const item of skill.useWhen) {
-      lines.push(`- ${item}`);
+      useLines.push(`- ${item}`);
     }
   }
 
-  // @avoidWhen triggers from JSDoc — decision table when multiple sources
+  // @avoidWhen — bullet list
   if (skill.avoidWhenSources && skill.avoidWhenSources.length > 0) {
     const sources = skill.avoidWhenSources;
     const distinctSources = new Set(sources.map((s) => s.sourceName));
-    lines.push('');
-    if (distinctSources.size > 1) {
-      lines.push('**Avoid when:**');
-      lines.push('');
-      lines.push("| Don't Use | When | Use Instead |");
-      lines.push('|-----------|------|-------------|');
-      for (const src of sources) {
-        const dashIdx = src.text.indexOf(' — ');
-        if (dashIdx !== -1) {
-          const scenario = src.text.slice(0, dashIdx).trim();
-          const alternative = src.text.slice(dashIdx + 3).trim();
-          lines.push(`| \`${src.sourceName}\` | ${scenario} | ${alternative} |`);
-        } else {
-          lines.push(`| \`${src.sourceName}\` | ${src.text} | — |`);
-        }
-      }
-    } else {
-      lines.push('**Avoid when:**');
-      for (const src of sources) {
-        lines.push(`- ${src.text}`);
-      }
+    for (const src of sources) {
+      const attribution = distinctSources.size > 1 ? ` (\`${src.sourceName}\`)` : '';
+      avoidLines.push(`- ${src.text}${attribution}`);
     }
   } else if (skill.avoidWhen && skill.avoidWhen.length > 0) {
-    lines.push('');
-    lines.push('**Avoid when:**');
     for (const item of skill.avoidWhen) {
-      lines.push(`- ${item}`);
+      avoidLines.push(`- ${item}`);
     }
   }
 
+  if (useLines.length === 0 && avoidLines.length === 0) return '';
+
+  const sections: string[] = [];
+  if (useLines.length > 0) {
+    sections.push('**Use this skill when:**\n' + useLines.join('\n'));
+  }
+  if (avoidLines.length > 0) {
+    sections.push('**Do NOT use when:**\n' + avoidLines.join('\n'));
+  }
+
+  // API surface summary
   const apiCategories: string[] = [];
   if (skill.functions.length > 0) apiCategories.push(`${skill.functions.length} functions`);
   if (skill.classes.length > 0) apiCategories.push(`${skill.classes.length} classes`);
@@ -953,20 +908,19 @@ function renderWhenToUse(skill: ExtractedSkill): string {
   if (skill.variables && skill.variables.length > 0)
     apiCategories.push(`${skill.variables.length} constants`);
   if (apiCategories.length > 0) {
-    lines.push(`- API surface: ${apiCategories.join(', ')}`);
+    sections.push(`API surface: ${apiCategories.join(', ')}`);
   }
 
-  if (lines.length === 0) return '';
-  return '## When to Use\n\n' + lines.join('\n');
+  return '## When to Use\n\n' + sections.join('\n\n');
 }
 
 function renderNeverRules(skill: ExtractedSkill): string {
   if (!skill.pitfalls || skill.pitfalls.length === 0) return '';
-  const lines = ['**NEVER:**\n'];
+  const lines: string[] = [];
   for (const item of skill.pitfalls) {
     lines.push(`- ${item}`);
   }
-  return lines.join('\n');
+  return '## NEVER\n\n' + lines.join('\n');
 }
 
 /** Extract the first sentence (or first meaningful phrase) from a description */

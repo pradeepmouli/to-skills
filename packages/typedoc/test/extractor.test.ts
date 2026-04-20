@@ -890,9 +890,14 @@ describe('parseBulletList', () => {
     expect(result).toEqual(['First', 'Second']);
   });
 
-  it('handles items without bullet prefix', () => {
+  it('handles items without bullet prefix — joins as single paragraph', () => {
     const result = parseBulletList('Plain text\nAnother line');
-    expect(result).toEqual(['Plain text', 'Another line']);
+    expect(result).toEqual(['Plain text Another line']);
+  });
+
+  it('splits non-bulleted text on blank lines into separate items', () => {
+    const result = parseBulletList('First paragraph\n\nSecond paragraph');
+    expect(result).toEqual(['First paragraph', 'Second paragraph']);
   });
 
   it('trims whitespace from each item', () => {
