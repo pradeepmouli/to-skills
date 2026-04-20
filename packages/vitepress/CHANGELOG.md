@@ -1,5 +1,12 @@
 # @to-skills/vitepress
 
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.13.1
+
 ## 0.2.7
 
 ### Patch Changes

@@ -238,6 +238,7 @@ function extractModule(
     repository: metadata?.repository,
     author: metadata?.author,
     packageDescription: metadata?.description,
+    remarks: getRemarks(mod.comment),
     documents,
     functions: children
       .filter((c) => c.kind === ReflectionKind.Function)

@@ -217,16 +217,25 @@ describe('renderSkill — references (progressive disclosure)', () => {
     expect(types!.content).toContain('`Mode`');
   });
 
-  it('creates examples.md reference', () => {
-    const skill: ExtractedSkill = {
+  it('creates examples.md reference only for 2+ examples (first is Quick Start)', () => {
+    // Single example → no examples.md (it's the Quick Start in SKILL.md body)
+    const singleExample: ExtractedSkill = {
       ...minimalSkill,
       examples: ["```ts\nconsole.log('hello');\n```"]
     };
+    const { references: refs1 } = renderSkill(singleExample);
+    expect(refs1.find((r) => r.filename.endsWith('examples.md'))).toBeUndefined();
 
-    const { references } = renderSkill(skill);
-    const ex = references.find((r) => r.filename.endsWith('examples.md'));
+    // Two examples → examples.md with only the second one
+    const twoExamples: ExtractedSkill = {
+      ...minimalSkill,
+      examples: ["```ts\nconsole.log('first');\n```", "```ts\nconsole.log('second');\n```"]
+    };
+    const { references: refs2 } = renderSkill(twoExamples);
+    const ex = refs2.find((r) => r.filename.endsWith('examples.md'));
     expect(ex).toBeDefined();
-    expect(ex!.content).toContain('# Examples');
+    expect(ex!.content).toContain('second');
+    expect(ex!.content).not.toContain('first');
   });
 
   it('returns no references for empty skill', () => {

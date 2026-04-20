@@ -117,8 +117,9 @@ export function renderSkill(
     });
   }
 
-  if (opts.includeExamples && skill.examples.length > 0) {
-    const content = '# Examples\n\n' + skill.examples.join('\n\n---\n\n');
+  // Only create examples.md for examples beyond the first (which is used as Quick Start in SKILL.md)
+  if (opts.includeExamples && skill.examples.length > 1) {
+    const content = '# Examples\n\n' + skill.examples.slice(1).join('\n\n---\n\n');
     references.push({
       filename: `${basePath}/references/examples.md`,
       content: truncateToTokenBudget(content, opts.maxTokens),

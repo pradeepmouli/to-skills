@@ -1,5 +1,13 @@
 # @to-skills/core
 
+## 0.13.1
+
+### Patch Changes
+
+- Fix @remarks not extracted in single-package mode, deduplicate examples.md
+  - extractModule now extracts @remarks from module comment (was only in mergeModules)
+  - examples.md only created for 2+ examples (first example is Quick Start in SKILL.md body)
+
 ## 0.13.0
 
 ### Minor Changes
