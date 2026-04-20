@@ -1,5 +1,14 @@
 # @to-skills/core
 
+## 0.11.1
+
+### Patch Changes
+
+- Fix pitfall multi-line formatting, description keyword-stuffing, redundant keyword bullets
+  - parseBulletList now joins continuation lines into preceding bullet (fixes split NEVER rules)
+  - Description uses @useWhen triggers instead of mechanical keyword list when available
+  - "When to Use" section skips keyword bullet when @useWhen decision tables exist
+
 ## 0.11.0
 
 ### Minor Changes

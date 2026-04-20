@@ -681,7 +681,12 @@ function buildDescription(skill: ExtractedSkill): string {
   const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
 
-  if (skill.keywords && skill.keywords.length > 0) {
+  // Prefer @useWhen triggers for activation scenarios (agent-friendly)
+  // Fall back to keyword list only when no triggers exist
+  if (skill.useWhen && skill.useWhen.length > 0) {
+    const triggers = skill.useWhen.slice(0, 3).join('; ');
+    parts.push(`Use when: ${triggers}.`);
+  } else if (skill.keywords && skill.keywords.length > 0) {
     const useful = skill.keywords.filter(
       (k) =>
         !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(
@@ -778,7 +783,11 @@ function renderLinks(skill: ExtractedSkill): string {
 function renderWhenToUse(skill: ExtractedSkill): string {
   const lines: string[] = [];
 
-  if (skill.keywords && skill.keywords.length > 0) {
+  // Only show keyword bullet when no @useWhen triggers exist (avoids redundancy)
+  const hasUseTriggers =
+    (skill.useWhenSources && skill.useWhenSources.length > 0) ||
+    (skill.useWhen && skill.useWhen.length > 0);
+  if (!hasUseTriggers && skill.keywords && skill.keywords.length > 0) {
     const useful = skill.keywords.filter(
       (k) =>
         !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(

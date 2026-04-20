@@ -1,5 +1,12 @@
 # @to-skills/cli
 
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.11.1
+
 ## 0.2.5
 
 ### Patch Changes

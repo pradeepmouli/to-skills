@@ -755,10 +755,25 @@ function extractConfigSurface(decl: DeclarationReflection): ExtractedConfigSurfa
 
 /** Parse a multi-line bullet list from a tag value into individual items */
 export function parseBulletList(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.replace(/^[-*]\s*/, '').trim())
-    .filter(Boolean);
+  const items: string[] = [];
+  let lastWasBullet = false;
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (/^[-*]\s/.test(trimmed)) {
+      // New bullet — start a new item
+      items.push(trimmed.replace(/^[-*]\s*/, '').trim());
+      lastWasBullet = true;
+    } else if (lastWasBullet && items.length > 0) {
+      // Continuation of a bulleted item — join to previous
+      items[items.length - 1] += ' ' + trimmed;
+    } else {
+      // Standalone line (no bullets in context)
+      items.push(trimmed);
+      lastWasBullet = false;
+    }
+  }
+  return items;
 }
 
 function aggregateSkillTags(skill: ExtractedSkill): void {

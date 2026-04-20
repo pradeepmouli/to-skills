@@ -1,5 +1,17 @@
 # @to-skills/typedoc
 
+## 0.12.2
+
+### Patch Changes
+
+- Fix pitfall multi-line formatting, description keyword-stuffing, redundant keyword bullets
+  - parseBulletList now joins continuation lines into preceding bullet (fixes split NEVER rules)
+  - Description uses @useWhen triggers instead of mechanical keyword list when available
+  - "When to Use" section skips keyword bullet when @useWhen decision tables exist
+
+- Updated dependencies []:
+  - @to-skills/core@0.11.1
+
 ## 0.12.1
 
 ### Patch Changes
