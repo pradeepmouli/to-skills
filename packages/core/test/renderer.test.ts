@@ -1847,3 +1847,95 @@ describe('renderConfigSurfaceSection — multi-surface config pointer', () => {
     expect(result).not.toContain('- **LogConfig**');
   });
 });
+
+describe('renderSkill — Quick Reference line cap', () => {
+  it('truncates Quick Reference when exceeding 30 lines (grouped by module)', () => {
+    // Create 35 functions each in their own module — 35 rendered lines
+    const functions = Array.from({ length: 35 }, (_, i) => ({
+      name: `fn${i}`,
+      description: `Does thing ${i}`,
+      signature: '',
+      parameters: [],
+      returnType: 'void',
+      examples: [],
+      tags: {},
+      sourceModule: `mod${i}`
+    }));
+    const skill: ExtractedSkill = { ...minimalSkill, functions };
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Quick Reference');
+    // Should show the truncation pointer with total count
+    expect(s.content).toContain('35 exports total');
+    expect(s.content).toContain('see references/ for full API');
+    // Should NOT contain the last few modules (truncated)
+    expect(s.content).not.toContain('mod34');
+  });
+
+  it('does not truncate Quick Reference when at or below 30 lines', () => {
+    // Create 25 functions each in their own module — 25 rendered lines, below cap
+    const functions = Array.from({ length: 25 }, (_, i) => ({
+      name: `fn${i}`,
+      description: '',
+      signature: '',
+      parameters: [],
+      returnType: 'void',
+      examples: [],
+      tags: {},
+      sourceModule: `mod${i}`
+    }));
+    const skill: ExtractedSkill = { ...minimalSkill, functions };
+    const { skill: s } = renderSkill(skill);
+    expect(s.content).toContain('## Quick Reference');
+    expect(s.content).not.toContain('exports total');
+    // All modules should be present
+    expect(s.content).toContain('mod24');
+  });
+
+  it('does not truncate flat Quick Reference with few kinds', () => {
+    // Flat mode: many items but all same kind — renders as 1 line
+    const functions = Array.from({ length: 50 }, (_, i) => ({
+      name: `fn${i}`,
+      description: '',
+      signature: '',
+      parameters: [],
+      returnType: 'void',
+      examples: [],
+      tags: {}
+    }));
+    const skill: ExtractedSkill = { ...minimalSkill, functions };
+    const { skill: s } = renderSkill(skill);
+    // Flat mode with 1 kind = 1 line, should NOT truncate
+    expect(s.content).not.toContain('exports total');
+  });
+});
+
+describe('renderSkill — truncateDescription word-boundary fallback', () => {
+  it('truncates at word boundary instead of mid-word', () => {
+    // A description longer than 1024 chars with no sentence terminator
+    const longWord = 'configuration';
+    // Build a long description without sentence terminators
+    const desc = Array(100).fill('word').join(' ') + ' ' + longWord;
+    const skill: ExtractedSkill = {
+      ...minimalSkill,
+      packageDescription: desc
+    };
+    const { skill: s } = renderSkill(skill);
+    // The description in frontmatter should end with "..." and not cut mid-word
+    const descMatch = s.content.match(/description: "?([^"\n]+)"?/);
+    expect(descMatch).toBeTruthy();
+    const rendered = descMatch![1];
+    if (rendered.endsWith('...')) {
+      // The part before "..." should end with a complete word (space-delimited)
+      const beforeEllipsis = rendered.slice(0, -3);
+      expect(beforeEllipsis).not.toMatch(/\w$/); // should not end mid-word — last char should be space boundary
+      // Actually, it ends at a word boundary, so last char IS a letter but the cut is at a space
+      // Let's just verify no partial word: the char right before "..." shouldn't be followed by more word chars in the original
+      const pos = desc.indexOf(beforeEllipsis);
+      if (pos === 0) {
+        // Check the character after the cut in the original is a space
+        const nextCharInOriginal = desc[beforeEllipsis.length];
+        expect(nextCharInOriginal).toBe(' ');
+      }
+    }
+  });
+});

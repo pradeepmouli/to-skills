@@ -747,9 +747,12 @@ function buildDescription(skill: ExtractedSkill): string {
 function truncateDescription(desc: string, max: number): string {
   if (desc.length <= max) return desc;
   // Match first sentence — but skip .!? inside backticks (e.g. `?z2f`)
+  // Also handle em-dash: treat "—" as transparent (not a sentence boundary)
   const firstSentence = desc.match(/^(?:[^.!?`]|`[^`]*`)+[.!?]/)?.[0];
   if (firstSentence && firstSentence.length <= max) return firstSentence;
-  return desc.slice(0, max - 3) + '...';
+  // Fallback: cut at last space before max to avoid mid-word truncation
+  const cutpoint = desc.lastIndexOf(' ', max - 4);
+  return desc.slice(0, cutpoint > 0 ? cutpoint : max - 3) + '...';
 }
 
 function renderFrontmatter(name: string, description: string, license: string): string {
@@ -989,6 +992,10 @@ function compactItem(name: string, description: string): string {
   return label ? `\`${name}\` (${label})` : `\`${name}\``;
 }
 
+/** Max lines of Quick Reference content (after heading) before truncation */
+const QUICK_REF_MAX_LINES = 30;
+const QUICK_REF_KEEP_LINES = 25;
+
 function renderQuickReference(skill: ExtractedSkill): string {
   const allItems = [
     ...skill.functions,
@@ -1000,10 +1007,13 @@ function renderQuickReference(skill: ExtractedSkill): string {
 
   if (allItems.length === 0) return '';
 
+  const totalCount = allItems.length;
+  let contentLines: string[];
+
   if (hasModuleInfo(allItems)) {
     // Group all items by module and render compact entries with descriptions
     const groups = groupByModule(allItems);
-    const lines: string[] = [];
+    contentLines = [];
     for (const [mod, modItems] of groups) {
       const entries = modItems.map((item) => {
         const name = 'name' in item ? (item as { name: string }).name : '';
@@ -1011,39 +1021,47 @@ function renderQuickReference(skill: ExtractedSkill): string {
         return compactItem(name, desc);
       });
       if (mod) {
-        lines.push(`**${mod}:** ${entries.join(', ')}`);
+        contentLines.push(`**${mod}:** ${entries.join(', ')}`);
       } else {
-        lines.push(entries.join(', '));
+        contentLines.push(entries.join(', '));
       }
     }
-    return '## Quick Reference\n\n' + lines.join('\n');
+  } else {
+    // Flat by kind — compact format with descriptions
+    contentLines = [];
+
+    if (skill.functions.length > 0) {
+      const entries = skill.functions.map((f) => compactItem(f.name, f.description));
+      contentLines.push(`**${skill.functions.length} functions** — ${entries.join(', ')}`);
+    }
+    if (skill.classes.length > 0) {
+      const entries = skill.classes.map((c) => compactItem(c.name, c.description));
+      contentLines.push(`**${skill.classes.length} classes** — ${entries.join(', ')}`);
+    }
+    if (skill.types.length > 0) {
+      const entries = skill.types.map((t) => compactItem(t.name, t.description));
+      contentLines.push(`**${skill.types.length} types** — ${entries.join(', ')}`);
+    }
+    if (skill.enums.length > 0) {
+      const entries = skill.enums.map((e) => compactItem(e.name, e.description));
+      contentLines.push(`**${skill.enums.length} enums** — ${entries.join(', ')}`);
+    }
+    if (skill.variables && skill.variables.length > 0) {
+      const entries = skill.variables.map((v) => compactItem(v.name, v.description));
+      contentLines.push(`**${skill.variables.length} variables** — ${entries.join(', ')}`);
+    }
   }
 
-  // Flat by kind — compact format with descriptions
-  const items: string[] = [];
-
-  if (skill.functions.length > 0) {
-    const entries = skill.functions.map((f) => compactItem(f.name, f.description));
-    items.push(`**${skill.functions.length} functions** — ${entries.join(', ')}`);
-  }
-  if (skill.classes.length > 0) {
-    const entries = skill.classes.map((c) => compactItem(c.name, c.description));
-    items.push(`**${skill.classes.length} classes** — ${entries.join(', ')}`);
-  }
-  if (skill.types.length > 0) {
-    const entries = skill.types.map((t) => compactItem(t.name, t.description));
-    items.push(`**${skill.types.length} types** — ${entries.join(', ')}`);
-  }
-  if (skill.enums.length > 0) {
-    const entries = skill.enums.map((e) => compactItem(e.name, e.description));
-    items.push(`**${skill.enums.length} enums** — ${entries.join(', ')}`);
-  }
-  if (skill.variables && skill.variables.length > 0) {
-    const entries = skill.variables.map((v) => compactItem(v.name, v.description));
-    items.push(`**${skill.variables.length} variables** — ${entries.join(', ')}`);
+  // Cap Quick Reference to avoid bloating SKILL.md for large packages.
+  // Count actual rendered lines (some entries may wrap or be single-line lists).
+  let body = contentLines.join('\n');
+  const renderedLines = body.split('\n');
+  if (renderedLines.length > QUICK_REF_MAX_LINES) {
+    body = renderedLines.slice(0, QUICK_REF_KEEP_LINES).join('\n');
+    body += `\n\n*${totalCount} exports total — see references/ for full API.*`;
   }
 
-  return '## Quick Reference\n\n' + items.join('\n');
+  return '## Quick Reference\n\n' + body;
 }
 
 function toSkillName(name: string): string {

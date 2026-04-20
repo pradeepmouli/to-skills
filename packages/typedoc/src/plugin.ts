@@ -305,31 +305,22 @@ export function load(app: Application): void {
       }
     }
 
-    // --- README parsing (shared between skill enrichment and audit) ---
-    // Try per-package README first (packages/<dir>/README.md), fall back to root.
-    // Prevents monorepo root README from being injected into every package skill.
-    const readmeContent = readReadmeForProject(project.name) ?? readReadmeFile();
-    const readme = readmeContent ? parseReadme(readmeContent) : undefined;
+    // --- README parsing — per-skill resolution for "resolve" strategy ---
+    // With entryPointStrategy: "resolve", all packages share one converter run,
+    // so we resolve the README per-skill by matching skill.name to a package directory.
+    // Falls back to the project-level README for single-package projects.
+    const resolveReadmeForSkill = (skillName: string) => {
+      const content = readReadmeForProject(skillName) ?? readReadmeFile();
+      return content ? parseReadme(content) : undefined;
+    };
 
-    // Enrich skills with README Quick Start as first example when no examples exist
-    if (readme?.quickStart) {
-      for (const skill of skills) {
-        if (skill.examples.length === 0) {
-          skill.examples.push(readme.quickStart);
-        }
+    for (const skill of skills) {
+      const readme = resolveReadmeForSkill(skill.name);
+      if (readme?.quickStart && skill.examples.length === 0) {
+        skill.examples.push(readme.quickStart);
       }
-    }
-
-    // Enrich skills with README Features and Troubleshooting for inline SKILL.md rendering
-    if (readme?.features) {
-      for (const skill of skills) {
-        skill.readmeFeatures ??= readme.features;
-      }
-    }
-    if (readme?.troubleshooting) {
-      for (const skill of skills) {
-        skill.readmeTroubleshooting ??= readme.troubleshooting;
-      }
+      if (readme?.features) skill.readmeFeatures ??= readme.features;
+      if (readme?.troubleshooting) skill.readmeTroubleshooting ??= readme.troubleshooting;
     }
 
     // Accumulate for llms.txt
@@ -360,19 +351,21 @@ export function load(app: Application): void {
     // --- Audit ---
     const auditEnabled = app.options.getValue('skillsAudit') as boolean;
     if (auditEnabled) {
-      const auditContext: AuditContext = {
-        packageDescription: pkg.description,
-        keywords: pkg.keywords,
-        repository: normalizeRepoUrl(pkg.repository),
-        readme
-      };
-
       for (const skill of skills) {
         // Only audit first-party workspace packages — skip third-party deps
         // that TypeDoc happens to process (e.g. vscode-jsonrpc in lspeasy)
         if (workspacePackages.size > 0 && !workspacePackages.has(skill.name)) {
           continue;
         }
+
+        // Resolve README per-skill for audit context (same as enrichment above)
+        const auditReadme = resolveReadmeForSkill(skill.name);
+        const auditContext: AuditContext = {
+          packageDescription: pkg.description,
+          keywords: pkg.keywords,
+          repository: normalizeRepoUrl(pkg.repository),
+          readme: auditReadme
+        };
 
         const auditResult = auditSkill(skill, auditContext);
         const text = formatAuditText(auditResult);

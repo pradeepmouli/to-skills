@@ -1,5 +1,19 @@
 # typedoc-plugin-to-skills
 
+## 0.11.0
+
+### Minor Changes
+
+- Quick Reference cap, word-boundary truncation, per-skill README resolution
+  - Quick Reference capped at 30 lines with pointer to references/ for full API
+  - Description truncation falls back to word boundary instead of mid-word cut
+  - README resolved per-skill in "resolve" entryPointStrategy (no more shared root README)
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.16.0
+
 ## 0.10.0
 
 ### Minor Changes
