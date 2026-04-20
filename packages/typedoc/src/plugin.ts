@@ -315,6 +315,13 @@ export function load(app: Application): void {
     };
 
     for (const skill of skills) {
+      // Per-skill package.json — override root metadata with per-package values
+      const skillPkg = readPackageJsonForProject(skill.name);
+      if (skillPkg) {
+        if (skillPkg.description) skill.packageDescription = skillPkg.description;
+        if (skillPkg.keywords) skill.keywords = skillPkg.keywords;
+      }
+
       const readme = resolveReadmeForSkill(skill.name);
       if (readme?.quickStart && skill.examples.length === 0) {
         skill.examples.push(readme.quickStart);

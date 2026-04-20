@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.12.2
+
+### Patch Changes
+
+- Per-skill package.json metadata in resolve strategy (description, keywords)
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.17.2
+
 ## 0.12.1
 
 ### Patch Changes

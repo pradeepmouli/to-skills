@@ -1,5 +1,11 @@
 # @to-skills/typedoc
 
+## 0.17.2
+
+### Patch Changes
+
+- Per-skill package.json metadata in resolve strategy (description, keywords)
+
 ## 0.17.1
 
 ### Patch Changes
