@@ -125,6 +125,7 @@ function mergeModules(
   const allExamples: string[] = [];
   const allConfigSurfaces: ExtractedConfigSurface[] = [];
   let description = '';
+  let remarks: string | undefined;
 
   for (const mod of mods) {
     // The module name from TypeDoc's reflection tree is the authoritative
@@ -184,6 +185,9 @@ function mergeModules(
     if (!description) {
       description = getCommentText(mod.comment);
     }
+    if (!remarks) {
+      remarks = getRemarks(mod.comment);
+    }
   }
 
   const resolvedName = metadata?.name || mods[0]?.name || '';
@@ -195,6 +199,7 @@ function mergeModules(
     repository: metadata?.repository,
     author: metadata?.author,
     packageDescription: metadata?.description,
+    remarks,
     documents,
     functions: allFunctions,
     classes: allClasses,

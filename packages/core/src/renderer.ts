@@ -228,6 +228,11 @@ function renderSkillMd(
     sections.push(skill.description);
   }
 
+  // @remarks from @packageDocumentation — architectural context, trade-offs, mental models
+  if (skill.remarks) {
+    sections.push(skill.remarks);
+  }
+
   // Features section from README — inline in SKILL.md
   if (skill.readmeFeatures) {
     sections.push('## Features\n\n' + skill.readmeFeatures);
@@ -849,31 +854,33 @@ function renderWhenToUse(skill: ExtractedSkill): string {
     // Check if items come from multiple distinct named sources
     const distinctSources = new Set(sources.map((s) => s.sourceName));
     if (distinctSources.size > 1) {
-      // Decision table: | Task | Use | Why |
-      // Why column: explicit " — " in text > source description (first sentence) > "—"
-      const tableLines: string[] = ['| Task | Use | Why |', '|------|-----|-----|'];
-      // Cache first-sentence descriptions per source (avoid repeating full desc on every row)
-      const descCache = new Map<string, string>();
-      for (const src of sources) {
-        if (src.sourceDescription && !descCache.has(src.sourceName)) {
-          const first =
-            src.sourceDescription.match(/^[^.!?]*[.!?]/)?.[0] ?? src.sourceDescription.slice(0, 80);
-          descCache.set(src.sourceName, first);
+      // Check if any entries have explicit " — " reasons
+      const hasExplicitReasons = sources.some((s) => s.text.includes(' — '));
+
+      if (hasExplicitReasons) {
+        // 3-column table with Why from explicit " — " delimiter
+        const tableLines: string[] = ['| Task | Use | Why |', '|------|-----|-----|'];
+        for (const src of sources) {
+          const dashIdx = src.text.indexOf(' — ');
+          if (dashIdx !== -1) {
+            const task = src.text.slice(0, dashIdx).trim();
+            const why = src.text.slice(dashIdx + 3).trim();
+            tableLines.push(`| ${task} | \`${src.sourceName}\` | ${why} |`);
+          } else {
+            tableLines.push(`| ${src.text} | \`${src.sourceName}\` | — |`);
+          }
         }
-      }
-      for (const src of sources) {
-        const dashIdx = src.text.indexOf(' — ');
-        if (dashIdx !== -1) {
-          const task = src.text.slice(0, dashIdx).trim();
-          const why = src.text.slice(dashIdx + 3).trim();
-          tableLines.push(`| ${task} | \`${src.sourceName}\` | ${why} |`);
-        } else {
-          const why = descCache.get(src.sourceName) ?? '—';
-          tableLines.push(`| ${src.text} | \`${src.sourceName}\` | ${why} |`);
+        lines.push('');
+        lines.push(...tableLines);
+      } else {
+        // 2-column table — no Why column (avoids repetitive descriptions)
+        const tableLines: string[] = ['| Task | Use |', '|------|-----|'];
+        for (const src of sources) {
+          tableLines.push(`| ${src.text} | \`${src.sourceName}\` |`);
         }
+        lines.push('');
+        lines.push(...tableLines);
       }
-      lines.push('');
-      lines.push(...tableLines);
     } else {
       // Single source — flat list as before
       for (const src of sources) {

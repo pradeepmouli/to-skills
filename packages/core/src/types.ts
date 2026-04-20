@@ -16,6 +16,8 @@ export interface ExtractedSkill {
   author?: string;
   /** Package description from package.json or README intro — used for SKILL.md description and body */
   packageDescription?: string;
+  /** Extended remarks from @packageDocumentation @remarks — architectural context, trade-offs, mental models */
+  remarks?: string;
   /** Additional documentation content (from projectDocuments, README, etc.) */
   documents?: ExtractedDocument[];
   /** Exported functions */

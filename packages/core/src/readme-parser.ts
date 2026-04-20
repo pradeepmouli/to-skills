@@ -1,7 +1,14 @@
 import type { ParsedReadme } from './audit-types.js';
 
 // Heading alias maps keyed by canonical field name
-const QUICK_START_HEADINGS = new Set(['quick start', 'usage', 'getting started']);
+const QUICK_START_HEADINGS = new Set([
+  'quick start',
+  'usage',
+  'getting started',
+  'cli usage',
+  'basic usage',
+  'installation'
+]);
 const FEATURES_HEADINGS = new Set(['features', 'key features', 'highlights']);
 const TROUBLESHOOTING_HEADINGS = new Set([
   'troubleshooting',

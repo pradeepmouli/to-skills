@@ -1502,8 +1502,9 @@ describe('renderSkill — decision table from useWhenSources', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('| Task | Use | Why |');
-    expect(s.content).toContain('|------|-----|-----|');
+    // No " — " in text → 2-column table (no Why column)
+    expect(s.content).toContain('| Task | Use |');
+    expect(s.content).toContain('|------|-----|');
     expect(s.content).toContain('`Sprite`');
     expect(s.content).toContain('`Graphics`');
     expect(s.content).toContain('Display images');
@@ -1544,8 +1545,9 @@ describe('renderSkill — decision table from useWhenSources', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('| Need sprites | `Sprite` | — |');
-    expect(s.content).toContain('| Need graphics | `Graphics` | — |');
+    // No " — " in text → 2-column table (no Why column)
+    expect(s.content).toContain('| Need sprites | `Sprite` |');
+    expect(s.content).toContain('| Need graphics | `Graphics` |');
   });
 
   it('falls back to flat list when useWhenSources is absent', () => {
