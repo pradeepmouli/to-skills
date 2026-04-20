@@ -1,5 +1,14 @@
 # @to-skills/core
 
+## 0.16.1
+
+### Patch Changes
+
+- Description from package.json only, Quick Start extracts first code block when too long
+  - buildDescription uses package.json tagline (not @packageDocumentation summary)
+  - @packageDocumentation summary stays in body intro only
+  - Quick Start cap extracts first complete code block instead of truncating to pointer
+
 ## 0.16.0
 
 ### Minor Changes

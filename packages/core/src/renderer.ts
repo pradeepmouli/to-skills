@@ -239,16 +239,18 @@ function renderSkillMd(
     sections.push('## Features\n\n' + skill.readmeFeatures);
   }
 
-  // Quick Start example (first module-level example) — cap at 30 lines
+  // Quick Start example — when too long, extract just the first code block
   if (opts.includeExamples && skill.examples.length > 0) {
     const qs = skill.examples[0]!;
     const qsLines = qs.split('\n');
     if (qsLines.length > 30) {
-      sections.push(
-        '## Quick Start\n\n' +
-          qsLines.slice(0, 30).join('\n') +
-          '\n\n*See references/ for full examples.*'
-      );
+      // Extract first complete code block (``` ... ```)
+      const codeBlockMatch = qs.match(/```[\s\S]*?```/);
+      if (codeBlockMatch) {
+        sections.push('## Quick Start\n\n' + codeBlockMatch[0]);
+      } else {
+        sections.push('## Quick Start\n\n' + qsLines.slice(0, 30).join('\n') + '\n...');
+      }
     } else {
       sections.push('## Quick Start\n\n' + qs);
     }
@@ -715,23 +717,10 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  // Combine both descriptions — package.json for the core tagline,
-  // JSDoc @packageDocumentation for richer technical keywords.
-  // Both contribute to agent activation; dedup if they share a prefix.
-  const pkgDesc = skill.packageDescription || '';
-  const jsdocDesc = skill.description || '';
-  let desc: string;
-  if (pkgDesc && jsdocDesc && !jsdocDesc.startsWith(pkgDesc.slice(0, 20))) {
-    // Both exist and are meaningfully different — use package.json (usually richer tagline)
-    // but append JSDoc first sentence if it adds keywords
-    const jsdocFirst = jsdocDesc.match(/^[^.!]*\./)?.[0];
-    desc =
-      jsdocFirst && jsdocFirst.length > 20 && !pkgDesc.includes(jsdocFirst.slice(0, 15))
-        ? `${pkgDesc} ${jsdocFirst}`
-        : pkgDesc;
-  } else {
-    desc = pkgDesc || jsdocDesc || `API reference for ${skill.name}`;
-  }
+  // Description = package.json tagline + @useWhen triggers.
+  // @packageDocumentation summary goes in the body, not here.
+  // package.json is a curated one-liner; JSDoc descriptions are often multi-paragraph.
+  const desc = skill.packageDescription || skill.description || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
 
   // Prefer @useWhen triggers for activation scenarios (agent-friendly)

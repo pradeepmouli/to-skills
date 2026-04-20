@@ -1,5 +1,12 @@
 # @to-skills/typedoc
 
+## 0.17.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.16.1
+
 ## 0.17.0
 
 ### Minor Changes

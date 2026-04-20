@@ -1,5 +1,17 @@
 # typedoc-plugin-to-skills
 
+## 0.12.1
+
+### Patch Changes
+
+- Description from package.json only, Quick Start extracts first code block when too long
+  - buildDescription uses package.json tagline (not @packageDocumentation summary)
+  - @packageDocumentation summary stays in body intro only
+  - Quick Start cap extracts first complete code block instead of truncating to pointer
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.17.1
+
 ## 0.12.0
 
 ### Minor Changes
