@@ -1,6 +1,6 @@
 {
   "name": "@to-skills/core",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "description": "Shared types, SKILL.md renderer, and token budgeting for to-skills plugins",
   "keywords": [
     "agent-skills",

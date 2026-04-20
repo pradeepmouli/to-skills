@@ -704,14 +704,23 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  // Pick whichever description has the richer first sentence for agent activation.
-  // Compare first sentences since that's what survives truncation.
+  // Combine both descriptions — package.json for the core tagline,
+  // JSDoc @packageDocumentation for richer technical keywords.
+  // Both contribute to agent activation; dedup if they share a prefix.
   const pkgDesc = skill.packageDescription || '';
   const jsdocDesc = skill.description || '';
-  const pkgFirst = pkgDesc.match(/^[^.!?]*[.!?]/)?.[0] ?? pkgDesc;
-  const jsdocFirst = jsdocDesc.match(/^[^.!?]*[.!?]/)?.[0] ?? jsdocDesc;
-  const desc =
-    jsdocFirst.length > pkgFirst.length ? jsdocDesc : pkgDesc || `API reference for ${skill.name}`;
+  let desc: string;
+  if (pkgDesc && jsdocDesc && !jsdocDesc.startsWith(pkgDesc.slice(0, 20))) {
+    // Both exist and are meaningfully different — use package.json (usually richer tagline)
+    // but append JSDoc first sentence if it adds keywords
+    const jsdocFirst = jsdocDesc.match(/^[^.!]*\./)?.[0];
+    desc =
+      jsdocFirst && jsdocFirst.length > 20 && !pkgDesc.includes(jsdocFirst.slice(0, 15))
+        ? `${pkgDesc} ${jsdocFirst}`
+        : pkgDesc;
+  } else {
+    desc = pkgDesc || jsdocDesc || `API reference for ${skill.name}`;
+  }
   const parts: string[] = [desc];
 
   // Prefer @useWhen triggers for activation scenarios (agent-friendly)
@@ -736,7 +745,8 @@ function buildDescription(skill: ExtractedSkill): string {
 
 function truncateDescription(desc: string, max: number): string {
   if (desc.length <= max) return desc;
-  const firstSentence = desc.match(/^[^.!?]+[.!?]/)?.[0];
+  // Match first sentence — but skip .!? inside backticks (e.g. `?z2f`)
+  const firstSentence = desc.match(/^(?:[^.!?`]|`[^`]*`)+[.!?]/)?.[0];
   if (firstSentence && firstSentence.length <= max) return firstSentence;
   return desc.slice(0, max - 3) + '...';
 }

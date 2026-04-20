@@ -1,5 +1,13 @@
 # @to-skills/core
 
+## 0.13.4
+
+### Patch Changes
+
+- Fix description truncation inside backtick-quoted identifiers (e.g. `?z2f`)
+  - truncateDescription regex now skips .!? inside backticks
+  - buildDescription combines package.json tagline with JSDoc keywords when both exist
+
 ## 0.13.3
 
 ### Patch Changes
