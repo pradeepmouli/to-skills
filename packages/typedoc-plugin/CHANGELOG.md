@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 0.9.3
+
+### Patch Changes
+
+- Compare first sentences when choosing between package.json and JSDoc descriptions
+
+- Updated dependencies []:
+  - @to-skills/typedoc@0.14.3
+
 ## 0.9.2
 
 ### Patch Changes

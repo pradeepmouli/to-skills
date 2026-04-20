@@ -704,12 +704,14 @@ function addGroupedReferences<T extends { category?: string; sourceModule?: stri
 }
 
 function buildDescription(skill: ExtractedSkill): string {
-  // Prefer the longer of packageDescription (package.json) vs description (@packageDocumentation)
-  // The JSDoc description often has richer keywords for agent activation
+  // Pick whichever description has the richer first sentence for agent activation.
+  // Compare first sentences since that's what survives truncation.
   const pkgDesc = skill.packageDescription || '';
   const jsdocDesc = skill.description || '';
+  const pkgFirst = pkgDesc.match(/^[^.!?]*[.!?]/)?.[0] ?? pkgDesc;
+  const jsdocFirst = jsdocDesc.match(/^[^.!?]*[.!?]/)?.[0] ?? jsdocDesc;
   const desc =
-    jsdocDesc.length > pkgDesc.length ? jsdocDesc : pkgDesc || `API reference for ${skill.name}`;
+    jsdocFirst.length > pkgFirst.length ? jsdocDesc : pkgDesc || `API reference for ${skill.name}`;
   const parts: string[] = [desc];
 
   // Prefer @useWhen triggers for activation scenarios (agent-friendly)

@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 0.13.3
+
+### Patch Changes
+
+- Compare first sentences when choosing between package.json and JSDoc descriptions
+
 ## 0.13.2
 
 ### Patch Changes
