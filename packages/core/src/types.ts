@@ -33,11 +33,21 @@ export interface ExtractedSkill {
   /** Aggregated @useWhen triggers from all exports */
   useWhen?: string[];
   /** Aggregated @useWhen with source info for decision tables */
-  useWhenSources?: Array<{ text: string; sourceName: string; sourceKind: string }>;
+  useWhenSources?: Array<{
+    text: string;
+    sourceName: string;
+    sourceKind: string;
+    sourceDescription?: string;
+  }>;
   /** Aggregated @avoidWhen triggers from all exports */
   avoidWhen?: string[];
   /** Aggregated @avoidWhen with source info for decision tables */
-  avoidWhenSources?: Array<{ text: string; sourceName: string; sourceKind: string }>;
+  avoidWhenSources?: Array<{
+    text: string;
+    sourceName: string;
+    sourceKind: string;
+    sourceDescription?: string;
+  }>;
   /** Aggregated @pitfalls from all exports */
   pitfalls?: string[];
   /** Configuration surfaces (CLI commands, config files) */

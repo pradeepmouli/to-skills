@@ -60,8 +60,19 @@ export function renderSkill(
   const skillName = toSkillName(opts.namePrefix || skill.name);
   const basePath = skillName;
 
+  // --- Compute available reference categories for loading triggers ---
+  const refCategories: string[] = [];
+  if (skill.functions.length > 0) refCategories.push('functions');
+  if (skill.classes.length > 0) refCategories.push('classes');
+  if (skill.types.length > 0) refCategories.push('types');
+  if (skill.enums.length > 0) refCategories.push('enums');
+  if (skill.variables.length > 0) refCategories.push('variables');
+  if (skill.configSurfaces && skill.configSurfaces.length > 0) refCategories.push('config');
+  if (skill.documents && skill.documents.length > 0) refCategories.push('docs');
+  if (opts.includeExamples && skill.examples.length > 1) refCategories.push('examples');
+
   // --- SKILL.md: lean discovery document ---
-  const skillContent = renderSkillMd(skill, skillName, opts);
+  const skillContent = renderSkillMd(skill, skillName, opts, refCategories);
 
   // --- references/*.md: detailed API loaded on demand ---
   const references: RenderedFile[] = [];
@@ -197,7 +208,12 @@ export function renderSkill(
 // SKILL.md — lean discovery document
 // ===========================================================================
 
-function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRenderOptions): string {
+function renderSkillMd(
+  skill: ExtractedSkill,
+  skillName: string,
+  opts: SkillRenderOptions,
+  refCategories?: string[]
+): string {
   const sections: string[] = [];
 
   const description = buildDescription(skill);
@@ -251,6 +267,10 @@ function renderSkillMd(skill: ExtractedSkill, skillName: string, opts: SkillRend
 
   const docs = renderDocumentation(skill);
   if (docs) sections.push(docs);
+
+  if (refCategories && refCategories.length > 0) {
+    sections.push(renderLoadingTriggers(refCategories));
+  }
 
   const links = renderLinks(skill);
   if (links) sections.push(links);
@@ -772,6 +792,30 @@ function renderDocumentation(skill: ExtractedSkill): string {
   return lines.join('\n');
 }
 
+/** Scenario-based loading triggers for reference files */
+function renderLoadingTriggers(categories: string[]): string {
+  const triggerMap: Record<string, string> = {
+    functions:
+      'When calling any function → read `references/functions.md` for full signatures, parameters, and return types',
+    classes:
+      'When using a class → read `references/classes/` for properties, methods, and inheritance',
+    types: 'When defining typed variables or function parameters → read `references/types.md`',
+    enums: 'When using enum values → read `references/enums.md`',
+    variables: 'When using exported constants → read `references/variables.md`',
+    config: 'When configuring options → read `references/config.md` for all settings and defaults',
+    docs: 'When learning concepts or workflows → browse `references/docs/` by category',
+    examples: 'For additional usage patterns → read `references/examples.md`'
+  };
+
+  const lines = ['## References\n'];
+  lines.push('Load these on demand — do NOT read all at once:\n');
+  for (const cat of categories) {
+    const trigger = triggerMap[cat];
+    if (trigger) lines.push(`- ${trigger}`);
+  }
+  return lines.join('\n');
+}
+
 function renderLinks(skill: ExtractedSkill): string {
   const links: string[] = [];
   if (skill.repository) links.push(`- [Repository](${skill.repository})`);
@@ -806,18 +850,26 @@ function renderWhenToUse(skill: ExtractedSkill): string {
     const distinctSources = new Set(sources.map((s) => s.sourceName));
     if (distinctSources.size > 1) {
       // Decision table: | Task | Use | Why |
-      // We'll emit it after the keyword bullet (if any)
+      // Why column: explicit " — " in text > source description (first sentence) > "—"
       const tableLines: string[] = ['| Task | Use | Why |', '|------|-----|-----|'];
+      // Cache first-sentence descriptions per source (avoid repeating full desc on every row)
+      const descCache = new Map<string, string>();
       for (const src of sources) {
-        // "text" is the useWhen item, sourceName is the class/function name
-        // Split on " — " if present to get task vs why, otherwise use text as task
+        if (src.sourceDescription && !descCache.has(src.sourceName)) {
+          const first =
+            src.sourceDescription.match(/^[^.!?]*[.!?]/)?.[0] ?? src.sourceDescription.slice(0, 80);
+          descCache.set(src.sourceName, first);
+        }
+      }
+      for (const src of sources) {
         const dashIdx = src.text.indexOf(' — ');
         if (dashIdx !== -1) {
           const task = src.text.slice(0, dashIdx).trim();
           const why = src.text.slice(dashIdx + 3).trim();
           tableLines.push(`| ${task} | \`${src.sourceName}\` | ${why} |`);
         } else {
-          tableLines.push(`| ${src.text} | \`${src.sourceName}\` | — |`);
+          const why = descCache.get(src.sourceName) ?? '—';
+          tableLines.push(`| ${src.text} | \`${src.sourceName}\` | ${why} |`);
         }
       }
       lines.push('');

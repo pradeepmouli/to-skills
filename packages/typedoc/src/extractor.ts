@@ -778,9 +778,19 @@ export function parseBulletList(text: string): string[] {
 
 function aggregateSkillTags(skill: ExtractedSkill): void {
   const useWhen: string[] = [];
-  const useWhenSources: Array<{ text: string; sourceName: string; sourceKind: string }> = [];
+  const useWhenSources: Array<{
+    text: string;
+    sourceName: string;
+    sourceKind: string;
+    sourceDescription?: string;
+  }> = [];
   const avoidWhen: string[] = [];
-  const avoidWhenSources: Array<{ text: string; sourceName: string; sourceKind: string }> = [];
+  const avoidWhenSources: Array<{
+    text: string;
+    sourceName: string;
+    sourceKind: string;
+    sourceDescription?: string;
+  }> = [];
   const pitfalls: string[] = [];
 
   // Collect from functions
@@ -789,14 +799,24 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
       const items = parseBulletList(fn.tags['useWhen']);
       useWhen.push(...items);
       for (const item of items) {
-        useWhenSources.push({ text: item, sourceName: fn.name, sourceKind: 'function' });
+        useWhenSources.push({
+          text: item,
+          sourceName: fn.name,
+          sourceKind: 'function',
+          sourceDescription: fn.description
+        });
       }
     }
     if (fn.tags['avoidWhen']) {
       const items = parseBulletList(fn.tags['avoidWhen']);
       avoidWhen.push(...items);
       for (const item of items) {
-        avoidWhenSources.push({ text: item, sourceName: fn.name, sourceKind: 'function' });
+        avoidWhenSources.push({
+          text: item,
+          sourceName: fn.name,
+          sourceKind: 'function',
+          sourceDescription: fn.description
+        });
       }
     }
     if (fn.tags['pitfalls']) pitfalls.push(...parseBulletList(fn.tags['pitfalls']));
@@ -808,14 +828,24 @@ function aggregateSkillTags(skill: ExtractedSkill): void {
       const items = parseBulletList(cls.tags['useWhen']);
       useWhen.push(...items);
       for (const item of items) {
-        useWhenSources.push({ text: item, sourceName: cls.name, sourceKind: 'class' });
+        useWhenSources.push({
+          text: item,
+          sourceName: cls.name,
+          sourceKind: 'class',
+          sourceDescription: cls.description
+        });
       }
     }
     if (cls.tags['avoidWhen']) {
       const items = parseBulletList(cls.tags['avoidWhen']);
       avoidWhen.push(...items);
       for (const item of items) {
-        avoidWhenSources.push({ text: item, sourceName: cls.name, sourceKind: 'class' });
+        avoidWhenSources.push({
+          text: item,
+          sourceName: cls.name,
+          sourceKind: 'class',
+          sourceDescription: cls.description
+        });
       }
     }
     if (cls.tags['pitfalls']) pitfalls.push(...parseBulletList(cls.tags['pitfalls']));

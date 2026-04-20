@@ -1,5 +1,20 @@
 # @to-skills/typedoc
 
+## 0.13.0
+
+### Minor Changes
+
+- Add loading triggers for reference files and populate decision table Why column
+  - SKILL.md now has a "## References" section with scenario-based loading triggers
+    telling agents when to read each reference file (functions, classes, config, docs, etc.)
+  - Decision table "Why" column uses the source function/class description instead of blank "—"
+  - Fixes the [#1](https://github.com/pradeepmouli/to-skills/issues/1) skill-judge structural failure: orphaned references (Pattern 3)
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/core@0.12.0
+
 ## 0.12.2
 
 ### Patch Changes
