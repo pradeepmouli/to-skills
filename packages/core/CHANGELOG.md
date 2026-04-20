@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 0.13.0
+
+### Minor Changes
+
+- [`f9cc01d`](https://github.com/pradeepmouli/to-skills/commit/f9cc01dc46bfe00467afe4e82eec6b557ca8e3f3) Thanks [@pradeepmouli](https://github.com/pradeepmouli)! - Surface @remarks as thinking framework, fix decision table Why column, broaden Quick Start aliases
+  - Extract @remarks from @packageDocumentation and render in SKILL.md body (architectural context, trade-offs)
+  - Decision table uses 2-column format (Task | Use) when no explicit reasons exist via " — " delimiter
+  - When explicit " — " reasons exist, 3-column format (Task | Use | Why) with the author's reasoning
+  - Add "cli usage", "basic usage", "installation" as Quick Start heading aliases
+
 ## 0.12.0
 
 ### Minor Changes

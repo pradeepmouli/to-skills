@@ -1,5 +1,12 @@
 # @to-skills/vitepress
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [[`f9cc01d`](https://github.com/pradeepmouli/to-skills/commit/f9cc01dc46bfe00467afe4e82eec6b557ca8e3f3)]:
+  - @to-skills/core@0.13.0
+
 ## 0.2.6
 
 ### Patch Changes
