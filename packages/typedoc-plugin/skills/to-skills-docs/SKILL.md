@@ -108,39 +108,44 @@ These three custom tags are what separate a "passing" skill from a genuinely use
 
 The plugin auto-registers these as `blockTags` at load time — no `typedoc.json` config needed. If they're accidentally placed in `modifierTags`, the plugin auto-moves them with a warning (modifierTags strips content).
 
-### `@useWhen` — When to reach for this function
+### `@useWhen` — When to reach for this class/function
 
-Each bullet is a scenario where an LLM should use this function. Aggregated into the SKILL.md "When to Use" section.
+Each bullet is a scenario where an agent should use this export. Only write entries that contain **non-obvious expert knowledge** — if Claude could guess the answer from the class name, don't write it.
+
+BAD (obvious): `@useWhen - Displaying images` on Sprite — Claude already knows Sprite displays images.
+GOOD (expert): `@useWhen - Rendering >500 identical sprites — ParticleContainer batches into a single GPU draw call vs O(n) individual draws`
+
+For large libraries (50+ classes), write `@useWhen` on **5-10 key decision points**, not every class. Focus on scenarios where the wrong choice causes performance cliffs or silent bugs.
 
 ```typescript
 /**
  * @useWhen
- * - You need CPU-intensive work isolated from the main process
- * - You want automatic EventEmitter forwarding across processes
+ * - You need CPU-intensive work isolated from the main process — IPC overhead is ~1ms per call
+ * - You want EventEmitter events forwarded transparently across process boundaries
  */
 ```
 
-### `@avoidWhen` — When NOT to use this function
+### `@avoidWhen` — When NOT to use this, and what to use instead
 
-Prevents misuse. Aggregated into SKILL.md "When to Use" as negative triggers.
+Use the `—` delimiter to name the alternative:
 
 ```typescript
 /**
  * @avoidWhen
- * - The class uses non-serializable state (closures, WeakMaps)
- * - You need sub-millisecond latency — IPC adds ~1ms overhead
+ * - The class uses non-serializable state (closures, WeakMaps) — use worker_threads instead
+ * - You need sub-millisecond latency — IPC adds ~1ms overhead, use in-process calls
  */
 ```
 
 ### `@never` — Anti-patterns from experience
 
-NEVER + BECAUSE format. This is the highest-leverage tag — it directly scores on skill-judge D3 (Anti-Patterns, 15 points).
+NEVER + BECAUSE + FIX format. Always include the non-obvious reason AND a recovery path.
 
 ```typescript
 /**
  * @never
- * - NEVER pass functions as constructor args — V8 serialization silently drops them
- * - NEVER call $terminate() inside a proxied method — creates IPC deadlock
+ * - NEVER pass functions as constructor args — V8 serialization silently drops them. Fix: use sanitizeV8: true or restructure to pass data only
+ * - NEVER call $terminate() inside a proxied method — creates IPC deadlock. Fix: return from the method first, then terminate from the caller
  */
 ```
 
@@ -260,17 +265,17 @@ Generated skills are evaluated on 8 dimensions. The biggest gaps without convent
 
 The generator pulls content from multiple sources. When the auto-generated skill is thin on a dimension, add content at the highest-priority source:
 
-| Priority | Source                               | What it provides                     | When to use                           |
-| -------- | ------------------------------------ | ------------------------------------ | ------------------------------------- |
-| 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples       |
-| 2        | `@useWhen` / `@avoidWhen`            | Decision tables in "When to Use"     | Key exports (5-7 classes/functions)   |
-| 3        | `@never`                             | NEVER rules in "When to Use"         | Any export with non-obvious footguns  |
-| 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context     |
-| 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models |
-| 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`         |
-| 7        | README `## Features`                 | Features section in SKILL.md         | Describe capabilities                 |
-| 8        | README `## Troubleshooting`          | Troubleshooting section in SKILL.md  | Common errors and fixes               |
-| 9        | README `## Quick Start` / `## Usage` | Quick Start fallback                 | When no `@example` exists anywhere    |
+| Priority | Source                               | What it provides                     | When to use                                           |
+| -------- | ------------------------------------ | ------------------------------------ | ----------------------------------------------------- |
+| 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples                       |
+| 2        | `@useWhen` / `@avoidWhen`            | Decision routing in "When to Use"    | 5-10 key decision points only — quality over quantity |
+| 3        | `@never`                             | NEVER + BECAUSE + FIX rules          | Any export with non-obvious footguns                  |
+| 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context                     |
+| 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models                 |
+| 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`                         |
+| 7        | README `## Features`                 | Features section in SKILL.md         | Describe capabilities                                 |
+| 8        | README `## Troubleshooting`          | Troubleshooting section in SKILL.md  | Common errors and fixes                               |
+| 9        | README `## Quick Start` / `## Usage` | Quick Start fallback                 | When no `@example` exists anywhere                    |
 
 `@example` and `@remarks` are escape hatches — when the auto-generated output scores low on a skill-judge dimension, add inline content at the right priority level:
 
