@@ -40,7 +40,15 @@ export function renderSkills(
   options?: Partial<SkillRenderOptions>
 ): RenderedSkill[] {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  return skills.map((skill) => renderSkill(skill, opts));
+  const rendered = skills.map((skill) => renderSkill(skill, opts));
+
+  // Generate a router skill when multiple skills exist (monorepo)
+  if (skills.length > 1) {
+    const router = renderRouterSkill(skills, opts);
+    if (router) rendered.push(router);
+  }
+
+  return rendered;
 }
 
 /**
@@ -202,6 +210,58 @@ export function renderSkill(
       tokens: estimateTokens(skillContent)
     },
     references
+  };
+}
+
+// ===========================================================================
+// Router skill — generated for monorepos with 2+ packages
+// ===========================================================================
+
+function renderRouterSkill(
+  skills: ExtractedSkill[],
+  opts: SkillRenderOptions
+): RenderedSkill | null {
+  // Derive the monorepo name from common package scope or shortest name
+  const names = skills.map((s) => s.name);
+  const scope = names[0]?.match(/^@([^/]+)\//)?.[1];
+  const routerName = scope ?? names.reduce((a, b) => (a.length < b.length ? a : b));
+  const skillName = toSkillName(routerName);
+
+  // Don't generate if router name matches an existing skill name
+  if (skills.some((s) => toSkillName(s.name) === skillName)) return null;
+
+  // Build description from the common scope
+  const pkgDescs = skills
+    .map((s) => {
+      const short = s.name.replace(/^@[^/]+\//, '');
+      const desc = s.packageDescription || s.description || '';
+      return `${short}: ${desc}`;
+    })
+    .join('; ');
+  const description = `${routerName} monorepo — ${skills.length} packages. ${pkgDescs}`;
+
+  // Build routing body
+  const sections: string[] = [];
+  sections.push(
+    renderFrontmatter(skillName, truncateDescription(description, DESCRIPTION_MAX), opts.license)
+  );
+  sections.push(`# ${routerName}\n`);
+  sections.push('## Which package?\n');
+
+  for (const skill of skills) {
+    const short = skill.name.replace(/^@[^/]+\//, '');
+    const desc = skill.packageDescription || skill.description || '';
+    const firstUseWhen = skill.useWhen?.[0];
+    const trigger = firstUseWhen
+      ? ` Use when: ${firstUseWhen.length > 80 ? firstUseWhen.slice(0, 77) + '...' : firstUseWhen}`
+      : '';
+    sections.push(`- **${short}** — ${desc}${trigger}`);
+  }
+
+  const content = sections.join('\n');
+  return {
+    skill: { filename: `${skillName}/SKILL.md`, content, tokens: estimateTokens(content) },
+    references: []
   };
 }
 

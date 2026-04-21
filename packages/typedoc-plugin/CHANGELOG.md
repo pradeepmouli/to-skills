@@ -1,5 +1,19 @@
 # typedoc-plugin-to-skills
 
+## 1.1.0
+
+### Minor Changes
+
+- Generate router skill for monorepos with 2+ packages
+
+  When renderSkills produces multiple skills, generates a peer router SKILL.md
+  that routes agents to the correct package skill based on their task.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.2
+
 ## 1.0.2
 
 ### Patch Changes
