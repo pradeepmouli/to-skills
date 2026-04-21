@@ -1,5 +1,11 @@
 # typedoc-plugin-to-skills
 
+## 1.0.1
+
+### Patch Changes
+
+- Bundled skill: map @throws to error recovery, @remarks to decision trees
+
 ## 1.0.0
 
 ### Major Changes
