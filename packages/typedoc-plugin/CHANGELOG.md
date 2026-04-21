@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 1.2.2
+
+### Patch Changes
+
+- Fix router example invocations — natural "I need to..." phrasing
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.7
+
 ## 1.2.1
 
 ### Patch Changes
