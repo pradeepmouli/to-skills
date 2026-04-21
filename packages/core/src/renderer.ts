@@ -221,16 +221,14 @@ function renderRouterSkill(
   skills: ExtractedSkill[],
   opts: SkillRenderOptions
 ): RenderedSkill | null {
-  // Derive the monorepo name from common package scope or shortest name
   const names = skills.map((s) => s.name);
   const scope = names[0]?.match(/^@([^/]+)\//)?.[1];
   const routerName = scope ?? names.reduce((a, b) => (a.length < b.length ? a : b));
   const skillName = toSkillName(routerName);
 
-  // Don't generate if router name matches an existing skill name
   if (skills.some((s) => toSkillName(s.name) === skillName)) return null;
 
-  // Description with WHEN triggers + domain keywords from all packages
+  // --- Description: WHEN triggers + domain keywords ---
   const pkgNames = skills.map((s) => s.name.replace(/^@[^/]+\//, '')).join(', ');
   const allKeywords = [
     ...new Set(
@@ -245,48 +243,111 @@ function renderRouterSkill(
     )
   ];
   const keywordSuffix =
-    allKeywords.length > 0 ? ` Also: ${allKeywords.slice(0, 8).join(', ')}.` : '';
-  const description =
-    `Router for ${routerName} monorepo (${pkgNames}). ` +
-    `Use when working with ${routerName}.${keywordSuffix}`;
+    allKeywords.length > 0 ? ` Covers: ${allKeywords.slice(0, 10).join(', ')}.` : '';
+  const description = `Use when working with ${routerName} (${pkgNames}).${keywordSuffix}`;
 
-  // Build routing body
+  // --- Helpers ---
+  type SkillInfo = {
+    short: string;
+    peerName: string;
+    desc: string;
+    useWhens: string[];
+    avoidWhens: string[];
+  };
+  const infos: SkillInfo[] = skills.map((s) => ({
+    short: s.name.replace(/^@[^/]+\//, ''),
+    peerName: toSkillName(s.name),
+    desc: s.packageDescription || s.description || '',
+    useWhens: s.useWhen ?? [],
+    avoidWhens: s.avoidWhen ?? []
+  }));
+
   const lines: string[] = [];
   lines.push(renderFrontmatter(skillName, description, opts.license));
+
+  // --- Assertive opening ---
   lines.push(`# ${routerName}`);
   lines.push('');
-  lines.push('## Which package?');
+  lines.push(
+    `**Use this skill for ANY work with ${routerName}.** It routes to the correct package.`
+  );
   lines.push('');
 
-  for (const skill of skills) {
-    const short = skill.name.replace(/^@[^/]+\//, '');
-    const peerSkillName = toSkillName(skill.name);
-    const desc = skill.packageDescription || skill.description || '';
-
-    // Full first @useWhen entry — don't truncate, this IS the routing value
-    const useWhens = skill.useWhen ?? [];
-    const triggerLines = useWhens.slice(0, 2).map((t) => `  - ${t}`);
-
-    lines.push(`### ${short}`);
-    lines.push('');
-    lines.push(desc);
-    if (triggerLines.length > 0) {
-      lines.push('');
-      lines.push('**Use when:**');
-      lines.push(...triggerLines);
+  // --- When to Use (flat trigger list from all packages) ---
+  lines.push('## When to Use');
+  lines.push('');
+  for (const info of infos) {
+    for (const trigger of info.useWhens.slice(0, 2)) {
+      lines.push(`- ${trigger} → \`${info.peerName}\``);
     }
+  }
+  lines.push('');
+
+  // --- Decision Tree (numbered linear routing) ---
+  lines.push('## Decision Tree');
+  lines.push('');
+  for (let i = 0; i < infos.length; i++) {
+    const info = infos[i]!;
+    lines.push(`${i + 1}. ${info.desc}? → \`${info.peerName}\``);
+  }
+  lines.push('');
+
+  // --- Routing Logic (per-package detail) ---
+  lines.push('## Routing Logic');
+  lines.push('');
+  for (const info of infos) {
+    lines.push(`### ${info.short}`);
     lines.push('');
-    lines.push(`→ Load the \`${peerSkillName}\` skill.`);
+    lines.push(`${info.desc} → Load \`${info.peerName}\``);
+    if (info.useWhens.length > 0) {
+      lines.push('');
+      for (const t of info.useWhens.slice(0, 3)) {
+        lines.push(`- ${t}`);
+      }
+    }
     lines.push('');
   }
 
-  // NEVER rules for the router
+  // --- Anti-Rationalization table ---
+  const rationalizations: string[] = [];
+  for (const info of infos) {
+    if (info.avoidWhens.length > 0) {
+      const thought = info.avoidWhens[0]!;
+      rationalizations.push(
+        `| "I'll just use ${info.short} for everything" | ${info.short} is for ${info.desc.toLowerCase()}. ${thought} |`
+      );
+    }
+  }
+  if (rationalizations.length > 0) {
+    lines.push('## Anti-Rationalization');
+    lines.push('');
+    lines.push('| Thought | Reality |');
+    lines.push('|---------|---------|');
+    lines.push(...rationalizations);
+    lines.push('');
+  }
+
+  // --- Example Invocations ---
+  lines.push('## Example Invocations');
+  lines.push('');
+  for (const info of infos) {
+    if (info.useWhens.length > 0) {
+      const scenario = info.useWhens[0]!;
+      const short =
+        scenario.length > 60 ? scenario.slice(0, scenario.lastIndexOf(' ', 57)) + '...' : scenario;
+      lines.push(`User: "${short}"  `);
+      lines.push(`→ Load \`${info.peerName}\``);
+      lines.push('');
+    }
+  }
+
+  // --- NEVER ---
   lines.push('## NEVER');
   lines.push('');
   lines.push('- NEVER load all package skills simultaneously — pick the one matching your task');
   if (skills.length > 2) {
     lines.push(
-      `- If your task spans multiple packages, load the foundational one first (typically core/shared), then the specific one`
+      '- If your task spans multiple packages, load the foundational one first (typically core/shared), then the specific one'
     );
   }
   lines.push('');

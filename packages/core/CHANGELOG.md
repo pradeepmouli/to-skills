@@ -1,5 +1,15 @@
 # @to-skills/core
 
+## 1.2.0
+
+### Minor Changes
+
+- Router skill follows Axiom pattern: decision tree, anti-rationalization, example invocations
+
+  Full router structure: assertive opening → When to Use triggers → numbered Decision Tree →
+  per-package Routing Logic → Anti-Rationalization table (from @avoidWhen) →
+  Example Invocations (from @useWhen) → NEVER rules.
+
 ## 1.1.2
 
 ### Patch Changes
