@@ -149,19 +149,34 @@ NEVER + BECAUSE + FIX format. Always include the non-obvious reason AND a recove
  */
 ```
 
-### `@remarks` — Expert knowledge beyond the summary
+### `@throws` — Error recovery paths
 
-Extended explanation with trade-offs, design decisions, and context. Standard TSDoc tag. Goes in references/functions.md after the summary.
+Standard TSDoc. Include the recovery path, not just the error type. This is where "what to do when things go wrong" lives.
 
 ```typescript
 /**
- * Render a single skill.
- *
+ * @throws {ModuleResolutionError} When the class module path cannot be detected from static imports. Fix: pass an explicit modulePath as the second argument
+ * @throws {SerializationError} When constructor args contain functions or Symbols. Fix: use sanitizeV8: true or restructure to pass plain data only
+ * @throws {TimeoutError} When INIT handshake exceeds timeout. Fix: increase timeout option or check that the child module exports the class
+ */
+```
+
+### `@remarks` — Decision trees, trade-offs, thinking frameworks
+
+Standard TSDoc. Use for the expert reasoning that helps an agent CHOOSE between options. On `@packageDocumentation`, this becomes a thinking framework in the SKILL.md body.
+
+```typescript
+/**
  * @remarks
- * Token budgets are applied per-reference-file, not per-skill.
- * A skill with many functions may have functions.md truncated
- * but types.md will be unaffected. Set maxTokens to at least
- * 500 to avoid mid-signature truncation.
+ * ## Choosing a serialization mode
+ * - `json`: lower overhead, simpler debugging, works in all test runners
+ * - `advanced`: supports Buffer, Map, Set, BigInt, TypedArray
+ * - Use `json` unless you specifically need non-JSON types
+ * - Use `advanced` + `supportHandles: true` only for OS handle passing (sockets, pipes)
+ *
+ * ## Token budgets
+ * Applied per-reference-file, not per-skill. A skill with many functions
+ * may have functions.md truncated but types.md will be unaffected.
  */
 ```
 
@@ -270,19 +285,20 @@ The generator pulls content from multiple sources. When the auto-generated skill
 | 1        | `@example` on exports                | Quick Start, worked code in SKILL.md | Always — trumps README examples                       |
 | 2        | `@useWhen` / `@avoidWhen`            | Decision routing in "When to Use"    | 5-10 key decision points only — quality over quantity |
 | 3        | `@never`                             | NEVER + BECAUSE + FIX rules          | Any export with non-obvious footguns                  |
-| 4        | `@remarks` on exports                | Expert knowledge in reference files  | Complex functions needing context                     |
-| 5        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models                 |
+| 4        | `@throws` on exports                 | Error recovery paths in references   | Every throwable function — include Fix                |
+| 5        | `@remarks` on exports                | Decision trees, trade-offs           | Functions with mode/option choices                    |
+| 6        | `@packageDocumentation` `@remarks`   | Thinking framework in SKILL.md body  | Architecture decisions, mental models                 |
 | 6        | `@packageDocumentation` `@example`   | Quick Start fallback                 | When no export has `@example`                         |
 | 7        | README `## Features`                 | Features section in SKILL.md         | Describe capabilities                                 |
 | 8        | README `## Troubleshooting`          | Troubleshooting section in SKILL.md  | Common errors and fixes                               |
 | 9        | README `## Quick Start` / `## Usage` | Quick Start fallback                 | When no `@example` exists anywhere                    |
 
-`@example` and `@remarks` are escape hatches — when the auto-generated output scores low on a skill-judge dimension, add inline content at the right priority level:
+Every skill-judge dimension maps to a specific tag — add content at the right source:
 
-- **D1 Knowledge Delta low?** → Add `@remarks` with trade-offs, design decisions
+- **D1 Knowledge Delta low?** → Add `@remarks` with trade-offs and decision trees
 - **D2 Procedures low?** → Add `@packageDocumentation @remarks` with "before X, ask yourself..." frameworks
-- **D3 Anti-Patterns low?** → Add `@never` with NEVER + BECAUSE rules
-- **D8 Usability low?** → Add `@example` with worked code patterns
+- **D3 Anti-Patterns low?** → Add `@never` with NEVER + BECAUSE + FIX rules
+- **D8 Usability low?** → Add `@throws` with recovery paths + `@example` with worked code
 
 ## Workflow
 
