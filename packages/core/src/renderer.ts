@@ -273,17 +273,16 @@ function renderRouterSkill(
   );
   lines.push('');
 
-  // --- When to Use (flat trigger list from all packages) ---
+  // --- When to Use: broad package-level triggers (NOT @useWhen — those go in Routing Logic) ---
   lines.push('## When to Use');
   lines.push('');
+  lines.push('Use this router when:');
   for (const info of infos) {
-    for (const trigger of info.useWhens.slice(0, 2)) {
-      lines.push(`- ${trigger} → \`${info.peerName}\``);
-    }
+    lines.push(`- ${info.desc}`);
   }
   lines.push('');
 
-  // --- Decision Tree (numbered linear routing) ---
+  // --- Decision Tree: numbered quick routing ---
   lines.push('## Decision Tree');
   lines.push('');
   for (let i = 0; i < infos.length; i++) {
@@ -292,13 +291,13 @@ function renderRouterSkill(
   }
   lines.push('');
 
-  // --- Routing Logic (per-package detail) ---
+  // --- Routing Logic: per-package detail (@useWhen appears ONLY here) ---
   lines.push('## Routing Logic');
   lines.push('');
   for (const info of infos) {
-    lines.push(`### ${info.short}`);
+    lines.push(`### ${info.short} → \`${info.peerName}\``);
     lines.push('');
-    lines.push(`${info.desc} → Load \`${info.peerName}\``);
+    lines.push(info.desc);
     if (info.useWhens.length > 0) {
       lines.push('');
       for (const t of info.useWhens.slice(0, 3)) {
@@ -308,7 +307,7 @@ function renderRouterSkill(
     lines.push('');
   }
 
-  // --- Anti-Rationalization table ---
+  // --- Anti-Rationalization (from @avoidWhen) ---
   const rationalizations: string[] = [];
   for (const info of infos) {
     if (info.avoidWhens.length > 0) {
@@ -327,18 +326,14 @@ function renderRouterSkill(
     lines.push('');
   }
 
-  // --- Example Invocations ---
+  // --- Example Invocations: natural user queries from package descriptions ---
   lines.push('## Example Invocations');
   lines.push('');
   for (const info of infos) {
-    if (info.useWhens.length > 0) {
-      const scenario = info.useWhens[0]!;
-      const short =
-        scenario.length > 60 ? scenario.slice(0, scenario.lastIndexOf(' ', 57)) + '...' : scenario;
-      lines.push(`User: "${short}"  `);
-      lines.push(`→ Load \`${info.peerName}\``);
-      lines.push('');
-    }
+    const query = info.desc.toLowerCase().replace(/^[a-z]+ /, '');
+    lines.push(`User: "How do I ${query}?"  `);
+    lines.push(`→ Load \`${info.peerName}\``);
+    lines.push('');
   }
 
   // --- NEVER ---
