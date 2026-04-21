@@ -4,13 +4,9 @@ description: Create a minor enhancement workflow with condensed single-document 
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: templates/commands/enhance.md
+  source: workflows:commands/enhance.md
 ---
 
-# Speckit Enhance Skill
-
-<!-- Extension: workflows -->
-<!-- Config: .specify/extensions/workflows/ -->
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -24,7 +20,7 @@ Given that enhancement description, do this:
 1. **Read configuration** — Check for a project config at `.specify/extensions/workflows/workflows-config.yml`. If present, read `enhance.max_tasks` and `enhance.min_tasks`. If absent, use the extension defaults: `max_tasks=7`, `min_tasks=3`. The environment variable `SPECKIT_WORKFLOWS_ENHANCE_MAX_TASKS` overrides both (highest priority). Call the resolved values MAX_TASKS and MIN_TASKS for the steps below.
 
 2. Run the script `.specify/extensions/workflows/scripts/bash/create-enhance.sh` from repo root and parse its JSON output for ENHANCE_ID, BRANCH_NAME, and ENHANCEMENT_FILE. All file paths must be absolute.
-  **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
+   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
 
 3. Load `.specify/extensions/workflows/templates/enhance/enhancement-template.md` to understand required sections.
 

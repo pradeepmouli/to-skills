@@ -2,13 +2,13 @@
 description: Create baseline documentation for the project, establishing context for
   all future specs.
 scripts:
-  sh: scripts/bash/create-baseline.sh --json
-  ps: scripts/powershell/create-baseline.ps1 -Json
+  sh: .specify/scripts/bash/create-baseline.sh --json
+  ps: .specify/scripts/powershell/create-baseline.ps1 -Json
 ---
-
 
 <!-- Extension: workflows -->
 <!-- Config: .specify/extensions/workflows/ -->
+
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -18,6 +18,7 @@ $ARGUMENTS
 ## What This Does
 
 The baseline workflow creates foundational documentation by:
+
 1. Establishing a comprehensive baseline specification of the project
 2. Creating a change tracking document for all subsequent modifications
 
@@ -32,20 +33,19 @@ This provides essential context for you (the AI agent) when working on future ta
 2. **Analyze the Project**:
 
    a. If HAS_EXISTING_SPECS is "true":
-      - The baseline commit represents the project state BEFORE spec-kit was used
-      - Use `git show BASELINE_COMMIT:path/to/file` to examine files at that point
-      - Analyze that historical state to document what existed before specs
+   - The baseline commit represents the project state BEFORE spec-kit was used
+   - Use `git show BASELINE_COMMIT:path/to/file` to examine files at that point
+   - Analyze that historical state to document what existed before specs
 
    b. If HAS_EXISTING_SPECS is "false":
-      - Analyze the current project state
-      - This is a fresh baseline for future work
+   - Analyze the current project state
+   - This is a fresh baseline for future work
 
 3. **Generate baseline-spec.md**:
 
    Load `.specify/extensions/workflows/templates/baseline/baseline-spec-template.md` to understand the structure.
 
    Then comprehensively analyze the codebase (at the baseline commit if applicable) and fill in BASELINE_SPEC with:
-
    - **Executive Summary**: High-level overview of project purpose
    - **Project Structure**: Directory layout and key components
    - **Architecture**: System design, technology stack, patterns
@@ -72,7 +72,6 @@ This provides essential context for you (the AI agent) when working on future ta
    Load `.specify/extensions/workflows/templates/baseline/current-state-template.md` for structure.
 
    Scan the specs directory and enumerate all changes by type:
-
    - **Features**: List all `specs/###-*` directories with descriptions
    - **Modifications**: Find `specs/###-*/modifications/` subdirectories
    - **Bugfixes**: List `specs/bugfix/` entries
@@ -149,6 +148,7 @@ This context will improve my suggestions for all future work.
 ## Quality Checks
 
 Before finishing:
+
 - [ ] baseline-spec.md covers all major aspects of the project
 - [ ] Technology stack is accurately documented
 - [ ] Core features are clearly described

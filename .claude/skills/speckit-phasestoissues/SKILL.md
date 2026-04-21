@@ -5,13 +5,9 @@ description: Convert development phases into individual GitHub issues for better
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: templates/commands/phasestoissues.md
+  source: workflows:commands/phasestoissues.md
 ---
 
-# Speckit Phasestoissues Skill
-
-<!-- Extension: workflows -->
-<!-- Config: .specify/extensions/workflows/ -->
 ## User Input
 
 ```text
@@ -33,6 +29,7 @@ get_feature_paths
 ```
 
 This provides:
+
 - `FEATURE_DIR` - Feature directory path
 - `FEATURE_SPEC` - Specification file (spec.md)
 - `IMPL_PLAN` - Implementation plan (plan.md)
@@ -52,6 +49,7 @@ git config --get remote.origin.url
 > ONLY PROCEED TO NEXT STEPS IF THE REMOTE IS A GITHUB URL
 
 **Stop immediately** if:
+
 - Remote is not a GitHub URL
 - Remote URL cannot be determined
 - Repository does not match expected pattern
@@ -61,17 +59,20 @@ git config --get remote.origin.url
 Load and parse the specification file (`$FEATURE_SPEC` / spec.md):
 
 **Extract:**
+
 - **Phase Title**: First H1 heading or feature name from directory
 - **Phase Description**: Content under "Story" or "Overview" section
 - **Acceptance Criteria**: Content under "Acceptance Criteria" section
 - **Context/Background**: Any additional context sections
 
 **Parse Tasks** from `$TASKS` (tasks.md):
+
 - Extract all task lines in format: `- [ ] T001: Task description`
 - Preserve task IDs and descriptions
 - Note task status (pending vs completed)
 
 **Parse Plan** (if exists) from `$IMPL_PLAN` (plan.md):
+
 - Extract implementation approach
 - Note technical decisions
 - Identify dependencies
@@ -94,10 +95,12 @@ Construct a comprehensive GitHub issue for each phase with this structure:
 [High-level approach from plan.md, if available]
 
 ### Key Technical Decisions
+
 - [Decision 1]
 - [Decision 2]
 
 ### Dependencies
+
 - [Dependency 1]
 - [Dependency 2]
 
@@ -122,6 +125,7 @@ See sub-issues for individual task tracking.
 Automatically assign labels based on:
 
 **Workflow Type** (from branch pattern):
+
 - `bugfix/*` -> `bug`, `bugfix`
 - `refactor/*` -> `refactor`, `technical-debt`
 - `hotfix/*` -> `hotfix`, `urgent`
@@ -130,11 +134,13 @@ Automatically assign labels based on:
 - Standard feature -> `feature`, `enhancement`
 
 **Priority** (from spec.md if available):
+
 - Critical/High -> `priority: high`
 - Medium -> `priority: medium`
 - Low -> `priority: low`
 
 **Status**:
+
 - `status: planning` (if tasks exist but none completed)
 - `status: in-progress` (if some tasks completed)
 
@@ -143,6 +149,7 @@ Automatically assign labels based on:
 For each phase, use the GitHub MCP server tool to create the parent issue:
 
 **Required:**
+
 - `owner`: Extract from Git remote URL
 - `repo`: Extract from Git remote URL
 - `title`: "Phase N: [Phase title]" from spec.md
@@ -158,6 +165,7 @@ For each task within a phase:
 1. **Create task issue** using GitHub MCP:
    - `title`: "T001: [Task description]" (preserve task ID)
    - `body`:
+
      ```markdown
      ## Task Details
 
@@ -173,6 +181,7 @@ For each task within a phase:
 
      Part of larger feature spec-kit workflow.
      ```
+
    - `labels`: Same labels as parent phase issue
 
 2. **Link as sub-issue** using `mcp_github_github_sub_issue_write`:
@@ -187,12 +196,14 @@ For each task within a phase:
 ### 8. Set Sub-Issue Priority
 
 If tasks have natural ordering, use `mcp_github_github_sub_issue_write` with method "reprioritize" to set task order within the phase
+
 - `labels`: Labels from step 5
 
 > [!CAUTION]
 > UNDER NO CIRCUMSTANCES EVER CREATE ISSUES IN REPOSITORIES THAT DO NOT MATCH THE REMOTE URL
 
 **Example:**
+
 ```
 Repository: github.com/user/repo
 Title: Phase 1: User Authentication
@@ -246,25 +257,30 @@ Next Steps:
 ## Edge Cases
 
 **No tasks.md exists**:
+
 - Create issue with story and acceptance criteria only
 - Note in issue body that task breakdown is needed
 - Recommend running `/speckit.tasks` first
 
 **No spec.md exists**:
+
 - Cannot create issue without phase context
 - Recommend running `/speckit.plan` or creating spec first
 - Display error message with guidance
 
 **Multiple features in repo**:
+
 - Uses current feature based on branch/directory context
 - Issue title and content scoped to current feature only
 
 **Issue already exists**:
+
 - Check if issue with same title exists (optional)
 - Warn user before creating duplicate
 - Offer to update existing issue instead
 
 **No GitHub remote**:
+
 - Stop with clear error message
 - Cannot create issues without GitHub repository
 - Suggest adding GitHub remote or creating issues manually

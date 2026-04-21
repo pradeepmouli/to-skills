@@ -1,15 +1,8 @@
 ---
 description: Perform a non-destructive post-implementation verification gate validating the implementation against spec.md, plan.md, tasks.md, and constitution.md.
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
-handoffs:
-  - label: Address findings and re-implement
-    agent: speckit.implement
-    prompt: Address the verification findings and re-run implementation to resolve issues
-  - label: Re-analyze specification consistency
-    agent: speckit.analyze
-    prompt: Re-analyze specification consistency based on verification findings
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 ## User Input
@@ -28,38 +21,54 @@ Validate the implementation against its specification artifacts (`spec.md`, `pla
 
 **STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
-**Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this verification scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, tasks or implementation—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.verify`.
+**Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this verification scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, tasks or implementation—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.verify.run`.
 
 ## Execution Steps
 
 ### 1. Initialize Verification Context
 
-Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
+Run `{SCRIPT}` from repo root.
+
+1. **Script succeeds** (on a feature branch): Parse JSON for FEATURE_DIR. Set `FEATURE_BRANCH = true`. Proceed to next step.
+2. **Script fails** (not on a feature branch): You MUST prompt for available features (Scan `specs/NNN-*/` to get available features). Use the **AskUserQuestion tool** to let the user select. **Do NOT guess or auto-select a change. Always let the user choose.**
+
+Derive absolute paths:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md
-- TASKS = FEATURE_DIR/tasks.md
+- TASKS = FEATURE_DIR/tasks.md.
 
-Abort if SPEC or TASKS is missing (instruct the user to run the missing prerequisite command). PLAN and constitution are optional — checks that depend on them are skipped gracefully.
-Abort if TASKS has no completed tasks.
+Abort if any required file is missing (instruct the user to run missing prerequisite command).
 For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-### 2. Load Artifacts (Progressive Disclosure)
+### 2. Load Configuration
+
+Run the load-config script (`.specify/extensions/verify/scripts/bash/load-config.sh` or `.specify/extensions/verify/scripts/powershell/load-config.ps1`) from the repo root. Parse the `max_findings` value from its output and store it for use in Step 6. If the script fails, abort and relay its error message to the user.
+
+### 3. Load Artifacts (Progressive Disclosure)
 
 Load only the minimal necessary context from each artifact:
 
 **From spec.md:**
 
+- User Scenarios & Testing (user stories, acceptance scenarios, priorities)
+- Edge Cases
 - Functional Requirements
-- User Stories and Acceptance Criteria
-- Scenarios
-- Edge Cases (if present)
+- Success Criteria / Measurable Outcomes (performance, security, availability, observability targets)
+- Assumptions
 
-**From plan.md (optional):**
+**From plan.md:**
 
 - Architecture/stack choices
-- Data Model references
-- Project structure (directory layout)
+- Technical constraints
+- Technical Context (language, dependencies, storage, testing, platform, constraints)
+- Project Structure (documentation layout and source code layout)
+
+**From data-model.md (if present):**
+
+- Entity names, fields, and relationships
+- Validation rules
+- State transitions
 
 **From tasks.md:**
 
@@ -68,14 +77,12 @@ Load only the minimal necessary context from each artifact:
 - Descriptions
 - Phase grouping
 - Referenced file paths
-- Count total tasks and completed tasks
 
-**From constitution (optional):**
+**From constitution:**
 
 - Load `.specify/memory/constitution.md` for principle validation
-- If missing or placeholder: skip constitution checks, emit Info finding
 
-### 3. Identify Implementation Scope
+### 4. Identify Implementation Scope
 
 Build the set of files to verify from tasks.md.
 
@@ -84,7 +91,7 @@ Build the set of files to verify from tasks.md.
 - Build **REVIEW_FILES** set from completed task file paths
 - Track **INCOMPLETE_TASK_FILES** from incomplete tasks (used by check C)
 
-### 4. Build Semantic Models
+### 5. Build Semantic Models
 
 Create internal representations (do not include raw artifacts in output):
 
@@ -92,12 +99,12 @@ Create internal representations (do not include raw artifacts in output):
 - **Implementation mapping**: Map each completed task to its referenced file paths
 - **File inventory**: All REVIEW_FILES with existence verification — flag any task-referenced file that does not exist on disk
 - **Requirements inventory**: Each functional requirement with a stable key — map to tasks and REVIEW_FILES for implementation evidence (evidence = file in REVIEW_FILES containing keyword/ID match, function signatures, or code paths that address the requirement)
-- **Spec intent references**: User stories, acceptance criteria, and scenarios from spec.md
+- **Spec intent references**: User stories, acceptance criteria, scenarios, edge cases, and code-verifiable success criteria from spec.md
 - **Constitution rule set**: Extract principle names and MUST/SHOULD normative statements
 
-### 5. Verification Checks (Token-Efficient Analysis)
+### 6. Verification Checks (Token-Efficient Analysis)
 
-Focus on high-signal findings. Limit to 50 findings total; aggregate remainder in overflow summary.
+Focus on high-signal findings. **Limit to the configured `max_findings` value** (loaded in Step 2); aggregate remainder in overflow summary.
 
 #### A. Task Completion
 
@@ -117,12 +124,14 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 #### D. Scenario & Test Coverage
 
 - Spec scenarios with no corresponding test or code path
+- Edge cases with no corresponding test, guard clause, or error-handling code path
 - No test files detected at all in REVIEW_FILES
 
 #### E. Spec Intent Alignment
 
 - Implementation diverging from spec intent (minor vs fundamental divergence)
 - Compare acceptance criteria against actual behaviour in REVIEW_FILES
+- Code-verifiable success criteria (performance, security, availability, observability) with no evidence of implementation support — skip business/UX metrics that require post-deployment measurement
 
 #### F. Constitution Alignment
 
@@ -136,7 +145,7 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - New code deviating from existing project conventions (naming, module structure, error handling patterns)
 - Public APIs/exports/endpoints not described in plan.md
 
-### 6. Severity Assignment
+### 7. Severity Assignment
 
 Use this heuristic to prioritize findings:
 
@@ -144,26 +153,27 @@ Use this heuristic to prioritize findings:
 - **HIGH**: Spec intent divergence, fundamental implementation mismatch with acceptance criteria, missing scenario/test coverage
 - **MEDIUM**: Design pattern drift, minor spec intent deviation
 - **LOW**: Structure deviations, naming inconsistencies, minor observations not affecting functionality
-- **INFO**: Positive confirmations (all tasks complete, all requirements covered, no issues found). Use sparingly — only in summary metrics, not as individual finding rows.
 
-### 7. Produce Compact Verification Report
+### 8. Produce Compact Verification Report
 
-Output a Markdown report (no file writes) with the following structure:
+Output a Markdown report (no file writes) with the following structure.
+
+**If `FEATURE_BRANCH = false`**, prepend: `> ⚠️ **Non-Feature-Branch Verification** from \`<BRANCH>\` against \`<FEATURE_DIR>\`. Some checks may be affected by cross-feature interference.`
 
 ## Verification Report
 
-| ID | Category | Severity | Location(s) | Summary | Recommendation |
-|----|----------|----------|-------------|---------|----------------|
-| A1 | Task Completion | CRITICAL | tasks.md | 3 of 12 tasks incomplete | Complete tasks T05, T08, T11 |
-| B1 | File Existence | CRITICAL | src/auth.ts | Task-referenced file missing | Create file or update task reference |
-| C1 | Requirement Coverage | CRITICAL | spec.md:FR-003 | No implementation evidence | Implement FR-003 |
+| ID  | Category             | Severity | Location(s)    | Summary                      | Recommendation                       |
+| --- | -------------------- | -------- | -------------- | ---------------------------- | ------------------------------------ |
+| A1  | Task Completion      | CRITICAL | tasks.md       | 3 of 12 tasks incomplete     | Complete tasks T05, T08, T11         |
+| B1  | File Existence       | CRITICAL | src/auth.ts    | Task-referenced file missing | Create file or update task reference |
+| C1  | Requirement Coverage | CRITICAL | spec.md:FR-003 | No implementation evidence   | Implement FR-003                     |
 
 (Add one row per finding; generate stable IDs prefixed by check letter: A1, B1, C1... Reference specific files and line numbers in Location(s) where applicable.)
 
 **Task Summary Table:**
 
 | Task ID | Status | Referenced Files | Notes |
-|---------|--------|-----------------|-------|
+| ------- | ------ | ---------------- | ----- |
 
 **Constitution Alignment Issues:** (if any)
 
@@ -174,7 +184,7 @@ Output a Markdown report (no file writes) with the following structure:
 - Files Verified
 - Critical Issues Count
 
-### 8. Provide Next Actions
+### 9. Provide Next Actions
 
 At end of report, output a concise Next Actions block:
 
@@ -183,7 +193,7 @@ At end of report, output a concise Next Actions block:
 - If only LOW/MEDIUM: User may proceed, but provide improvement suggestions
 - Provide explicit command suggestions: e.g., "Run `/speckit.implement` to address findings and re-run verification", "Implementation verified — ready for review or merge"
 
-### 9. Offer Remediation
+### 10. Offer Remediation
 
 Ask the user: "Would you like me to suggest concrete remediation edits for the top N issues?" (Do NOT apply them automatically.)
 
@@ -193,7 +203,7 @@ Ask the user: "Would you like me to suggest concrete remediation edits for the t
 
 - **Minimal high-signal tokens**: Focus on actionable findings, not exhaustive documentation
 - **Progressive disclosure**: Load artifacts and source files incrementally; don't dump all content into analysis
-- **Token-efficient output**: Limit findings table to 50 rows; summarize overflow
+- **Token-efficient output**: Limit findings table to the configured `max_findings` value; summarize overflow
 - **Deterministic results**: Rerunning without changes should produce consistent IDs and counts
 
 ### Analysis Guidelines
@@ -203,9 +213,3 @@ Ask the user: "Would you like me to suggest concrete remediation edits for the t
 - **Prioritize constitution violations** (these are always CRITICAL)
 - **Use examples over exhaustive rules** (cite specific instances, not generic patterns)
 - **Report zero issues gracefully** (emit success report with coverage statistics)
-- **Every finding must trace back** to a specification artifact (spec.md requirement, user story, scenario, edge case), a structural reference (plan.md, constitution.md), or a task in tasks.md
-
-### Idempotency by Design
-
-The command produces deterministic output — running verification twice on the same state yields the same report. No counters, timestamp-dependent logic, or accumulated state affects findings. The report is fully regenerated on each run.
-

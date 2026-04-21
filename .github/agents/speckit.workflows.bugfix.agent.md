@@ -1,22 +1,22 @@
 ---
 description: Create a bug fix workflow with regression test and minimal documentation.
 scripts:
-  sh: scripts/bash/create-bugfix.sh --json
-  ps: scripts/powershell/create-bugfix.ps1 -Json
+  sh: .specify/scripts/bash/create-bugfix.sh --json
+  ps: .specify/scripts/powershell/create-bugfix.ps1 -Json
 handoffs:
-- label: Create Implementation Plan
-  agent: speckit.plan
-  prompt: Create a plan for the bugfix. I am fixing...
-  send: true
-- label: Break Down Into Tasks
-  agent: speckit.tasks
-  prompt: Break the bugfix plan into tasks
-  send: true
+  - label: Create Implementation Plan
+    agent: speckit.plan
+    prompt: Create a plan for the bugfix. I am fixing...
+    send: true
+  - label: Break Down Into Tasks
+    agent: speckit.tasks
+    prompt: Break the bugfix plan into tasks
+    send: true
 ---
-
 
 <!-- Extension: workflows -->
 <!-- Config: .specify/extensions/workflows/ -->
+
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -28,7 +28,7 @@ The text the user typed after `/speckit.workflows.bugfix` (or `/speckit.bugfix`)
 Given that bug description, do this:
 
 1. Run the script `.specify/extensions/workflows/scripts/bash/create-bugfix.sh` from repo root and parse its JSON output for BUG_ID, BRANCH_NAME, and BUG_REPORT_FILE. All file paths must be absolute.
-  **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
+   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
 
 2. Load `.specify/extensions/workflows/templates/bugfix/bug-report-template.md` to understand required sections.
 

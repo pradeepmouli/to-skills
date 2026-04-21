@@ -2,22 +2,22 @@
 description: Create an emergency hotfix workflow with expedited process and mandatory
   post-mortem.
 scripts:
-  sh: scripts/bash/create-hotfix.sh --json
-  ps: scripts/powershell/create-hotfix.ps1 -Json
+  sh: .specify/scripts/bash/create-hotfix.sh --json
+  ps: .specify/scripts/powershell/create-hotfix.ps1 -Json
 handoffs:
-- label: Create Expedited Plan
-  agent: speckit.plan
-  prompt: Create an expedited plan for the hotfix. This is an emergency...
-  send: true
-- label: Break Down Into Tasks
-  agent: speckit.tasks
-  prompt: Break the hotfix plan into minimal tasks
-  send: true
+  - label: Create Expedited Plan
+    agent: speckit.plan
+    prompt: Create an expedited plan for the hotfix. This is an emergency...
+    send: true
+  - label: Break Down Into Tasks
+    agent: speckit.tasks
+    prompt: Break the hotfix plan into minimal tasks
+    send: true
 ---
-
 
 <!-- Extension: workflows -->
 <!-- Config: .specify/extensions/workflows/ -->
+
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -31,7 +31,7 @@ The text the user typed after `/speckit.workflows.hotfix` (or `/speckit.hotfix`)
 Given that incident description, do this:
 
 1. Run the script `.specify/extensions/workflows/scripts/bash/create-hotfix.sh --json "$ARGUMENTS"` from repo root and parse its JSON output for HOTFIX_ID, BRANCH_NAME, HOTFIX_FILE, POSTMORTEM_FILE, and TIMESTAMP. All file paths must be absolute.
-  **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
+   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
 
 2. Load `.specify/extensions/workflows/templates/hotfix/hotfix-template.md` to understand required sections.
 

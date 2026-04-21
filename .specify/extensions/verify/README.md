@@ -19,7 +19,7 @@ specify extension add verify
 Or install from repository directly:
 
 ```bash
-specify extension add verify --from https://github.com/ismaelJimenez/spec-kit-verify/archive/refs/tags/v1.0.0.zip
+specify extension add verify --from https://github.com/ismaelJimenez/spec-kit-verify/archive/refs/tags/v1.0.3.zip
 ```
 
 For local development:
@@ -59,7 +59,7 @@ Validate implemented code against specification artifacts.
 
 ```text
 # In Claude Code
-> /speckit.verify
+> /speckit.verify.run
 ```
 
 **Prerequisites:**
@@ -84,9 +84,9 @@ If the `after_implement` hook is enabled, you'll be prompted automatically after
 
 ### Report Settings
 
-| Setting | Type | Required | Description |
-|---------|------|----------|-------------|
-| `report.max_findings` | integer | No | Maximum findings in the report (default: `50`) |
+| Setting               | Type    | Required | Description                                    |
+| --------------------- | ------- | -------- | ---------------------------------------------- |
+| `report.max_findings` | integer | No       | Maximum findings in the report (default: `50`) |
 
 ## Environment Variables
 
@@ -108,7 +108,7 @@ This extension does not currently support environment variable overrides. All co
 > /speckit.implement
 
 # Step 4: Verify implementation
-> /speckit.verify
+> /speckit.verify.run
 ```
 
 The verify command produces a report like:
@@ -116,11 +116,11 @@ The verify command produces a report like:
 ```markdown
 ## Verification Report
 
-| ID | Category | Severity | Location(s) | Summary | Recommendation |
-|----|----------|----------|-------------|---------|----------------|
-| A1 | Task Completion | LOW | tasks.md | 1 of 12 tasks incomplete | Complete task T08 |
-| C1 | Requirement Coverage | CRITICAL | spec.md:FR-003 | No implementation evidence | Implement FR-003 |
-| D1 | Scenario & Test Coverage | HIGH | spec.md:SC-02 | No test for login failure | Add test for scenario SC-02 |
+| ID  | Category                 | Severity | Location(s)    | Summary                    | Recommendation              |
+| --- | ------------------------ | -------- | -------------- | -------------------------- | --------------------------- |
+| A1  | Task Completion          | LOW      | tasks.md       | 1 of 12 tasks incomplete   | Complete task T08           |
+| C1  | Requirement Coverage     | CRITICAL | spec.md:FR-003 | No implementation evidence | Implement FR-003            |
+| D1  | Scenario & Test Coverage | HIGH     | spec.md:SC-02  | No test for login failure  | Add test for scenario SC-02 |
 
 Metrics: Tasks 11/12 · Requirement Coverage 92% · Files Verified 8 · Critical Issues 1
 ```
@@ -136,20 +136,20 @@ The verify command analyzes implemented code against specification artifacts:
 
 ### Verification Checks
 
-| Check | What it verifies |
-|-------|------------------|
-| Task Completion | All tasks marked complete |
-| File Existence | Task-referenced files exist on disk |
-| Requirement Coverage | Every requirement has implementation evidence |
-| Scenario & Test Coverage | Spec scenarios covered by tests or code paths |
-| Spec Intent Alignment | Implementation matches spec intent and acceptance criteria |
-| Constitution Alignment | Constitution principles are respected |
-| Design & Structure Consistency | Architecture and conventions match plan.md |
+| Check                          | What it verifies                                           |
+| ------------------------------ | ---------------------------------------------------------- |
+| Task Completion                | All tasks marked complete                                  |
+| File Existence                 | Task-referenced files exist on disk                        |
+| Requirement Coverage           | Every requirement has implementation evidence              |
+| Scenario & Test Coverage       | Spec scenarios covered by tests or code paths              |
+| Spec Intent Alignment          | Implementation matches spec intent and acceptance criteria |
+| Constitution Alignment         | Constitution principles are respected                      |
+| Design & Structure Consistency | Architecture and conventions match plan.md                 |
 
 ## Workflow Integration
 
 ```
-/speckit.specify → /speckit.plan → /speckit.tasks → /speckit.implement → /speckit.verify
+/speckit.specify → /speckit.plan → /speckit.tasks → /speckit.implement → /speckit.verify.run
 ```
 
 ## Operating Principles
@@ -199,4 +199,4 @@ MIT License - see [LICENSE](LICENSE) file
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-Extension Version: 1.0.0 · Spec Kit: >=0.1.0
+Extension Version: 1.0.3 · Spec Kit: >=0.1.0

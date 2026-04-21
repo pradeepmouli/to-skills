@@ -2,22 +2,22 @@
 description: Create a refactoring workflow with metrics tracking and behavior preservation
   validation.
 scripts:
-  sh: scripts/bash/create-refactor.sh --json
-  ps: scripts/powershell/create-refactor.ps1 -Json
+  sh: .specify/scripts/bash/create-refactor.sh --json
+  ps: .specify/scripts/powershell/create-refactor.ps1 -Json
 handoffs:
-- label: Create Implementation Plan
-  agent: speckit.plan
-  prompt: Create a plan for the refactoring. I am refactoring...
-  send: true
-- label: Break Down Into Tasks
-  agent: speckit.tasks
-  prompt: Break the refactoring plan into tasks
-  send: true
+  - label: Create Implementation Plan
+    agent: speckit.plan
+    prompt: Create a plan for the refactoring. I am refactoring...
+    send: true
+  - label: Break Down Into Tasks
+    agent: speckit.tasks
+    prompt: Break the refactoring plan into tasks
+    send: true
 ---
-
 
 <!-- Extension: workflows -->
 <!-- Config: .specify/extensions/workflows/ -->
+
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -29,7 +29,7 @@ The text the user typed after `/speckit.workflows.refactor` (or `/speckit.refact
 Given that refactoring description, do this:
 
 1. Run the script `.specify/extensions/workflows/scripts/bash/create-refactor.sh --json "$ARGUMENTS"` from repo root and parse its JSON output for REFACTOR_ID, BRANCH_NAME, REFACTOR_SPEC_FILE, TESTING_GAPS, METRICS_BEFORE, BEHAVIORAL_SNAPSHOT. All file paths must be absolute.
-  **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
+   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
 
 2. Load `.specify/extensions/workflows/templates/refactor/refactor-template.md` to understand required sections.
 

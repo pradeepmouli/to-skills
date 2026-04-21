@@ -25,25 +25,22 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Default (no arguments): Run all applicable reviews that are enabled in config.
 
 3. **Available Review Aspects:**
-
    - **comments** - Analyze code comment accuracy and maintainability
    - **tests** - Review test coverage quality and completeness
    - **errors** - Check error handling for silent failures
    - **types** - Analyze type design and invariants (if new types added)
    - **code** - General code review for project guidelines
-   - **slop** - Detect AI-generated patterns, `as any`, over-documentation, premature abstractions
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
 4. **Identify Changed Files**
-
    - If the user provided a file list or explicit instructions on how to retrieve files (e.g., only staged, only unstaged, a specific folder, etc.), follow those instructions directly.
-   - Otherwise, fall back to the default: execute the `{SCRIPT}` with `--json` to detect changed files.
+   - Otherwise, you **MUST** execute the `{SCRIPT}` with `--json` to detect changed files. **Do not** attempt to detect changes by running `git` commands directly, reading git state manually, or using any other method — always delegate to the script.
      - The script automatically picks the best detection mode:
        - **Mode A (feature branch):** diffs the current branch against the default branch (`main`/`master`) from the merge-base, plus any staged and unstaged changes.
        - **Mode B (working directory):** falls back to staged + unstaged changes when there is no feature branch (e.g., working directly on the default branch).
      - JSON output: `{"branch", "default_branch", "mode", "changed_files": [...]}`
-   - **Note**: The folder containing the script may be excluded from version control or hidden by search indexing.
+   - **Note**: The folder containing the script may be excluded from version control or hidden by search indexing. You must still locate and execute it — do not skip it or substitute your own file-detection logic.
 
 5. **Determine Applicable Reviews**
 
@@ -53,7 +50,6 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If comments/docs added** (if enabled): `/speckit.review.comments`
    - **If error handling changed** (if enabled): `/speckit.review.errors`
    - **If types added/modified** (if enabled): `/speckit.review.types`
-   - **Always applicable** (if enabled): `/speckit.review.slop` (AI pattern detection)
    - **After passing review** (if enabled): `/speckit.review.simplify` (polish and refine)
    - If an agent is disabled by config, note it in the final summary (e.g., "simplify: skipped (disabled in config)").
 
@@ -80,22 +76,28 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 8. **Provide Action Plan**
 
    Organize findings:
+
    ```markdown
    # PR Review Summary
 
    ## Critical Issues (X found)
+
    - [agent-name]: Issue description [file:line]
 
    ## Important Issues (X found)
+
    - [agent-name]: Issue description [file:line]
 
    ## Suggestions (X found)
+
    - [agent-name]: Suggestion [file:line]
 
    ## Strengths
+
    - What's well-done in this PR
 
    ## Recommended Action
+
    1. Fix critical issues first
    2. Address important issues
    3. Consider suggestions
@@ -105,56 +107,65 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 ## Usage Examples:
 
 **Full review (default):**
+
 ```
-/speckit.review
+/speckit.review.run
 ```
 
 **Specific aspects:**
+
 ```
-/speckit.review tests errors
+/speckit.review.run tests errors
 # Reviews only test coverage and error handling
 
-/speckit.review comments
+/speckit.review.run comments
 # Reviews only code comments
 
-/speckit.review simplify
+/speckit.review.run simplify
 # Simplifies code after passing review
 ```
 
 **Parallel review:**
+
 ```
-/speckit.review all parallel
+/speckit.review.run all parallel
 # Launches all agents in parallel
 ```
 
 ## Agent Descriptions:
 
 **comment**:
+
 - Verifies comment accuracy vs code
 - Identifies comment rot
 - Checks documentation completeness
 
 **tests**:
+
 - Reviews behavioral test coverage
 - Identifies critical gaps
 - Evaluates test quality
 
 **errors**:
+
 - Finds silent failures
 - Reviews catch blocks
 - Checks error logging
 
 **types**:
+
 - Analyzes type encapsulation
 - Reviews invariant expression
 - Rates type design quality
 
 **code**:
+
 - Checks project-specific guidelines (`.specify/memory/constitution.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or equivalent) compliance
 - Detects bugs and issues
 - Reviews general code quality
 
 **simplify**:
+
 - Simplifies complex code
 - Improves clarity and readability
 - Applies project standards

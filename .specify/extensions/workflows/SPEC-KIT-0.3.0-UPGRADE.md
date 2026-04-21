@@ -8,17 +8,17 @@
 
 ## 1. What's New in Spec-Kit 0.3.0
 
-| Feature | Description |
-|---------|-------------|
+| Feature                     | Description                                                                                                                                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Pluggable Preset System** | `preset.yml` manifests, `PresetResolver`, `specify preset search\|add\|list\|remove\|resolve\|info` commands, template resolution stack (overrides → presets → extensions → core), multi-catalog support |
-| **`specify doctor`** | Project health diagnostics command |
-| **`/selftest.extension`** | Core extension for testing other extensions |
-| **`init-options.json`** | `specify init` now persists chosen options to `.specify/init-options.json` |
-| **AI Skills Propagation** | `--ai-skills` flag during init propagates skills to presets |
-| **Qwen → Markdown** | Qwen Code CLI migrated from TOML to Markdown format |
-| **`agy` Deprecated** | Antigravity explicit command support deprecated |
-| **Bash Security Hardening** | Scripts hardened against shell injection |
-| **RFC-Aligned Catalog** | Quality-of-life improvements for catalog integration |
+| **`specify doctor`**        | Project health diagnostics command                                                                                                                                                                       |
+| **`/selftest.extension`**   | Core extension for testing other extensions                                                                                                                                                              |
+| **`init-options.json`**     | `specify init` now persists chosen options to `.specify/init-options.json`                                                                                                                               |
+| **AI Skills Propagation**   | `--ai-skills` flag during init propagates skills to presets                                                                                                                                              |
+| **Qwen → Markdown**         | Qwen Code CLI migrated from TOML to Markdown format                                                                                                                                                      |
+| **`agy` Deprecated**        | Antigravity explicit command support deprecated                                                                                                                                                          |
+| **Bash Security Hardening** | Scripts hardened against shell injection                                                                                                                                                                 |
+| **RFC-Aligned Catalog**     | Quality-of-life improvements for catalog integration                                                                                                                                                     |
 
 ---
 
@@ -46,7 +46,7 @@ name: spec-kit-extensions
 version: 3.2.0
 description: 7 production workflows for the complete development lifecycle
 author: pradeepmouli
-requires: ">=0.3.0"
+requires: '>=0.3.0'
 
 templates:
   - workflows/bugfix/
@@ -72,17 +72,18 @@ scripts:
     - scripts/bash/extension-utils.sh
 
 branch_patterns:
-  - "baseline/###-"
-  - "bugfix/###-"
-  - "enhance/###-"
-  - "modify/###^###-"
-  - "refactor/###-"
-  - "hotfix/###-"
-  - "deprecate/###-"
-  - "cleanup/###-"
+  - 'baseline/###-'
+  - 'bugfix/###-'
+  - 'enhance/###-'
+  - 'modify/###^###-'
+  - 'refactor/###-'
+  - 'hotfix/###-'
+  - 'deprecate/###-'
+  - 'cleanup/###-'
 ```
 
 **Benefits**:
+
 - Users install via `specify preset add spec-kit-extensions` instead of a separate CLI tool
 - No more `common.sh` patching — branch patterns registered through preset system
 - Automatic template resolution — spec-kit handles the plumbing
@@ -121,6 +122,7 @@ This should be tried first in `detect_agent()`, with the existing directory-scan
 `specify doctor` is a new diagnostics command. We can add extension-specific health checks that help users debug installation issues:
 
 **Checks to add**:
+
 1. Extension scripts installed and executable in `.specify/scripts/bash/`
 2. `common.sh` patch applied and includes latest patterns
 3. `enabled.conf` exists and has valid workflow entries
@@ -137,6 +139,7 @@ This should be tried first in `detect_agent()`, with the existing directory-scan
 The new `/selftest.extension` provides a framework for testing extensions. We should add self-tests that validate our installation:
 
 **Tests to include**:
+
 - All 8 `create-*.sh` scripts execute successfully with `--json` flag
 - Branch patterns are accepted by patched `check_feature_branch()`
 - Template placeholders (`{{BRANCH_NAME}}`, etc.) are properly substituted
@@ -152,6 +155,7 @@ This would give users a way to verify their installation: `specify selftest spec
 Spec-kit 0.3.0 migrated Qwen from TOML to Markdown. Our `AGENT_CONFIG` still has `"file_extension": "toml"` for Qwen.
 
 **Change needed** (`specify_extend.py:115-119`):
+
 ```python
 "qwen": {
     "name": "Qwen Code",
@@ -162,6 +166,7 @@ Spec-kit 0.3.0 migrated Qwen from TOML to Markdown. Our `AGENT_CONFIG` still has
 ```
 
 Also update Gemini, which is still set to TOML (`specify_extend.py:98-102`):
+
 ```python
 "gemini": {
     "name": "Gemini CLI",
@@ -178,24 +183,31 @@ The TOML fallback warning at line 1692 can be simplified once both agents use Ma
 ### 2.6 `agy` Deprecation Notice (QUICK WIN)
 
 Spec-kit 0.3.0 deprecated explicit `agy` support. We should:
+
 - Keep the agent config (backward compat)
 - Emit a deprecation warning when `--ai agy` is used
 - Update the `--ai` help text to note the deprecation
 
 ---
 
-### 2.7 AI Skills Propagation Alignment (LOW EFFORT)
+### 2.7 AI Skills Propagation Alignment (RESOLVED IN LATER CLI)
 
-Spec-kit 0.3.0 propagates AI skills when `--ai-skills` is used during init. Our `--ai-skills` flag (added in v1.6.0) already installs `SKILL.md` files. We should verify:
-- Our skill format matches spec-kit 0.3.0's expectations
-- Skills are placed in the correct directories for the preset system
-- Our `EXTENSION_SKILL_DESCRIPTIONS` align with any new conventions
+This note is now historical.
+
+Later CLI work removed the local `--ai-skills` implementation and the repo-local skill fan-out installer. Skill registration is now delegated to native spec-kit handling.
+
+What still matters:
+
+- Verify repository skill sources in `.agents/skills/` remain compatible with current upstream spec-kit expectations
+- Do not reintroduce repo-local `.github/skills/` or `.claude/skills/` fan-out unless upstream behavior requires it
+- Prefer documenting observed upstream integration behavior over maintaining parallel local installers
 
 ---
 
 ### 2.8 Preset Catalog Registration (STRATEGIC)
 
 Spec-kit 0.3.0 has multi-catalog support with `specify preset catalog list|add|remove`. We should:
+
 1. Create a `catalog-entry.json` for the preset catalog (we already have one for extensions)
 2. Register spec-kit-extensions in the community preset catalog
 3. Enable `specify preset search spec-kit-extensions` discovery
@@ -208,29 +220,29 @@ This makes installation a one-liner: `specify preset add spec-kit-extensions`
 
 ### Phase 1: Quick Wins (This Release)
 
-| Item | Effort | Impact |
-|------|--------|--------|
-| Update Qwen `file_extension` to `"md"` | 1 line | Fixes Qwen users |
-| Add `agy` deprecation warning | ~10 lines | Clear communication |
+| Item                                    | Effort    | Impact                       |
+| --------------------------------------- | --------- | ---------------------------- |
+| Update Qwen `file_extension` to `"md"`  | 1 line    | Fixes Qwen users             |
+| Add `agy` deprecation warning           | ~10 lines | Clear communication          |
 | Add `init-options.json` agent detection | ~15 lines | Better detection reliability |
-| Verify Gemini TOML status vs 0.3.0 | Research | Prevent same issue |
+| Verify Gemini TOML status vs 0.3.0      | Research  | Prevent same issue           |
 
 ### Phase 2: Preset Integration (Next Release)
 
-| Item | Effort | Impact |
-|------|--------|--------|
-| Create `preset.yml` manifest | Medium | First-class integration |
-| Test preset installation flow | Medium | Validate approach |
-| Register in preset catalog | Small | Discoverability |
-| Evaluate dropping `common.sh` patching | Large | Eliminate #1 fragility |
+| Item                                   | Effort | Impact                  |
+| -------------------------------------- | ------ | ----------------------- |
+| Create `preset.yml` manifest           | Medium | First-class integration |
+| Test preset installation flow          | Medium | Validate approach       |
+| Register in preset catalog             | Small  | Discoverability         |
+| Evaluate dropping `common.sh` patching | Large  | Eliminate #1 fragility  |
 
 ### Phase 3: Ecosystem Integration (Future)
 
-| Item | Effort | Impact |
-|------|--------|--------|
-| Add `specify doctor` health checks | Medium | Better debugging |
-| Create self-test extension | Medium | Installation validation |
-| AI skills propagation alignment | Small | Consistency |
+| Item                               | Effort | Impact                  |
+| ---------------------------------- | ------ | ----------------------- |
+| Add `specify doctor` health checks | Medium | Better debugging        |
+| Create self-test extension         | Medium | Installation validation |
+| AI skills propagation alignment    | Small  | Consistency             |
 
 ---
 

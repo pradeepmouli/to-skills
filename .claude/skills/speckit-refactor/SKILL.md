@@ -5,13 +5,9 @@ description: Create a refactoring workflow with metrics tracking and behavior pr
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: templates/commands/refactor.md
+  source: workflows:commands/refactor.md
 ---
 
-# Speckit Refactor Skill
-
-<!-- Extension: workflows -->
-<!-- Config: .specify/extensions/workflows/ -->
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
 
 User input:
@@ -23,7 +19,7 @@ The text the user typed after `/speckit.workflows.refactor` (or `/speckit.refact
 Given that refactoring description, do this:
 
 1. Run the script `.specify/extensions/workflows/scripts/bash/create-refactor.sh --json "$ARGUMENTS"` from repo root and parse its JSON output for REFACTOR_ID, BRANCH_NAME, REFACTOR_SPEC_FILE, TESTING_GAPS, METRICS_BEFORE, BEHAVIORAL_SNAPSHOT. All file paths must be absolute.
-  **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
+   **IMPORTANT** You must only ever run this script once. The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for.
 
 2. Load `.specify/extensions/workflows/templates/refactor/refactor-template.md` to understand required sections.
 

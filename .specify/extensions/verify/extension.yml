@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "verify"
   name: "Verify Extension"
-  version: "1.0.0"
+  version: "1.0.3"
   description: "Post-implementation quality gate that validates implementation against specification artifacts."
   author: "ismaelJimenez"
   repository: "https://github.com/ismaelJimenez/spec-kit-verify"
@@ -23,7 +23,16 @@ provides:
     - name: "speckit.verify.run"
       file: "commands/verify.md"
       description: "Validate implementation matches specification artifacts"
-      aliases: ["speckit.verify"]
+
+  scripts:
+    - name: "load-config.sh"
+      file: "scripts/bash/load-config.sh"
+      description: "Load and validate verify extension configuration"
+      executable: true
+    - name: "load-config.ps1"
+      file: "scripts/powershell/load-config.ps1"
+      description: "Load and validate verify extension configuration"
+      executable: true
 
   config:
     - name: "verify-config.yml"

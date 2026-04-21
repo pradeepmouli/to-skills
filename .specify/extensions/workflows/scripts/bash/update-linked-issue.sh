@@ -16,8 +16,32 @@ set -euo pipefail
 
 EVENT=""
 
-ISSUE_SYNC_ENV_FILE=".specify/extensions/workflows/issue-sync.env"
-ISSUE_SYNC_ENV_LOCAL_FILE=".specify/extensions/workflows/issue-sync.local.env"
+# Load common.sh early so get_repo_root is available for path resolution.
+# This also gives us get_current_branch and find_feature_dir_by_prefix.
+_COMMON_SH_LOADED=false
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for _candidate in \
+    "$_SCRIPT_DIR/common.sh" \
+    "$_SCRIPT_DIR/../bash/common.sh" \
+    ".specify/scripts/bash/common.sh"
+do
+    if [[ -f "$_candidate" ]]; then
+        # shellcheck disable=SC1090
+        source "$_candidate"
+        _COMMON_SH_LOADED=true
+        break
+    fi
+done
+
+# Resolve repo root using get_repo_root() when available, otherwise fall back.
+if [[ "$_COMMON_SH_LOADED" == "true" ]] && declare -f get_repo_root >/dev/null 2>&1; then
+    _REPO_ROOT="$(get_repo_root 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd)"
+else
+    _REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+fi
+
+ISSUE_SYNC_ENV_FILE="$_REPO_ROOT/.specify/extensions/workflows/issue-sync.env"
+ISSUE_SYNC_ENV_LOCAL_FILE="$_REPO_ROOT/.specify/extensions/workflows/issue-sync.local.env"
 
 if [[ -f "$ISSUE_SYNC_ENV_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -148,11 +172,13 @@ resolve_repo() {
 }
 
 resolve_linked_issue() {
+    # 1. Explicit override always wins.
     if [[ -n "${SPECKIT_LINKED_ISSUE:-}" ]]; then
         echo "$SPECKIT_LINKED_ISSUE"
         return
     fi
 
+    # 2. Open PR with a closing-issue reference.
     local issue_from_pr
     issue_from_pr="$(gh pr view --json closingIssuesReferences --jq '.closingIssuesReferences[0].number' 2>/dev/null || true)"
     if [[ -n "$issue_from_pr" && "$issue_from_pr" != "null" ]]; then
@@ -160,28 +186,68 @@ resolve_linked_issue() {
         return
     fi
 
+    # 3. Use get_feature_paths (common.sh) to locate the spec directory.
+    #    Also try find_feature_dir_by_prefix for extension branch patterns
+    #    (bugfix/NNN, refactor/NNN, etc.) when common.sh is loaded.
     local feature_dir=""
-    if [[ -f .specify/scripts/bash/common.sh ]]; then
-        # shellcheck disable=SC1091
-        source .specify/scripts/bash/common.sh
+    if [[ "$_COMMON_SH_LOADED" == "true" ]]; then
         if declare -f get_feature_paths >/dev/null 2>&1; then
             get_feature_paths >/dev/null 2>&1 || true
             feature_dir="${FEATURE_DIR:-}"
         fi
+
+        if [[ -z "$feature_dir" ]] && declare -f get_current_branch >/dev/null 2>&1 && declare -f find_feature_dir_by_prefix >/dev/null 2>&1; then
+            local branch
+            branch="$(get_current_branch 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+            # Match leading number in extension branch patterns: bugfix/004-*, refactor/003-*, 001-*
+            if [[ "$branch" =~ /([0-9]{3,})[^/] ]] || [[ "$branch" =~ ^([0-9]{3,})- ]]; then
+                local prefix="${BASH_REMATCH[1]}"
+                local found
+                found="$(find_feature_dir_by_prefix "$prefix" 2>/dev/null || true)"
+                [[ -n "$found" && -d "$found" ]] && feature_dir="$found"
+            fi
+        fi
     fi
 
+    # 4. Check spec.md front-matter for an explicit linked-issue declaration.
+    #    Accepts: "linked-issue: 123", "linked_issue: 123", or "issue: 123".
     if [[ -n "$feature_dir" && -d "$feature_dir" ]]; then
+        local spec_file="$feature_dir/spec.md"
+        if [[ -f "$spec_file" ]]; then
+            local issue_from_spec
+            issue_from_spec="$(awk '
+                /^---/{if(fm==0){fm=1;next}else{exit}}
+                fm && /^(linked[-_]?issue|issue)[[:space:]]*:[[:space:]]*[0-9]+/{
+                    match($0,/[0-9]+/); print substr($0,RSTART,RLENGTH); exit
+                }
+            ' "$spec_file" 2>/dev/null || true)"
+            if [[ -n "$issue_from_spec" ]]; then
+                echo "$issue_from_spec"
+                return
+            fi
+        fi
+
+        # 5. Scan all docs in the spec dir for GitHub issue references.
         local issue_from_docs
-        issue_from_docs="$(rg -N -o --no-filename 'issues/[0-9]+|#[0-9]+' "$feature_dir" 2>/dev/null | head -n1 | sed -E 's#issues/##; s#[^0-9]##g' || true)"
+        issue_from_docs="$(grep -r -h -o 'issues/[0-9]\+\|#[0-9]\+' "$feature_dir" 2>/dev/null \
+            | head -n1 | sed -E 's#issues/##; s#[^0-9]##g' || true)"
         if [[ -n "$issue_from_docs" ]]; then
             echo "$issue_from_docs"
             return
         fi
     fi
 
+    # 6. Last resort: parse the leading number from the branch name.
+    #    Require 3+ digits to reduce false-positive matches.
     local branch
-    branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-    if [[ "$branch" =~ (^|[^0-9])([0-9]{1,7})([^0-9]|$) ]]; then
+    branch="$(
+        if [[ "$_COMMON_SH_LOADED" == "true" ]] && declare -f get_current_branch >/dev/null 2>&1; then
+            get_current_branch 2>/dev/null
+        else
+            git rev-parse --abbrev-ref HEAD 2>/dev/null
+        fi || true
+    )"
+    if [[ "$branch" =~ (^|[^0-9])([0-9]{3,7})([^0-9]|$) ]]; then
         echo "${BASH_REMATCH[2]}"
         return
     fi

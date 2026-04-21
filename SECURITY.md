@@ -10,9 +10,8 @@ We take security seriously. If you discover a security vulnerability in this pro
 
 ### Report Privately
 
-<!-- TEMPLATE: Update with your actual contact information -->
-1. **Email:** security@YOUR_DOMAIN.com
-2. **GitHub Security Advisory:** Use GitHub's [security advisory feature](https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/security/advisories)
+1. **GitHub Security Advisory:** Use GitHub's [private security advisory feature](https://github.com/pradeepmouli/to-skills/security/advisories/new)
+2. **Email:** pmouli@mac.com (for critical issues requiring immediate attention)
 3. **Direct Contact:** Contact maintainers privately if needed
 
 ### Information to Include
@@ -37,9 +36,9 @@ When reporting a vulnerability, please include:
 ### Supported Versions
 
 | Version | Status | Security Updates |
-|---------|--------|------------------|
-| 1.x | Active | Yes |
-| 0.x | EOL | No |
+| ------- | ------ | ---------------- |
+| 1.x     | Active | Yes              |
+| 0.x     | EOL    | No               |
 
 ## Dependency Security
 
@@ -113,7 +112,7 @@ We will not take legal action against researchers who:
 
 ## Questions?
 
-- **Security Questions:** security@example.com
+- **Security Questions:** pmouli@mac.com
 - **General Questions:** Open a discussion on GitHub
 - **Bug Reports:** Open an issue with `security` label
 
