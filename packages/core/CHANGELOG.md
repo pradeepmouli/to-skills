@@ -1,5 +1,14 @@
 # @to-skills/core
 
+## 1.3.0
+
+### Minor Changes
+
+- Router pulls expert data from packages: @remarks, key exports, top NEVERs
+
+  Routing Logic now includes @remarks intro (thinking framework), key API names,
+  and a Critical Patterns section with the top NEVER from each package.
+
 ## 1.2.2
 
 ### Patch Changes

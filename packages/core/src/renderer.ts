@@ -246,21 +246,32 @@ function renderRouterSkill(
     allKeywords.length > 0 ? ` Covers: ${allKeywords.slice(0, 10).join(', ')}.` : '';
   const description = `Use when working with ${routerName} (${pkgNames}).${keywordSuffix}`;
 
-  // --- Helpers ---
+  // --- Helpers: extract routing-relevant data from each package skill ---
   type SkillInfo = {
     short: string;
     peerName: string;
     desc: string;
+    remarks: string;
     useWhens: string[];
     avoidWhens: string[];
+    nevers: string[];
+    keyExports: string[];
   };
-  const infos: SkillInfo[] = skills.map((s) => ({
-    short: s.name.replace(/^@[^/]+\//, ''),
-    peerName: toSkillName(s.name),
-    desc: s.packageDescription || s.description || '',
-    useWhens: s.useWhen ?? [],
-    avoidWhens: s.avoidWhen ?? []
-  }));
+  const infos: SkillInfo[] = skills.map((s) => {
+    // Key exports: top 3 classes + top 3 functions by name
+    const topClasses = s.classes.slice(0, 3).map((c) => `\`${c.name}\``);
+    const topFunctions = s.functions.slice(0, 3).map((f) => `\`${f.name}\``);
+    return {
+      short: s.name.replace(/^@[^/]+\//, ''),
+      peerName: toSkillName(s.name),
+      desc: s.packageDescription || s.description || '',
+      remarks: s.remarks || '',
+      useWhens: s.useWhen ?? [],
+      avoidWhens: s.avoidWhen ?? [],
+      nevers: s.pitfalls ?? [],
+      keyExports: [...topClasses, ...topFunctions].slice(0, 5)
+    };
+  });
 
   const lines: string[] = [];
   lines.push(renderFrontmatter(skillName, description, opts.license));
@@ -273,7 +284,7 @@ function renderRouterSkill(
   );
   lines.push('');
 
-  // --- When to Use: broad package-level triggers (NOT @useWhen — those go in Routing Logic) ---
+  // --- When to Use: broad triggers ---
   lines.push('## When to Use');
   lines.push('');
   lines.push('Use this router when:');
@@ -291,19 +302,46 @@ function renderRouterSkill(
   }
   lines.push('');
 
-  // --- Routing Logic: per-package detail (@useWhen appears ONLY here) ---
+  // --- Routing Logic: per-package detail with expert context ---
   lines.push('## Routing Logic');
   lines.push('');
   for (const info of infos) {
     lines.push(`### ${info.short} → \`${info.peerName}\``);
     lines.push('');
-    lines.push(info.desc);
+    // Expert intro from @remarks (thinking framework)
+    if (info.remarks) {
+      const firstPara = info.remarks.split(/\n\s*\n/)[0]?.trim();
+      if (firstPara && firstPara.length > 20) {
+        lines.push(firstPara);
+        lines.push('');
+      }
+    }
+    // @useWhen detail (only place these appear)
     if (info.useWhens.length > 0) {
-      lines.push('');
       for (const t of info.useWhens.slice(0, 3)) {
         lines.push(`- ${t}`);
       }
+      lines.push('');
     }
+    // Key exports
+    if (info.keyExports.length > 0) {
+      lines.push(`Key APIs: ${info.keyExports.join(', ')}`);
+      lines.push('');
+    }
+  }
+
+  // --- Critical Patterns: top NEVER per package (cross-cutting expert knowledge) ---
+  const crossCuttingNevers: string[] = [];
+  for (const info of infos) {
+    if (info.nevers.length > 0) {
+      crossCuttingNevers.push(`- ${info.nevers[0]} (${info.short})`);
+    }
+  }
+  if (crossCuttingNevers.length > 0) {
+    lines.push('## Critical Patterns');
+    lines.push('');
+    lines.push('Top pitfall per package:');
+    lines.push(...crossCuttingNevers);
     lines.push('');
   }
 
@@ -326,7 +364,7 @@ function renderRouterSkill(
     lines.push('');
   }
 
-  // --- Example Invocations: natural user queries from package descriptions ---
+  // --- Example Invocations ---
   lines.push('## Example Invocations');
   lines.push('');
   for (const info of infos) {
