@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 1.1.1
+
+### Patch Changes
+
+- Fix router skill: full routing entries, peer skill links, WHEN triggers in description
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.3
+
 ## 1.1.0
 
 ### Minor Changes

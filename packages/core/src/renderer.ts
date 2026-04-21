@@ -230,35 +230,43 @@ function renderRouterSkill(
   // Don't generate if router name matches an existing skill name
   if (skills.some((s) => toSkillName(s.name) === skillName)) return null;
 
-  // Build description from the common scope
-  const pkgDescs = skills
-    .map((s) => {
-      const short = s.name.replace(/^@[^/]+\//, '');
-      const desc = s.packageDescription || s.description || '';
-      return `${short}: ${desc}`;
-    })
-    .join('; ');
-  const description = `${routerName} monorepo — ${skills.length} packages. ${pkgDescs}`;
+  // Description with WHEN triggers for the router itself
+  const pkgNames = skills.map((s) => s.name.replace(/^@[^/]+\//, '')).join(', ');
+  const description =
+    `Router for ${routerName} monorepo (${pkgNames}). ` +
+    `Use when working with ${routerName} — routes to the correct package skill.`;
 
   // Build routing body
-  const sections: string[] = [];
-  sections.push(
-    renderFrontmatter(skillName, truncateDescription(description, DESCRIPTION_MAX), opts.license)
-  );
-  sections.push(`# ${routerName}\n`);
-  sections.push('## Which package?\n');
+  const lines: string[] = [];
+  lines.push(renderFrontmatter(skillName, description, opts.license));
+  lines.push(`# ${routerName}`);
+  lines.push('');
+  lines.push('## Which package?');
+  lines.push('');
 
   for (const skill of skills) {
     const short = skill.name.replace(/^@[^/]+\//, '');
+    const peerSkillName = toSkillName(skill.name);
     const desc = skill.packageDescription || skill.description || '';
-    const firstUseWhen = skill.useWhen?.[0];
-    const trigger = firstUseWhen
-      ? ` Use when: ${firstUseWhen.length > 80 ? firstUseWhen.slice(0, 77) + '...' : firstUseWhen}`
-      : '';
-    sections.push(`- **${short}** — ${desc}${trigger}`);
+
+    // Full first @useWhen entry — don't truncate, this IS the routing value
+    const useWhens = skill.useWhen ?? [];
+    const triggerLines = useWhens.slice(0, 2).map((t) => `  - ${t}`);
+
+    lines.push(`### ${short}`);
+    lines.push('');
+    lines.push(desc);
+    if (triggerLines.length > 0) {
+      lines.push('');
+      lines.push('**Use when:**');
+      lines.push(...triggerLines);
+    }
+    lines.push('');
+    lines.push(`→ Load the \`${peerSkillName}\` skill.`);
+    lines.push('');
   }
 
-  const content = sections.join('\n');
+  const content = lines.join('\n');
   return {
     skill: { filename: `${skillName}/SKILL.md`, content, tokens: estimateTokens(content) },
     references: []

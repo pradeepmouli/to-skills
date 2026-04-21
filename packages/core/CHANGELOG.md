@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 1.1.1
+
+### Patch Changes
+
+- Fix router skill: full routing entries, peer skill links, WHEN triggers in description
+
 ## 1.1.0
 
 ### Minor Changes
