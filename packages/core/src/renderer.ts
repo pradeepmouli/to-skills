@@ -957,10 +957,61 @@ function renderQuickReference(skill: ExtractedSkill): string {
   if (allItems.length === 0) return '';
 
   const totalCount = allItems.length;
+
+  // For large packages (30+ exports): only show "important" items — those with
+  // @useWhen, @category, or @remarks tags (author marked them as key decision points).
+  // Dump the rest with just a count pointing to references/.
+  const isLargePackage = totalCount > 30;
+
+  type AnyItem = {
+    name: string;
+    description?: string;
+    category?: string;
+    tags?: Record<string, string>;
+    remarks?: string;
+  };
+  const isImportant = (item: AnyItem): boolean => {
+    if (item.category) return true;
+    if (item.remarks) return true;
+    if (item.tags?.['useWhen'] || item.tags?.['avoidWhen'] || item.tags?.['never']) return true;
+    return false;
+  };
+
   let contentLines: string[];
 
-  if (hasModuleInfo(allItems)) {
-    // Group all items by module and render compact entries with descriptions
+  if (isLargePackage) {
+    // Filter to important items only
+    const importantItems = (allItems as AnyItem[]).filter(isImportant);
+    const importantFunctions = skill.functions.filter(isImportant);
+    const importantClasses = skill.classes.filter(isImportant);
+
+    if (importantItems.length > 0) {
+      contentLines = [];
+      if (importantFunctions.length > 0) {
+        const entries = importantFunctions.map((f) => compactItem(f.name, f.description));
+        contentLines.push(`**Key functions:** ${entries.join(', ')}`);
+      }
+      if (importantClasses.length > 0) {
+        const entries = importantClasses.map((c) => compactItem(c.name, c.description));
+        contentLines.push(`**Key classes:** ${entries.join(', ')}`);
+      }
+      contentLines.push('');
+      contentLines.push(`*${totalCount} exports total — see references/ for full API.*`);
+    } else {
+      // No items marked as important — show a count-only summary
+      const apiCategories: string[] = [];
+      if (skill.functions.length > 0) apiCategories.push(`${skill.functions.length} functions`);
+      if (skill.classes.length > 0) apiCategories.push(`${skill.classes.length} classes`);
+      if (skill.types.length > 0) apiCategories.push(`${skill.types.length} types`);
+      if (skill.enums.length > 0) apiCategories.push(`${skill.enums.length} enums`);
+      if (skill.variables && skill.variables.length > 0)
+        apiCategories.push(`${skill.variables.length} constants`);
+      contentLines = [
+        `${totalCount} exports (${apiCategories.join(', ')}) — see references/ for full API.`
+      ];
+    }
+  } else if (hasModuleInfo(allItems)) {
+    // Medium packages with module grouping — show all, grouped
     const groups = groupByModule(allItems);
     contentLines = [];
     for (const [mod, modItems] of groups) {
@@ -976,33 +1027,31 @@ function renderQuickReference(skill: ExtractedSkill): string {
       }
     }
   } else {
-    // Flat by kind — compact format with descriptions
+    // Small packages — show all, flat by kind
     contentLines = [];
-
     if (skill.functions.length > 0) {
       const entries = skill.functions.map((f) => compactItem(f.name, f.description));
-      contentLines.push(`**${skill.functions.length} functions** — ${entries.join(', ')}`);
+      contentLines.push(`**Functions:** ${entries.join(', ')}`);
     }
     if (skill.classes.length > 0) {
       const entries = skill.classes.map((c) => compactItem(c.name, c.description));
-      contentLines.push(`**${skill.classes.length} classes** — ${entries.join(', ')}`);
+      contentLines.push(`**Classes:** ${entries.join(', ')}`);
     }
     if (skill.types.length > 0) {
       const entries = skill.types.map((t) => compactItem(t.name, t.description));
-      contentLines.push(`**${skill.types.length} types** — ${entries.join(', ')}`);
+      contentLines.push(`**Types:** ${entries.join(', ')}`);
     }
     if (skill.enums.length > 0) {
       const entries = skill.enums.map((e) => compactItem(e.name, e.description));
-      contentLines.push(`**${skill.enums.length} enums** — ${entries.join(', ')}`);
+      contentLines.push(`**Enums:** ${entries.join(', ')}`);
     }
     if (skill.variables && skill.variables.length > 0) {
       const entries = skill.variables.map((v) => compactItem(v.name, v.description));
-      contentLines.push(`**${skill.variables.length} variables** — ${entries.join(', ')}`);
+      contentLines.push(`**Constants:** ${entries.join(', ')}`);
     }
   }
 
-  // Cap Quick Reference to avoid bloating SKILL.md for large packages.
-  // Count actual rendered lines (some entries may wrap or be single-line lists).
+  // Final cap as safety net
   let body = contentLines.join('\n');
   const renderedLines = body.split('\n');
   if (renderedLines.length > QUICK_REF_MAX_LINES) {

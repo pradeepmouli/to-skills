@@ -93,7 +93,7 @@ describe('renderSkill — SKILL.md (discovery)', () => {
 
     const { skill: s } = renderSkill(skill);
     expect(s.content).toContain('## Quick Reference');
-    expect(s.content).toContain('**2 functions**');
+    expect(s.content).toContain('**Functions:**');
     expect(s.content).toContain('`Config`');
   });
 
@@ -601,7 +601,7 @@ describe('renderSkill — variables in SKILL.md', () => {
 
     const { skill: s } = renderSkill(skill);
     expect(s.content).toContain('## Quick Reference');
-    expect(s.content).toContain('**2 variables**');
+    expect(s.content).toContain('**Constants:**');
     expect(s.content).toContain('`DEFAULT_OVERRIDES`');
     expect(s.content).toContain('`VERSION`');
   });
@@ -1126,7 +1126,7 @@ describe('renderSkill — Quick Reference with sourceModule', () => {
     };
 
     const { skill: s } = renderSkill(skill);
-    expect(s.content).toContain('**2 functions**');
+    expect(s.content).toContain('**Functions:**');
     expect(s.content).toContain('`Config`');
   });
 });
@@ -1871,7 +1871,7 @@ describe('renderSkill — Quick Reference line cap', () => {
     const { skill: s } = renderSkill(skill);
     expect(s.content).toContain('## Quick Reference');
     // Should show the truncation pointer with total count
-    expect(s.content).toContain('35 exports total');
+    expect(s.content).toContain('35 exports');
     expect(s.content).toContain('see references/ for full API');
     // Should NOT contain the last few modules (truncated)
     expect(s.content).not.toContain('mod34');

@@ -1,5 +1,16 @@
 # @to-skills/core
 
+## 1.0.1
+
+### Patch Changes
+
+- Smart Quick Reference: only show annotated exports for large packages
+
+  For packages with 30+ exports, Quick Reference now shows only exports with
+  @useWhen, @category, or @remarks (author-marked as important). Others get
+  a count-only summary pointing to references/. Small packages (<30) still
+  show everything.
+
 ## 1.0.0
 
 ### Major Changes

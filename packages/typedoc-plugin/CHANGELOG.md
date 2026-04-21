@@ -1,5 +1,19 @@
 # typedoc-plugin-to-skills
 
+## 1.0.2
+
+### Patch Changes
+
+- Smart Quick Reference: only show annotated exports for large packages
+
+  For packages with 30+ exports, Quick Reference now shows only exports with
+  @useWhen, @category, or @remarks (author-marked as important). Others get
+  a count-only summary pointing to references/. Small packages (<30) still
+  show everything.
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.1
+
 ## 1.0.1
 
 ### Patch Changes
