@@ -230,11 +230,25 @@ function renderRouterSkill(
   // Don't generate if router name matches an existing skill name
   if (skills.some((s) => toSkillName(s.name) === skillName)) return null;
 
-  // Description with WHEN triggers for the router itself
+  // Description with WHEN triggers + domain keywords from all packages
   const pkgNames = skills.map((s) => s.name.replace(/^@[^/]+\//, '')).join(', ');
+  const allKeywords = [
+    ...new Set(
+      skills
+        .flatMap((s) => s.keywords ?? [])
+        .filter(
+          (k) =>
+            !['typescript', 'javascript', 'node', 'nodejs', 'npm', 'library', 'package'].includes(
+              k.toLowerCase()
+            )
+        )
+    )
+  ];
+  const keywordSuffix =
+    allKeywords.length > 0 ? ` Also: ${allKeywords.slice(0, 8).join(', ')}.` : '';
   const description =
     `Router for ${routerName} monorepo (${pkgNames}). ` +
-    `Use when working with ${routerName} — routes to the correct package skill.`;
+    `Use when working with ${routerName}.${keywordSuffix}`;
 
   // Build routing body
   const lines: string[] = [];
@@ -265,6 +279,17 @@ function renderRouterSkill(
     lines.push(`→ Load the \`${peerSkillName}\` skill.`);
     lines.push('');
   }
+
+  // NEVER rules for the router
+  lines.push('## NEVER');
+  lines.push('');
+  lines.push('- NEVER load all package skills simultaneously — pick the one matching your task');
+  if (skills.length > 2) {
+    lines.push(
+      `- If your task spans multiple packages, load the foundational one first (typically core/shared), then the specific one`
+    );
+  }
+  lines.push('');
 
   const content = lines.join('\n');
   return {

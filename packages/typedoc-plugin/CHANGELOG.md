@@ -1,5 +1,14 @@
 # typedoc-plugin-to-skills
 
+## 1.1.2
+
+### Patch Changes
+
+- Router skill: add NEVER rules, domain keywords from all packages, multi-package guidance
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.4
+
 ## 1.1.1
 
 ### Patch Changes

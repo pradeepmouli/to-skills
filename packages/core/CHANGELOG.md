@@ -1,5 +1,11 @@
 # @to-skills/core
 
+## 1.1.2
+
+### Patch Changes
+
+- Router skill: add NEVER rules, domain keywords from all packages, multi-package guidance
+
 ## 1.1.1
 
 ### Patch Changes
