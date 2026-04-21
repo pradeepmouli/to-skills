@@ -1,5 +1,20 @@
 # typedoc-plugin-to-skills
 
+## 1.2.1
+
+### Patch Changes
+
+- Router skill: deduplicate sections, natural example queries
+
+  Each section now has distinct content:
+  - When to Use: package descriptions (broad)
+  - Decision Tree: numbered routing
+  - Routing Logic: @useWhen detail (only place)
+  - Examples: natural user queries, not @useWhen echo
+
+- Updated dependencies []:
+  - @to-skills/typedoc@1.0.6
+
 ## 1.2.0
 
 ### Minor Changes
