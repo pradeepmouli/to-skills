@@ -1,14 +1,15 @@
 ---
-name: 'speckit-constitution'
-description: 'Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync.'
-argument-hint: 'Principles or values for the project constitution'
-compatibility: 'Requires spec-kit project structure with .specify/ directory'
+name: "speckit-constitution"
+description: "Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync."
+argument-hint: "Principles or values for the project constitution"
+compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: 'github-spec-kit'
-  source: 'templates/commands/constitution.md'
+  author: "github-spec-kit"
+  source: "templates/commands/constitution.md"
 user-invocable: true
 disable-model-invocation: false
 ---
+
 
 ## User Input
 
@@ -21,7 +22,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before constitution update)**:
-
 - Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_constitution` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
@@ -32,7 +32,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
-
     ```
     ## Extension Hooks
 
@@ -43,9 +42,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     Prompt: {prompt}
     To execute: `/{command}`
     ```
-
   - **Mandatory hook** (`optional: false`):
-
     ```
     ## Extension Hooks
 
@@ -55,7 +52,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Outline.
     ```
-
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -68,7 +64,7 @@ Follow this execution flow:
 
 1. Load the existing constitution at `.specify/memory/constitution.md`.
    - Identify every placeholder token of the form `[ALL_CAPS_IDENTIFIER]`.
-     **IMPORTANT**: The user might require less or more principles than the ones used in the template. If a number is specified, respect that - follow the general template. You will update the doc accordingly.
+   **IMPORTANT**: The user might require less or more principles than the ones used in the template. If a number is specified, respect that - follow the general template. You will update the doc accordingly.
 
 2. Collect/derive values for placeholders:
    - If user input (conversation) supplies a value, use it.
@@ -131,7 +127,6 @@ Do not create a new template; always operate on the existing `.specify/memory/co
 
 **Check for extension hooks (after constitution update)**:
 Check if `.specify/extensions.yml` exists in the project root.
-
 - If it exists, read it and look for entries under the `hooks.after_constitution` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -141,7 +136,6 @@ Check if `.specify/extensions.yml` exists in the project root.
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
-
     ```
     ## Extension Hooks
 
@@ -152,9 +146,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Prompt: {prompt}
     To execute: `/{command}`
     ```
-
   - **Mandatory hook** (`optional: false`):
-
     ```
     ## Extension Hooks
 
@@ -162,5 +154,4 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
-
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently

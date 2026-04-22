@@ -1,14 +1,15 @@
 ---
-name: 'speckit-checklist'
-description: 'Generate a custom checklist for the current feature based on user requirements.'
-argument-hint: 'Domain or focus area for the checklist'
-compatibility: 'Requires spec-kit project structure with .specify/ directory'
+name: "speckit-checklist"
+description: "Generate a custom checklist for the current feature based on user requirements."
+argument-hint: "Domain or focus area for the checklist"
+compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: 'github-spec-kit'
-  source: 'templates/commands/checklist.md'
+  author: "github-spec-kit"
+  source: "templates/commands/checklist.md"
 user-invocable: true
 disable-model-invocation: false
 ---
+
 
 ## Checklist Purpose: "Unit Tests for English"
 
@@ -42,7 +43,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before checklist generation)**:
-
 - Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_checklist` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
@@ -53,7 +53,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
-
     ```
     ## Extension Hooks
 
@@ -64,9 +63,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     Prompt: {prompt}
     To execute: `/{command}`
     ```
-
   - **Mandatory hook** (`optional: false`):
-
     ```
     ## Extension Hooks
 
@@ -76,7 +73,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Execution Steps.
     ```
-
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Execution Steps
@@ -346,7 +342,6 @@ Sample items:
 
 **Check for extension hooks (after checklist generation)**:
 Check if `.specify/extensions.yml` exists in the project root.
-
 - If it exists, read it and look for entries under the `hooks.after_checklist` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -356,7 +351,6 @@ Check if `.specify/extensions.yml` exists in the project root.
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
-
     ```
     ## Extension Hooks
 
@@ -367,9 +361,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Prompt: {prompt}
     To execute: `/{command}`
     ```
-
   - **Mandatory hook** (`optional: false`):
-
     ```
     ## Extension Hooks
 
@@ -377,5 +369,4 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
-
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
