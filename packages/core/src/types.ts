@@ -82,16 +82,24 @@ export interface ExtractedResource {
 
 /** An MCP-exposed prompt (a named, argument-templated prompt the agent may request). */
 export interface ExtractedPrompt {
+  /** Short identifier used by MCP `prompts/get` requests. */
   name: string;
+  /** Prose description of what the prompt produces. */
   description: string;
+  /** Typed argument schema (may be empty). */
   arguments: ExtractedPromptArgument[];
+  /** Present for IR parity with functions/classes; rarely meaningful for prompts. */
   sourceModule?: string;
 }
 
 export interface ExtractedPromptArgument {
   name: string;
   description: string;
-  /** Prompt arguments are strings in the MCP spec; `type` is reserved for future extension. */
+  /**
+   * Whether the argument is mandatory on `prompts/get` invocation.
+   * MCP prompt arguments are strings in the current spec; a typed `type` field
+   * may be added in a future revision without breaking callers.
+   */
   required: boolean;
 }
 
@@ -258,6 +266,13 @@ export interface SkillRenderOptions {
 // NOTE: Forward-declared for backward-compatible extension point.
 // The concrete adapter lives in @to-skills/mcp; core has no runtime dependency on it.
 // Core owns the structural contract; @to-skills/mcp will re-export for ergonomics.
+/**
+ * Pluggable rendering strategy — selects the SKILL.md dialect emitted for an `ExtractedSkill`.
+ *
+ * Built-in implementations (shipped from `@to-skills/mcp`'s target packages) include
+ * `mcp-protocol` (emits `mcp:` frontmatter for MCP-native agent harnesses) and
+ * `cli:*` targets (emit shell-command skills that route through an external MCP CLI).
+ */
 export interface InvocationAdapter {
   readonly target: string;
   readonly fingerprint: AdapterFingerprint;
@@ -265,8 +280,12 @@ export interface InvocationAdapter {
 }
 
 export interface AdapterRenderContext {
+  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`; `undefined` in extract mode where the skill is for a third-party server. */
   packageName?: string;
+  /** Output directory name chosen by the caller (e.g. "filesystem", "my-server"). */
   skillName: string;
+  /** Token budget ceiling per reference file — adapters should stay under this but the host will truncate if exceeded. */
   maxTokens: number;
+  /** When `true` (default), the host runs a canonicalization pass on the adapter's output so re-runs produce content-identical files. */
   canonicalize: boolean;
 }
