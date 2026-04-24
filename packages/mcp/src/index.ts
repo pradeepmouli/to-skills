@@ -9,9 +9,11 @@ export type {
   InvocationTarget,
   InvocationAdapter,
   AdapterRenderContext,
-  AdapterFingerprint
+  AdapterFingerprint,
+  ParameterPlan
 } from './adapter/types.js';
 export { loadAdapter } from './adapter/loader.js';
+export { classifyParameters } from './adapter/classify.js';
 
 // Errors
 export { McpError } from './errors.js';

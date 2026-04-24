@@ -20,3 +20,5 @@ export interface InvocationAdapter extends Omit<CoreInvocationAdapter, 'target'>
 }
 
 export type { AdapterRenderContext, AdapterFingerprint };
+
+export type { ParameterPlan } from './classify.js';

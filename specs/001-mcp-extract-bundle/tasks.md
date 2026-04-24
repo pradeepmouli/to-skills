@@ -75,8 +75,8 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Shared tier classifier for CLI adapters
 
-- [ ] T024 Create `packages/mcp/src/adapter/classify.ts` exporting `classifyParameters(inputSchema: JSONSchema7): Map<string, ParameterPlan>` and the `ParameterPlan` type per contracts/adapter.md — implements Tier 1/2/3 decision logic from research.md §6
-- [ ] T025 [P] Add unit test `packages/mcp/tests/unit/classify.test.ts` with fixture schemas for every tier (scalars → T1; enum → T1; nested one level → T2; nested two levels → T3; recursive $ref → T3; required+optional mix)
+- [x] T024 Create `packages/mcp/src/adapter/classify.ts` exporting `classifyParameters(inputSchema: JSONSchema7): Map<string, ParameterPlan>` and the `ParameterPlan` type per contracts/adapter.md — implements Tier 1/2/3 decision logic from research.md §6
+- [x] T025 [P] Add unit test `packages/mcp/tests/unit/classify.test.ts` with fixture schemas for every tier (scalars → T1; enum → T1; nested one level → T2; nested two levels → T3; recursive $ref → T3; required+optional mix)
 
 ### JSON Schema $ref resolution
 
