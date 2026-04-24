@@ -30,16 +30,16 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 **Purpose**: pnpm workspace scaffolding for the four new packages. No feature code yet.
 
-- [ ] T001 Create `packages/mcp/` directory with `package.json` declaring `@to-skills/mcp@0.1.0`, `type: module`, `bin: { "to-skills-mcp": "./dist/bin.js" }`, `main`/`types` pointing at `./dist/index.js`/`./dist/index.d.ts`, and `files: ["dist", "README.md"]` per existing workspace convention (match `packages/cli/package.json`)
-- [ ] T002 [P] Create `packages/target-mcp-protocol/package.json` declaring `@to-skills/target-mcp-protocol@0.1.0`, default export shape, and dependency on `@to-skills/core` (workspace:\*) + peer dependency on `@to-skills/mcp`
-- [ ] T003 [P] Create `packages/target-mcpc/package.json` declaring `@to-skills/target-mcpc@0.1.0` mirroring T002
-- [ ] T004 [P] Create `packages/target-fastmcp/package.json` declaring `@to-skills/target-fastmcp@0.1.0` mirroring T002
-- [ ] T005 Add runtime deps to `packages/mcp/package.json`: `@modelcontextprotocol/sdk@^1.0.0`, `@apidevtools/json-schema-ref-parser@^11.0.0`, `yaml@^2.0.0`, `commander@^14.0.3`, `@to-skills/core` (workspace:\*)
-- [ ] T006 [P] Create `packages/mcp/tsconfig.json` and `packages/mcp/tsconfig.build.json` mirroring `packages/cli/tsconfig*.json` (strict, ES2022 target, module NodeNext)
-- [ ] T007 [P] Create `tsconfig.json`/`tsconfig.build.json` in each of the three `packages/target-*/` dirs, same shape as T006
-- [ ] T008 Add `vitest.config.ts` to `packages/mcp/` with `test.include: ['tests/**/*.test.ts']`, `test.coverage.provider: 'v8'`, and per-package node environment
-- [ ] T009 [P] Update root `pnpm-workspace.yaml` to confirm new packages are matched by the existing `packages/*` glob (no change expected; verify by running `pnpm install` and checking all four packages resolve)
-- [ ] T010 [P] Add `README.md` stubs (one paragraph, "Generated from specs/001-mcp-extract-bundle") to each of the four new packages so `npm publish` dry-runs don't warn
+- [x] T001 Create `packages/mcp/` directory with `package.json` declaring `@to-skills/mcp@0.1.0`, `type: module`, `bin: { "to-skills-mcp": "./dist/bin.js" }`, `main`/`types` pointing at `./dist/index.js`/`./dist/index.d.ts`, and `files: ["dist", "README.md"]` per existing workspace convention (match `packages/cli/package.json`)
+- [x] T002 [P] Create `packages/target-mcp-protocol/package.json` declaring `@to-skills/target-mcp-protocol@0.1.0`, default export shape, and dependency on `@to-skills/core` (workspace:\*) + peer dependency on `@to-skills/mcp`
+- [x] T003 [P] Create `packages/target-mcpc/package.json` declaring `@to-skills/target-mcpc@0.1.0` mirroring T002
+- [x] T004 [P] Create `packages/target-fastmcp/package.json` declaring `@to-skills/target-fastmcp@0.1.0` mirroring T002
+- [x] T005 Add runtime deps to `packages/mcp/package.json`: `@modelcontextprotocol/sdk@^1.0.0`, `@apidevtools/json-schema-ref-parser@^11.0.0`, `yaml@^2.0.0`, `commander@^14.0.3`, `@to-skills/core` (workspace:\*)
+- [x] T006 [P] Create `packages/mcp/tsconfig.json` and `packages/mcp/tsconfig.build.json` mirroring `packages/cli/tsconfig*.json` (strict, ES2022 target, module NodeNext)
+- [x] T007 [P] Create `tsconfig.json`/`tsconfig.build.json` in each of the three `packages/target-*/` dirs, same shape as T006
+- [x] T008 Add `vitest.config.ts` to `packages/mcp/` with `test.include: ['tests/**/*.test.ts']`, `test.coverage.provider: 'v8'`, and per-package node environment
+- [x] T009 [P] Update root `pnpm-workspace.yaml` to confirm new packages are matched by the existing `packages/*` glob (no change expected; verify by running `pnpm install` and checking all four packages resolve)
+- [x] T010 [P] Add `README.md` stubs (one paragraph, "Generated from specs/001-mcp-extract-bundle") to each of the four new packages so `npm publish` dry-runs don't warn
 
 **Checkpoint**: `pnpm install && pnpm --filter @to-skills/mcp run type-check` succeeds (empty src dirs are OK at this point)
 

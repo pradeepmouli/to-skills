@@ -1,0 +1,51 @@
+{
+  "name": "@to-skills/target-mcp-protocol",
+  "version": "0.1.0",
+  "description": "Default invocation-target adapter for @to-skills/mcp — emits mcp: frontmatter for MCP-native agent harnesses (OpenCode, Codex, Cursor)",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "mcp",
+    "model-context-protocol",
+    "to-skills"
+  ],
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/target-mcp-protocol"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@to-skills/core": "workspace:*",
+    "yaml": "^2.0.0"
+  },
+  "devDependencies": {
+    "@to-skills/mcp": "workspace:*",
+    "@types/node": "^20.0.0"
+  },
+  "peerDependencies": {
+    "@to-skills/mcp": "workspace:*"
+  }
+}
