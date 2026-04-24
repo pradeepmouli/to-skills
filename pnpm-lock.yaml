@@ -75,6 +75,9 @@ importers:
       '@to-skills/core':
         specifier: workspace:*
         version: link:../core
+      '@to-skills/target-mcp-protocol':
+        specifier: workspace:*
+        version: link:../target-mcp-protocol
       commander:
         specifier: ^14.0.3
         version: 14.0.3

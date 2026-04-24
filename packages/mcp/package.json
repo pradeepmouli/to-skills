@@ -42,12 +42,15 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pretest:integration": "pnpm run build",
+    "test:integration": "RUN_INTEGRATION_TESTS=true vitest run tests/integration"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.0.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@to-skills/core": "workspace:*",
+    "@to-skills/target-mcp-protocol": "workspace:*",
     "commander": "^14.0.3",
     "yaml": "^2.0.0"
   },

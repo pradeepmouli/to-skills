@@ -12,7 +12,7 @@ export type {
   AdapterFingerprint,
   ParameterPlan
 } from './adapter/types.js';
-export { loadAdapter } from './adapter/loader.js';
+export { loadAdapter, loadAdapterAsync } from './adapter/loader.js';
 export { classifyParameters } from './adapter/classify.js';
 
 // Errors
@@ -21,6 +21,10 @@ export type { McpErrorCode } from './errors.js';
 
 // Extract orchestrator
 export { extractMcpSkill } from './extract.js';
+
+// CLI program builder — exposed so consumers can embed the commander program
+// into a parent CLI. The `bin.ts` executable entry point is not exported.
+export { buildProgram } from './cli.js';
 
 // Introspection helpers
 export { resolveSchema } from './introspect/schema.js';

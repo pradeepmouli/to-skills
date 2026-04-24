@@ -123,21 +123,21 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### CLI wiring (extract subcommand, stdio form only for this phase)
 
-- [ ] T042 [US1] Create `packages/mcp/src/cli.ts` using commander: `extract` subcommand with `--command <cmd>`, `--arg <a>` (repeatable, `.collect`), `--env K=V` (repeatable), `--out <dir>` (default `skills`), `--max-tokens <n>` (default 4000), `--llms-txt`, `--force`, `--skip-audit`, `--canonicalize`/`--no-canonicalize`; HTTP/config flags stubbed with "not yet implemented" error (wired in Phase 4/7)
-- [ ] T043 [US1] Create `packages/mcp/src/bin.ts` — executable entry point that calls `cli.ts`'s `program.parseAsync(process.argv)`; add shebang `#!/usr/bin/env node`
-- [ ] T044 [US1] Wire CLI to extractor in `packages/mcp/src/cli.ts`: on `extract --command "..."`, build `McpExtractOptions` with stdio transport, call `extractMcpSkill`, then call `renderSkill` with `invocation: loadAdapter('mcp-protocol')`, then write result via core's filesystem writer to `<outDir>/<skillName>/`
-- [ ] T045 [US1] Add collision detection in CLI writer: if output directory exists and `--force` not passed, throw `McpError` with code `DUPLICATE_SKILL_NAME` (exit 4)
+- [x] T042 [US1] Create `packages/mcp/src/cli.ts` using commander: `extract` subcommand with `--command <cmd>`, `--arg <a>` (repeatable, `.collect`), `--env K=V` (repeatable), `--out <dir>` (default `skills`), `--max-tokens <n>` (default 4000), `--llms-txt`, `--force`, `--skip-audit`, `--canonicalize`/`--no-canonicalize`; HTTP/config flags stubbed with "not yet implemented" error (wired in Phase 4/7)
+- [x] T043 [US1] Create `packages/mcp/src/bin.ts` — executable entry point that calls `cli.ts`'s `program.parseAsync(process.argv)`; add shebang `#!/usr/bin/env node`
+- [x] T044 [US1] Wire CLI to extractor in `packages/mcp/src/cli.ts`: on `extract --command "..."`, build `McpExtractOptions` with stdio transport, call `extractMcpSkill`, then call `renderSkill` with `invocation: loadAdapter('mcp-protocol')`, then write result via core's filesystem writer to `<outDir>/<skillName>/`
+- [x] T045 [US1] Add collision detection in CLI writer: if output directory exists and `--force` not passed, throw `McpError` with code `DUPLICATE_SKILL_NAME` (exit 4)
 
 ### SIGINT / cleanup
 
-- [ ] T046 [US1] Add SIGINT handler in `packages/mcp/src/bin.ts`: on interrupt, call the SDK client's `close()` to terminate the spawned stdio server, exit with code 130
+- [x] T046 [US1] Add SIGINT handler in `packages/mcp/src/bin.ts`: on interrupt, call the SDK client's `close()` to terminate the spawned stdio server, exit with code 130
 
 ### Integration test
 
-- [ ] T047 [P] [US1] Add integration test `packages/mcp/tests/integration/stdio-filesystem.test.ts` that runs the CLI as a subprocess against `npx -y @modelcontextprotocol/server-filesystem /tmp`, asserts exit code 0, asserts `skills/filesystem/SKILL.md` exists, parses its frontmatter, verifies `mcp:` block, verifies Quick Reference lists all expected tools
-- [ ] T047a [P] [US1] Integration test `packages/mcp/tests/integration/stdio-third-party-ts.test.ts` against `@modelcontextprotocol/server-everything` (the reference server that exposes tools + resources + prompts, closer to the "third-party TypeScript" category than filesystem). Asserts successful extraction of all three IR sections. Exercises SC-008 (server category 2 of 3)
-- [ ] T047b [P] [US1] Integration test `packages/mcp/tests/integration/stdio-python-fastmcp.test.ts` against a minimal FastMCP-based Python server placed in `packages/mcp/tests/fixtures/py-server/server.py`. Gate the `describe` block with `describe.skipIf(!isPythonAvailable())` so local offline runs don't fail. Exercises SC-008 (server category 3 of 3)
-- [ ] T048 [P] [US1] Add integration test `packages/mcp/tests/integration/stdio-programmatic.test.ts` that calls `extractMcpSkill` directly against the same server; asserts returned `ExtractedSkill` has `functions.length > 0`, `resources` populated if server advertises them, no `mcp:` frontmatter in the IR (adapter adds it at render time, not extract time)
+- [x] T047 [P] [US1] Add integration test `packages/mcp/tests/integration/stdio-filesystem.test.ts` that runs the CLI as a subprocess against `npx -y @modelcontextprotocol/server-filesystem /tmp`, asserts exit code 0, asserts `skills/filesystem/SKILL.md` exists, parses its frontmatter, verifies `mcp:` block, verifies Quick Reference lists all expected tools
+- [x] T047a [P] [US1] Integration test `packages/mcp/tests/integration/stdio-third-party-ts.test.ts` against `@modelcontextprotocol/server-everything` (the reference server that exposes tools + resources + prompts, closer to the "third-party TypeScript" category than filesystem). Asserts successful extraction of all three IR sections. Exercises SC-008 (server category 2 of 3)
+- [x] T047b [P] [US1] Integration test `packages/mcp/tests/integration/stdio-python-fastmcp.test.ts` against a minimal FastMCP-based Python server placed in `packages/mcp/tests/fixtures/py-server/server.py`. Gate the `describe` block with `describe.skipIf(!isPythonAvailable())` so local offline runs don't fail. Exercises SC-008 (server category 3 of 3)
+- [x] T048 [P] [US1] Add integration test `packages/mcp/tests/integration/stdio-programmatic.test.ts` that calls `extractMcpSkill` directly against the same server; asserts returned `ExtractedSkill` has `functions.length > 0`, `resources` populated if server advertises them, no `mcp:` frontmatter in the IR (adapter adds it at render time, not extract time)
 
 **Checkpoint**: US1 is shippable as MVP. `npx @to-skills/mcp extract --command "..."` works end-to-end against any stdio MCP server.
 
