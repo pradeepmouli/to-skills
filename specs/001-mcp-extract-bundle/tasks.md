@@ -107,10 +107,10 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Main extract entry point
 
-- [ ] T034 [US1] Create `packages/mcp/src/extract.ts` exporting `extractMcpSkill(options: McpExtractOptions): Promise<ExtractedSkill>` — for stdio transport: imports `StdioClientTransport` from SDK, spawns the server via `command`+`args`+`env`, wraps in `Client` from SDK, performs `initialize` handshake with client name `@to-skills/mcp` and current package version, calls listTools/listResources/listPrompts from T030-T032, assembles ExtractedSkill, ensures transport is closed on success and failure
-- [ ] T035 [US1] Add `initialize`-handshake error mapping in `packages/mcp/src/extract.ts`: convert SDK errors to `McpError` with code `INITIALIZE_FAILED`, `TRANSPORT_FAILED`, `SERVER_EXITED_EARLY`, or `PROTOCOL_VERSION_UNSUPPORTED` based on error shape
-- [ ] T036 [US1] Add capability-gating in `packages/mcp/src/extract.ts`: only call listResources when `capabilities.resources` is set; only call listPrompts when `capabilities.prompts` is set (per FR-007)
-- [ ] T037 [US1] Add initialize-response `protocolVersion` check in `packages/mcp/src/extract.ts`: warn (stderr) if newer than SDK supports; throw `PROTOCOL_VERSION_UNSUPPORTED` if older than SDK minimum (per Edge Case in spec.md)
+- [x] T034 [US1] Create `packages/mcp/src/extract.ts` exporting `extractMcpSkill(options: McpExtractOptions): Promise<ExtractedSkill>` — for stdio transport: imports `StdioClientTransport` from SDK, spawns the server via `command`+`args`+`env`, wraps in `Client` from SDK, performs `initialize` handshake with client name `@to-skills/mcp` and current package version, calls listTools/listResources/listPrompts from T030-T032, assembles ExtractedSkill, ensures transport is closed on success and failure
+- [x] T035 [US1] Add `initialize`-handshake error mapping in `packages/mcp/src/extract.ts`: convert SDK errors to `McpError` with code `INITIALIZE_FAILED`, `TRANSPORT_FAILED`, `SERVER_EXITED_EARLY`, or `PROTOCOL_VERSION_UNSUPPORTED` based on error shape
+- [x] T036 [US1] Add capability-gating in `packages/mcp/src/extract.ts`: only call listResources when `capabilities.resources` is set; only call listPrompts when `capabilities.prompts` is set (per FR-007)
+- [x] T037 [US1] Add initialize-response `protocolVersion` check in `packages/mcp/src/extract.ts`: warn (stderr) if newer than SDK supports; throw `PROTOCOL_VERSION_UNSUPPORTED` if older than SDK minimum (per Edge Case in spec.md) — helper `checkProtocolVersion` lives in `packages/mcp/src/introspect/protocol-version.ts` with full unit-test coverage; runtime integration in `extract.ts` is deferred (TODO documented in JSDoc) until SDK 1.x exposes a public getter for the negotiated protocol version (the SDK already validates min/max internally during `connect()`).
 
 ### Default adapter: `target-mcp-protocol`
 

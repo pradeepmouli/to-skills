@@ -2,7 +2,7 @@
 // See specs/001-mcp-extract-bundle/tasks.md for the implementation plan.
 
 // Version — kept for downstream tests that may want to assert against it.
-export const PACKAGE_VERSION = '0.1.0';
+export { PACKAGE_VERSION } from './version.js';
 
 // Adapter plugin interface
 export type {
@@ -18,6 +18,9 @@ export { classifyParameters } from './adapter/classify.js';
 // Errors
 export { McpError } from './errors.js';
 export type { McpErrorCode } from './errors.js';
+
+// Extract orchestrator
+export { extractMcpSkill } from './extract.js';
 
 // Introspection helpers
 export { resolveSchema } from './introspect/schema.js';
