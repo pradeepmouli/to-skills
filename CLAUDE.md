@@ -51,6 +51,17 @@ pnpm run format     # oxfmt
 <!-- MANUAL ADDITIONS END -->
 
 <!-- SPECKIT START -->
+
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
+
 <!-- SPECKIT END -->
+
+## Active Technologies
+
+- TypeScript 5.x, Node.js ≥20 (matches existing workspace root and `@to-skills/cli`) (001-mcp-extract-bundle)
+- none (filesystem only — reads `package.json`, `mcp.json` / `claude_desktop_config.json`; writes `skills/<name>/SKILL.md` + `references/*.md`) (001-mcp-extract-bundle)
+
+## Recent Changes
+
+- 001-mcp-extract-bundle: Added TypeScript 5.x, Node.js ≥20 (matches existing workspace root and `@to-skills/cli`)
