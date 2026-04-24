@@ -80,8 +80,8 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### JSON Schema $ref resolution
 
-- [ ] T026 Create `packages/mcp/src/introspect/schema.ts` exporting `resolveSchema(schema: JSONSchema7): Promise<JSONSchema7>` wrapping `@apidevtools/json-schema-ref-parser` — dereferences in place; catches ref-cycle errors and re-throws as `McpError('SCHEMA_REF_CYCLE')`
-- [ ] T027 [P] Add unit test `packages/mcp/tests/unit/schema.test.ts` covering simple $ref resolution, nested definitions, external-ref rejection (must throw), cyclic ref (must throw `SCHEMA_REF_CYCLE`)
+- [x] T026 Create `packages/mcp/src/introspect/schema.ts` exporting `resolveSchema(schema: JSONSchema7): Promise<JSONSchema7>` wrapping `@apidevtools/json-schema-ref-parser` — dereferences in place; catches ref-cycle errors and re-throws as `McpError('SCHEMA_REF_CYCLE')`
+- [x] T027 [P] Add unit test `packages/mcp/tests/unit/schema.test.ts` covering simple $ref resolution, nested definitions, external-ref rejection (must throw), cyclic ref (must throw `SCHEMA_REF_CYCLE`)
 
 ### Option-bag and result types
 

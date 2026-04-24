@@ -19,6 +19,9 @@ export { classifyParameters } from './adapter/classify.js';
 export { McpError } from './errors.js';
 export type { McpErrorCode } from './errors.js';
 
+// Introspection helpers
+export { resolveSchema } from './introspect/schema.js';
+
 // Option bags + results (from types.ts)
 export type {
   McpTransport,
