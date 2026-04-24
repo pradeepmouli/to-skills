@@ -15,15 +15,11 @@ export type McpErrorCode =
  */
 export class McpError extends Error {
   readonly code: McpErrorCode;
-  readonly cause?: unknown;
 
   constructor(message: string, code: McpErrorCode, cause?: unknown) {
-    super(message);
+    super(message, cause !== undefined ? { cause } : undefined);
     this.name = 'McpError';
     this.code = code;
-    if (cause !== undefined) {
-      this.cause = cause;
-    }
     // Preserve stack trace where supported.
     if ('captureStackTrace' in Error && typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, McpError);

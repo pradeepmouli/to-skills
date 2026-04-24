@@ -26,7 +26,6 @@ export function loadAdapter(target: InvocationTarget): InvocationAdapter {
 
   for (const pkg of candidates) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require(pkg) as { default?: InvocationAdapter };
       const adapter = mod.default;
       if (!adapter) {

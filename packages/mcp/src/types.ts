@@ -1,4 +1,3 @@
-import type { ExtractedSkill } from '@to-skills/core';
 import type { InvocationTarget } from './adapter/types.js';
 
 export type McpTransport =
@@ -88,6 +87,3 @@ export interface McpServerConfig {
 export interface McpConfigFile {
   mcpServers: Record<string, McpServerConfig>;
 }
-
-/** Re-export for convenience — adapter authors can import everything from `@to-skills/mcp`. */
-export type { ExtractedSkill };
