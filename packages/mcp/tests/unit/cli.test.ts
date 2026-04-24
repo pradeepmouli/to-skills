@@ -5,6 +5,9 @@
  * ever spawning a real MCP server. The integration tests under
  * `tests/integration/` cover end-to-end subprocess behavior.
  */
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildProgram } from '../../src/cli.js';
@@ -190,6 +193,100 @@ describe('buildProgram', () => {
       ).rejects.toSatisfy((err) =>
         /Expected positive integer/.test(String((err as Error).message))
       );
+    });
+  });
+
+  describe('extract early-fail behaviors (post-mode-validation, pre-spawn)', () => {
+    let workDir: string;
+
+    beforeEach(() => {
+      workDir = mkdtempSync(join(tmpdir(), 'to-skills-mcp-cli-test-'));
+    });
+
+    afterEach(() => {
+      rmSync(workDir, { recursive: true, force: true });
+    });
+
+    it('throws DUPLICATE_SKILL_NAME early when --skill-name dir exists and --force omitted', async () => {
+      const skillName = 'preexisting';
+      const skillDir = join(workDir, skillName);
+      mkdirSync(skillDir, { recursive: true });
+      const program = makeProgram();
+      // Use a bogus command — if early collision check works, we never reach spawn.
+      await expect(
+        program.parseAsync([
+          'node',
+          'bin',
+          'extract',
+          '--command',
+          '/this/path/should/never/exist',
+          '--out',
+          workDir,
+          '--skill-name',
+          skillName
+        ])
+      ).rejects.toSatisfy(
+        (err) =>
+          err instanceof McpError &&
+          err.code === 'DUPLICATE_SKILL_NAME' &&
+          err.message.includes(skillDir)
+      );
+      // Confirms that the collision check fired BEFORE the spawn would have:
+      // a TRANSPORT_FAILED would have been thrown if the spawn was reached.
+      expect(existsSync(skillDir)).toBe(true);
+    });
+
+    it('emits a stderr notice when --no-canonicalize is used (flag is currently a stub)', async () => {
+      const program = makeProgram();
+      const stderrText: string[] = [];
+      stderrSpy.mockImplementation((chunk) => {
+        stderrText.push(typeof chunk === 'string' ? chunk : chunk.toString('utf-8'));
+        return true;
+      });
+      const skillName = 'collision-blocker';
+      mkdirSync(join(workDir, skillName), { recursive: true });
+      // Use the early-collision path to abort cleanly without spawning.
+      await expect(
+        program.parseAsync([
+          'node',
+          'bin',
+          'extract',
+          '--no-canonicalize',
+          '--command',
+          '/nonexistent',
+          '--out',
+          workDir,
+          '--skill-name',
+          skillName
+        ])
+      ).rejects.toBeInstanceOf(McpError);
+      expect(stderrText.join('')).toMatch(/--no-canonicalize is not yet wired/);
+    });
+
+    it('emits a stderr notice when --skip-audit is used (flag is currently a stub)', async () => {
+      const program = makeProgram();
+      const stderrText: string[] = [];
+      stderrSpy.mockImplementation((chunk) => {
+        stderrText.push(typeof chunk === 'string' ? chunk : chunk.toString('utf-8'));
+        return true;
+      });
+      const skillName = 'collision-blocker';
+      mkdirSync(join(workDir, skillName), { recursive: true });
+      await expect(
+        program.parseAsync([
+          'node',
+          'bin',
+          'extract',
+          '--skip-audit',
+          '--command',
+          '/nonexistent',
+          '--out',
+          workDir,
+          '--skill-name',
+          skillName
+        ])
+      ).rejects.toBeInstanceOf(McpError);
+      expect(stderrText.join('')).toMatch(/--skip-audit is not yet implemented/);
     });
   });
 });

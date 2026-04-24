@@ -143,13 +143,11 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ---
 
-> **⚠ Phase 4 precondition — ESM+CJS adapter loading**
+> **✓ Phase 4 precondition — ESM+CJS adapter loading (resolved in T044)**
 >
-> The adapter loader (`packages/mcp/src/adapter/loader.ts`) uses `createRequire(import.meta.url)` + `require()` to resolve adapter packages, per research.md §5's deferred-to-v2 decision. Adapter packages declare `"type": "module"`; once they contain real ESM `default` exports (starting with Phase 6 / US5 target adapters), `require()` may throw `ERR_REQUIRE_ESM` on Node versions that haven't enabled synchronous ESM loading. Before Phase 6 implementation:
+> The B9 implementation surfaced this when integration tests against the ESM-only `@to-skills/target-mcp-protocol` package failed under `createRequire`+`require`. Resolved by adding `loadAdapterAsync()` (alongside the original sync `loadAdapter`), which falls back to dynamic `import()` when `require` reports `ERR_REQUIRE_ESM`, `ERR_PACKAGE_PATH_NOT_EXPORTED`, or "No exports main defined". The CLI uses the async variant; sync callers (existing tests) are unchanged. No `McpErrorCode` extension was required — the fallback path consumes the loader-interop error before it surfaces.
 >
-> 1. Confirm the supported Node floor. If ≥22.12 (where `require(esm)` is stable), keep `require`.
-> 2. Otherwise, migrate `loadAdapter` to async `import()` — cheaper before target adapters have real code to exercise the path.
-> 3. The loader's error-code mapping currently surfaces `ERR_REQUIRE_ESM` as `ADAPTER_NOT_FOUND` (misleading). Consider adding `ADAPTER_LOAD_FAILED` to `McpErrorCode` or teaching `isModuleNotFoundError` to distinguish resolution failures from loader-interop failures.
+> Phase 6's target-mcpc / target-fastmcp adapters can rely on `loadAdapterAsync` directly; no further migration is needed.
 
 ## Phase 4: User Story 2 — Extract from a Remote HTTP MCP Server (Priority: P1)
 

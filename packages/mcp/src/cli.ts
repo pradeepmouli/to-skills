@@ -161,6 +161,31 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     throw new McpError('Config-file batch mode not yet implemented (Phase 7).', 'TRANSPORT_FAILED');
   }
 
+  // Notices for accepted-but-unwired flags (Phase 10 / T111 / audit rules).
+  // Mirrors the --llms-txt pattern below so users get explicit feedback
+  // rather than silent acceptance.
+  if (!opts.canonicalize) {
+    process.stderr.write(
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+    );
+  }
+  if (opts.skipAudit) {
+    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
+  }
+
+  // Early collision check — fires BEFORE spawning the server when the user
+  // supplied --skill-name (the common fast-feedback case). When the name
+  // depends on server introspection, the check repeats post-extract.
+  if (opts.skillName !== undefined) {
+    const earlyDir = join(opts.out, opts.skillName);
+    if (existsSync(earlyDir) && !opts.force) {
+      throw new McpError(
+        `Output directory already exists: ${earlyDir}. Pass --force to overwrite.`,
+        'DUPLICATE_SKILL_NAME'
+      );
+    }
+  }
+
   // Stdio path
   const envEntries = Object.keys(opts.env);
   const skill = await extractMcpSkill({
@@ -174,7 +199,8 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     maxTokens: opts.maxTokens
   });
 
-  // Collision detection — exit 4 (DUPLICATE_SKILL_NAME) if directory exists and --force is unset
+  // Collision detection (post-extract) — covers the case where the skill name
+  // came from server introspection rather than --skill-name.
   const skillDir = join(opts.out, skill.name);
   if (existsSync(skillDir) && !opts.force) {
     throw new McpError(
