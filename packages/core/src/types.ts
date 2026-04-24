@@ -58,6 +58,61 @@ export interface ExtractedSkill {
   readmeFeatures?: string;
   /** Troubleshooting section from README — rendered inline in SKILL.md */
   readmeTroubleshooting?: string;
+  /** MCP resources (empty/absent for non-MCP extractors). */
+  resources?: ExtractedResource[];
+  /** MCP prompts (empty/absent for non-MCP extractors). */
+  prompts?: ExtractedPrompt[];
+  /** Setup instructions emitted when the invocation target is CLI-based. */
+  setup?: SkillSetup;
+}
+
+/** An MCP-exposed resource (static or templated URI, readable by the agent harness). */
+export interface ExtractedResource {
+  /** Canonical URI. MAY contain URI Template expressions per RFC 6570 for parameterized resources. */
+  uri: string;
+  /** Short human-readable name */
+  name: string;
+  /** Prose description (single paragraph) */
+  description: string;
+  /** MIME type of the resource content. Optional — not all servers advertise it. */
+  mimeType?: string;
+  /** Source module for grouping (rarely meaningful for resources; present for IR parity). */
+  sourceModule?: string;
+}
+
+/** An MCP-exposed prompt (a named, argument-templated prompt the agent may request). */
+export interface ExtractedPrompt {
+  name: string;
+  description: string;
+  arguments: ExtractedPromptArgument[];
+  sourceModule?: string;
+}
+
+export interface ExtractedPromptArgument {
+  name: string;
+  description: string;
+  /** Prompt arguments are strings in the MCP spec; `type` is reserved for future extension. */
+  required: boolean;
+}
+
+/** Setup instructions emitted into SKILL.md body when the invocation target is CLI-based. */
+export interface SkillSetup {
+  /** Human-prose install instructions (markdown-safe). */
+  install: string;
+  /** One-time configuration step the consumer must run (e.g. `mcpc connect @server`). */
+  oneTimeSetup?: string;
+  /** Adapter fingerprint for freshness checks (per FR-IT-012). */
+  generatedBy: AdapterFingerprint;
+}
+
+/** Identifies the adapter that rendered a skill — used for freshness audits. */
+export interface AdapterFingerprint {
+  /** npm package name of the adapter (e.g. "@to-skills/target-mcpc") */
+  adapter: string;
+  /** Adapter package semver version */
+  version: string;
+  /** Semver range of the target CLI the adapter was written against (e.g. "mcpc@^2.1") */
+  targetCliRange?: string;
 }
 
 export interface ExtractedFunction {
@@ -196,4 +251,22 @@ export interface SkillRenderOptions {
   namePrefix: string;
   /** License to include in frontmatter (default: read from package.json) */
   license: string;
+  /** Invocation adapter that selects rendering dialect. Defaults to the mcp-protocol adapter. */
+  invocation?: InvocationAdapter;
+}
+
+// NOTE: Forward-declared for backward-compatible extension point.
+// The concrete adapter lives in @to-skills/mcp; core has no runtime dependency on it.
+// Core owns the structural contract; @to-skills/mcp will re-export for ergonomics.
+export interface InvocationAdapter {
+  readonly target: string;
+  readonly fingerprint: AdapterFingerprint;
+  render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill>;
+}
+
+export interface AdapterRenderContext {
+  packageName?: string;
+  skillName: string;
+  maxTokens: number;
+  canonicalize: boolean;
 }

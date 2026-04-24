@@ -53,12 +53,12 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Core IR extensions (backward-compatible)
 
-- [ ] T011 Extend `packages/core/src/types.ts` with `ExtractedResource` interface (uri, name, description, optional mimeType, optional sourceModule) per data-model.md §1.1
-- [ ] T012 Extend `packages/core/src/types.ts` with `ExtractedPrompt` and `ExtractedPromptArgument` interfaces per data-model.md §1.2
-- [ ] T013 Extend `packages/core/src/types.ts` with `SkillSetup` and `AdapterFingerprint` interfaces per data-model.md §1.3
-- [ ] T014 Add optional `resources?: ExtractedResource[]`, `prompts?: ExtractedPrompt[]`, `setup?: SkillSetup` fields to `ExtractedSkill` interface in `packages/core/src/types.ts` per data-model.md §1.4
-- [ ] T015 Add optional `invocation?: InvocationAdapter` field to `SkillRenderOptions` in `packages/core/src/types.ts`; use `import type` for a forward-declared `InvocationAdapter` interface to avoid `@to-skills/core → @to-skills/mcp` dependency cycle
-- [ ] T016 Re-export `ExtractedResource`, `ExtractedPrompt`, `SkillSetup`, `AdapterFingerprint` from `packages/core/src/index.ts`
+- [x] T011 Extend `packages/core/src/types.ts` with `ExtractedResource` interface (uri, name, description, optional mimeType, optional sourceModule) per data-model.md §1.1
+- [x] T012 Extend `packages/core/src/types.ts` with `ExtractedPrompt` and `ExtractedPromptArgument` interfaces per data-model.md §1.2
+- [x] T013 Extend `packages/core/src/types.ts` with `SkillSetup` and `AdapterFingerprint` interfaces per data-model.md §1.3
+- [x] T014 Add optional `resources?: ExtractedResource[]`, `prompts?: ExtractedPrompt[]`, `setup?: SkillSetup` fields to `ExtractedSkill` interface in `packages/core/src/types.ts` per data-model.md §1.4
+- [x] T015 Add optional `invocation?: InvocationAdapter` field to `SkillRenderOptions` in `packages/core/src/types.ts`; use `import type` for a forward-declared `InvocationAdapter` interface to avoid `@to-skills/core → @to-skills/mcp` dependency cycle
+- [x] T016 Re-export `ExtractedResource`, `ExtractedPrompt`, `SkillSetup`, `AdapterFingerprint` from `packages/core/src/index.ts`
 
 ### Canonicalization pass
 

@@ -24,6 +24,13 @@ export type {
   ExtractedProperty,
   ExtractedVariable,
   ExtractedDocument,
+  ExtractedResource,
+  ExtractedPrompt,
+  ExtractedPromptArgument,
+  SkillSetup,
+  AdapterFingerprint,
+  InvocationAdapter,
+  AdapterRenderContext,
   RenderedFile,
   RenderedSkill,
   SkillRenderOptions
