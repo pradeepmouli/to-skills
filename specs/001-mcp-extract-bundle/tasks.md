@@ -68,10 +68,10 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Adapter plugin interface (lives in host package)
 
-- [ ] T020 Create `packages/mcp/src/adapter/types.ts` exporting `InvocationTarget` string union, `InvocationAdapter` interface (target, fingerprint, render method), and `AdapterContext` type per data-model.md §2.4
-- [ ] T021 [P] Create `packages/mcp/src/adapter/loader.ts` implementing `loadAdapter(target: InvocationTarget): InvocationAdapter` using `createRequire(import.meta.url)` + the candidate-list resolution from research.md §5 (mcp-protocol → `@to-skills/target-mcp-protocol`; cli:\* → scoped then unscoped fallback)
-- [ ] T022 [P] Add unit test `packages/mcp/tests/unit/loader.test.ts` covering resolution success (mock fs), scoped-name preference, unscoped fallback, and `ADAPTER_NOT_FOUND` error on miss
-- [ ] T023 Create `packages/mcp/src/errors.ts` exporting `McpError` class with `code`, `cause`, message; export string-literal union `McpErrorCode` covering `UNKNOWN_TARGET`, `ADAPTER_NOT_FOUND`, `TRANSPORT_FAILED`, `INITIALIZE_FAILED`, `PROTOCOL_VERSION_UNSUPPORTED`, `SCHEMA_REF_CYCLE`, `SERVER_EXITED_EARLY`, `MISSING_LAUNCH_COMMAND`, `DUPLICATE_SKILL_NAME`
+- [x] T020 Create `packages/mcp/src/adapter/types.ts` exporting `InvocationTarget` string union, `InvocationAdapter` interface (target, fingerprint, render method), and `AdapterContext` type per data-model.md §2.4
+- [x] T021 [P] Create `packages/mcp/src/adapter/loader.ts` implementing `loadAdapter(target: InvocationTarget): InvocationAdapter` using `createRequire(import.meta.url)` + the candidate-list resolution from research.md §5 (mcp-protocol → `@to-skills/target-mcp-protocol`; cli:\* → scoped then unscoped fallback)
+- [x] T022 [P] Add unit test `packages/mcp/tests/unit/loader.test.ts` covering resolution success (mock fs), scoped-name preference, unscoped fallback, and `ADAPTER_NOT_FOUND` error on miss
+- [x] T023 Create `packages/mcp/src/errors.ts` exporting `McpError` class with `code`, `cause`, message; export string-literal union `McpErrorCode` covering `UNKNOWN_TARGET`, `ADAPTER_NOT_FOUND`, `TRANSPORT_FAILED`, `INITIALIZE_FAILED`, `PROTOCOL_VERSION_UNSUPPORTED`, `SCHEMA_REF_CYCLE`, `SERVER_EXITED_EARLY`, `MISSING_LAUNCH_COMMAND`, `DUPLICATE_SKILL_NAME`
 
 ### Shared tier classifier for CLI adapters
 
@@ -85,8 +85,8 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Option-bag and result types
 
-- [ ] T028 Create `packages/mcp/src/types.ts` exporting `McpExtractOptions`, `McpTransport`, `McpBundleOptions`, `BundleResult`, `WrittenSkill`, `AuditResult`, `AuditIssue`, `AuditOptions`, `McpServerConfig`, `McpConfigFile` per data-model.md §2
-- [ ] T029 Create `packages/mcp/src/index.ts` skeleton that re-exports all public types from T020/T023/T028 (no implementation yet — just the surface)
+- [x] T028 Create `packages/mcp/src/types.ts` exporting `McpExtractOptions`, `McpTransport`, `McpBundleOptions`, `BundleResult`, `WrittenSkill`, `AuditResult`, `AuditIssue`, `AuditOptions`, `McpServerConfig`, `McpConfigFile` per data-model.md §2
+- [x] T029 Create `packages/mcp/src/index.ts` skeleton that re-exports all public types from T020/T023/T028 (no implementation yet — just the surface)
 
 **Checkpoint**: `pnpm --filter @to-skills/core --filter @to-skills/mcp run type-check` passes. `pnpm --filter @to-skills/core run test` passes (canonicalization tests). Foundation is ready — user stories can now be implemented in parallel where independent.
 
