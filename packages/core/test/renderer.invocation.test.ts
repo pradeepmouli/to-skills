@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canonicalize, renderSkill } from '@to-skills/core';
+import { canonicalize, renderSkill, renderSkills } from '@to-skills/core';
 import type {
   AdapterRenderContext,
   ExtractedSkill,
@@ -80,5 +80,29 @@ describe('renderSkill — invocation hook', () => {
     };
     await renderSkill(minimalSkill, { invocation: adapter, namePrefix: 'custom-name' });
     expect(render.mock.calls[0]![1].skillName).toBe('custom-name');
+  });
+
+  // Type-guard: renderSkills must reject an invocation adapter at compile time.
+  // This is a compile-time assertion, not a runtime one — if the file type-checks,
+  // the guard is in place. The runtime body is a no-op.
+  it('renderSkills rejects invocation adapter at compile time', () => {
+    const skills: ExtractedSkill[] = [];
+    const opts = {
+      outDir: '.',
+      includeExamples: true,
+      includeSignatures: true,
+      maxTokens: 4000,
+      namePrefix: '',
+      license: 'MIT'
+    };
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render: async () => ({ skill: { filename: 's/SKILL.md', content: '' }, references: [] })
+    };
+    // @ts-expect-error — invocation should be disallowed on renderSkills options
+    renderSkills(skills, { ...opts, invocation: adapter });
+    // If the above @ts-expect-error DOESN'T trigger, this test will fail the build.
+    expect(true).toBe(true);
   });
 });

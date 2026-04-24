@@ -39,7 +39,7 @@ const DEFAULT_OPTIONS: SkillRenderOptions = {
  */
 export function renderSkills(
   skills: ExtractedSkill[],
-  options?: Partial<SkillRenderOptions>
+  options?: Partial<Omit<SkillRenderOptions, 'invocation'>>
 ): RenderedSkill[] {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const rendered = skills.map((skill) => renderSkill(skill, opts));
