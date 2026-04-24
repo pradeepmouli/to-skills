@@ -2,6 +2,7 @@
 
 import type { ExtractedResource } from '@to-skills/core';
 import type { McpClient, McpResourceListEntry } from './client-types.js';
+import { paginate } from './paginate.js';
 
 /**
  * Enumerate all resources exposed by an MCP server.
@@ -18,14 +19,10 @@ import type { McpClient, McpResourceListEntry } from './client-types.js';
  * @returns one `ExtractedResource` per entry, in server-returned order
  */
 export async function listResources(client: McpClient): Promise<ExtractedResource[]> {
-  const all: McpResourceListEntry[] = [];
-  let cursor: string | undefined;
-
-  do {
+  const all = await paginate<McpResourceListEntry>(async (cursor) => {
     const page = await client.listResources(cursor === undefined ? undefined : { cursor });
-    all.push(...page.resources);
-    cursor = page.nextCursor;
-  } while (cursor !== undefined);
+    return { items: page.resources, nextCursor: page.nextCursor };
+  });
 
   return all.map(mapResource);
 }

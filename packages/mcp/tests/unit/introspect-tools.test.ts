@@ -117,6 +117,9 @@ describe('listTools', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0]!.parameters).toEqual([]);
     expect(tools[0]!.tags.schemaError).toBe('true');
+    // schemaErrorTool tag carries the offending tool name so the M2 audit
+    // rule (Phase 9) can name the culprit when surfacing the row.
+    expect(tools[0]!.tags.schemaErrorTool).toBe('recursive');
   });
 
   it('handles tools with missing/undefined inputSchema as empty parameters', async () => {
@@ -131,9 +134,37 @@ describe('listTools', () => {
     expect(tools).toHaveLength(2);
     expect(tools[0]!.parameters).toEqual([]);
     expect(tools[1]!.parameters).toEqual([]);
-    // No schemaError tag — these are not error states.
-    expect(tools[0]!.tags.schemaError).toBeUndefined();
-    expect(tools[1]!.tags.schemaError).toBeUndefined();
+    // No schemaError tag — these are not error states. Asserting full shape
+    // so future drift in the healthy path (e.g. accidentally introducing a
+    // tag) is caught.
+    expect(tools[0]!.tags).toEqual({});
+    expect(tools[1]!.tags).toEqual({});
+  });
+
+  it('handles tools with non-object inputSchema as empty parameters without schemaError', async () => {
+    // A misbehaving SDK or server returning a string/number instead of an
+    // object schema is a data-quality issue at the SDK boundary, not a $ref
+    // cycle. We treat it as no usable schema and do NOT tag schemaError —
+    // that tag is reserved for cycle failures so the M2 audit rule can
+    // distinguish the two.
+    const client = makeClient([
+      [
+        // Cast through unknown because McpToolListEntry types inputSchema as
+        // an object; the whole point of the test is exercising the runtime
+        // guard against external-origin junk.
+        { name: 'badString', description: '', inputSchema: 'not-an-object' as unknown as object },
+        { name: 'badNumber', description: '', inputSchema: 42 as unknown as object }
+      ]
+    ]);
+
+    const tools = await listTools(client);
+    expect(tools).toHaveLength(2);
+    expect(tools[0]!.parameters).toEqual([]);
+    expect(tools[0]!.tags).toEqual({});
+    expect(tools[0]!.signature).toBe('badString()');
+    expect(tools[1]!.parameters).toEqual([]);
+    expect(tools[1]!.tags).toEqual({});
+    expect(tools[1]!.signature).toBe('badNumber()');
   });
 
   it('marks parameters not in `required` as optional and decorates the signature', async () => {

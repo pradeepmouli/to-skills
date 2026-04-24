@@ -2,6 +2,7 @@
 
 import type { ExtractedPrompt, ExtractedPromptArgument } from '@to-skills/core';
 import type { McpClient, McpPromptListEntry } from './client-types.js';
+import { paginate } from './paginate.js';
 
 /**
  * Enumerate all prompts exposed by an MCP server.
@@ -18,14 +19,10 @@ import type { McpClient, McpPromptListEntry } from './client-types.js';
  * @returns one `ExtractedPrompt` per entry, in server-returned order
  */
 export async function listPrompts(client: McpClient): Promise<ExtractedPrompt[]> {
-  const all: McpPromptListEntry[] = [];
-  let cursor: string | undefined;
-
-  do {
+  const all = await paginate<McpPromptListEntry>(async (cursor) => {
     const page = await client.listPrompts(cursor === undefined ? undefined : { cursor });
-    all.push(...page.prompts);
-    cursor = page.nextCursor;
-  } while (cursor !== undefined);
+    return { items: page.prompts, nextCursor: page.nextCursor };
+  });
 
   return all.map(mapPrompt);
 }

@@ -4,6 +4,7 @@ import type { ExtractedFunction, ExtractedParameter } from '@to-skills/core';
 import type { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
 import { McpError } from '../errors.js';
 import type { McpClient, McpToolListEntry } from './client-types.js';
+import { paginate } from './paginate.js';
 import { resolveSchema } from './schema.js';
 
 /**
@@ -32,16 +33,10 @@ import { resolveSchema } from './schema.js';
  * @returns one `ExtractedFunction` per tool, in the order returned by the server
  */
 export async function listTools(client: McpClient): Promise<ExtractedFunction[]> {
-  const all: McpToolListEntry[] = [];
-  let cursor: string | undefined;
-
-  // Initial page request: no cursor. Subsequent pages: pass the last
-  // `nextCursor`. Loop terminates when `nextCursor` is undefined.
-  do {
+  const all = await paginate<McpToolListEntry>(async (cursor) => {
     const page = await client.listTools(cursor === undefined ? undefined : { cursor });
-    all.push(...page.tools);
-    cursor = page.nextCursor;
-  } while (cursor !== undefined);
+    return { items: page.tools, nextCursor: page.nextCursor };
+  });
 
   const results: ExtractedFunction[] = [];
   for (const tool of all) {
@@ -58,8 +53,16 @@ async function mapTool(tool: McpToolListEntry): Promise<ExtractedFunction> {
   const name = tool.name;
   const description = tool.description ?? '';
 
-  // No schema → no parameters. This is not an error condition.
-  if (tool.inputSchema === undefined || tool.inputSchema === null) {
+  // No schema → no parameters. This is not an error condition. Non-object
+  // shapes (string/number/array) coming from a misbehaving SDK or server are
+  // also treated as "no usable schema" rather than tagged as schemaError —
+  // the schemaError tag is reserved for `$ref` cycle failures so that the
+  // Phase-9 M2 audit rule can distinguish data-quality issues from cycles.
+  if (
+    tool.inputSchema === undefined ||
+    tool.inputSchema === null ||
+    !isPlainObject(tool.inputSchema)
+  ) {
     return {
       name,
       description,
@@ -92,7 +95,9 @@ async function mapTool(tool: McpToolListEntry): Promise<ExtractedFunction> {
         parameters: [],
         returnType: 'unknown',
         examples: [],
-        tags: { schemaError: 'true' }
+        // schemaErrorTool carries the offending tool name so the Phase-9 M2
+        // audit rule can name the culprit when it surfaces this row.
+        tags: { schemaError: 'true', schemaErrorTool: name }
       };
     }
     throw err;
@@ -172,6 +177,7 @@ function deriveTypeLabel(schema: JSONSchema7): string {
 
   if (types.length === 1 && types[0] === 'array') {
     const items = schema.items;
+    // items-as-array (tuple form) → falls back to 'array'; only single-schema form gets element-type derivation.
     if (isPlainObject(items)) {
       const itemLabel = deriveTypeLabel(items);
       return `${itemLabel}[]`;
