@@ -5,8 +5,10 @@
 // spawning an actual child process. The mocks are state-tracked so each test
 // can assert close() was called and connect() saw the right transport.
 
+import { PassThrough } from 'node:stream';
 import type { ExtractedSkill } from '@to-skills/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { McpPromptListEntry } from '../../src/introspect/client-types.js';
 
 // Module-scope mock state — reset per test in beforeEach.
 type CapShape = {
@@ -26,6 +28,10 @@ interface MockState {
   earlyExitMessage: string;
   closeCallCount: number;
   transportCloseCount: number;
+  // Optional stderr stream installed on the mock transport. Tests can write
+  // to this BEFORE triggering earlyExit to assert the SERVER_EXITED_EARLY
+  // message includes captured stderr content.
+  stderrStream: PassThrough | null;
   // Lets tests force list methods to throw when called (e.g. assert capability
   // gating actually skips the call).
   listToolsImpl: () => Promise<{ tools: unknown[]; nextCursor?: string }>;
@@ -33,7 +39,10 @@ interface MockState {
     resources: unknown[];
     nextCursor?: string;
   }>;
-  listPromptsImpl: () => Promise<{ prompts: unknown[]; nextCursor?: string }>;
+  listPromptsImpl: () => Promise<{
+    prompts: McpPromptListEntry[];
+    nextCursor?: string;
+  }>;
   // Spy: tracks which list methods were invoked.
   listToolsCalls: number;
   listResourcesCalls: number;
@@ -48,9 +57,10 @@ const state: MockState = {
   earlyExitMessage: '',
   closeCallCount: 0,
   transportCloseCount: 0,
+  stderrStream: null,
   listToolsImpl: async () => ({ tools: [] }),
   listResourcesImpl: async () => ({ resources: [] }),
-  listPromptsImpl: async () => ({ resources: [] as never[] }) as never,
+  listPromptsImpl: async () => ({ prompts: [] as McpPromptListEntry[] }),
   listToolsCalls: 0,
   listResourcesCalls: 0,
   listPromptsCalls: 0
@@ -98,9 +108,12 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => {
       state.listResourcesCalls++;
       return state.listResourcesImpl();
     }
-    async listPrompts(): Promise<{ prompts: unknown[]; nextCursor?: string }> {
+    async listPrompts(): Promise<{
+      prompts: McpPromptListEntry[];
+      nextCursor?: string;
+    }> {
       state.listPromptsCalls++;
-      return state.listPromptsImpl() as never;
+      return state.listPromptsImpl();
     }
     async close(): Promise<void> {
       state.closeCallCount++;
@@ -112,7 +125,12 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => {
 vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => {
   class StdioClientTransport {
     onclose?: () => void;
-    stderr: null = null;
+    // Lazily-resolved getter so individual tests can install a PassThrough
+    // BEFORE extract.ts subscribes to it. Defaults to null (the real SDK
+    // also types this as `Stream | null`).
+    get stderr(): PassThrough | null {
+      return state.stderrStream;
+    }
     closed = false;
     constructor(public readonly params: unknown) {}
     async close(): Promise<void> {
@@ -135,9 +153,10 @@ beforeEach(() => {
   state.earlyExitMessage = '';
   state.closeCallCount = 0;
   state.transportCloseCount = 0;
+  state.stderrStream = null;
   state.listToolsImpl = async () => ({ tools: [] });
   state.listResourcesImpl = async () => ({ resources: [] });
-  state.listPromptsImpl = async () => ({ prompts: [] }) as never;
+  state.listPromptsImpl = async () => ({ prompts: [] as McpPromptListEntry[] });
   state.listToolsCalls = 0;
   state.listResourcesCalls = 0;
   state.listPromptsCalls = 0;
@@ -165,10 +184,9 @@ describe('extractMcpSkill — happy path', () => {
     state.listResourcesImpl = async () => ({
       resources: [{ uri: 'demo://x', name: 'x', description: 'a thing' }]
     });
-    state.listPromptsImpl = async () =>
-      ({
-        prompts: [{ name: 'greet', description: 'say hi', arguments: [] }]
-      }) as never;
+    state.listPromptsImpl = async () => ({
+      prompts: [{ name: 'greet', description: 'say hi', arguments: [] }]
+    });
 
     const skill: ExtractedSkill = await extractMcpSkill(baseStdio);
 
@@ -278,6 +296,39 @@ describe('extractMcpSkill — error mapping (T035)', () => {
     });
   });
 
+  it('SERVER_EXITED_EARLY message includes captured stderr content', async () => {
+    // Install the stderr stream BEFORE triggering early exit so extract.ts's
+    // subscription captures the bytes. The mock's connect() schedules onclose
+    // on a setTimeout, giving us a microtask window to write before the
+    // rejection composes its message.
+    const stderrStream = new PassThrough();
+    state.stderrStream = stderrStream;
+    state.earlyExit = true;
+
+    // Write stderr data synchronously after kicking off extract — extract.ts
+    // subscribes to `transport.stderr` BEFORE awaiting connect, so the data
+    // event fires before the (zero-delay) onclose timer.
+    const promise = extractMcpSkill(baseStdio);
+    stderrStream.write('Error: configuration missing\n');
+    stderrStream.write('Stack trace: line 42\n');
+
+    await expect(promise).rejects.toMatchObject({
+      code: 'SERVER_EXITED_EARLY',
+      message: expect.stringContaining('Error: configuration missing')
+    });
+  });
+
+  it('SERVER_EXITED_EARLY message indicates "no stderr captured" when stderr is silent', async () => {
+    // No stderr stream installed — message should fall back to the
+    // "no stderr captured" variant.
+    state.earlyExit = true;
+
+    await expect(extractMcpSkill(baseStdio)).rejects.toMatchObject({
+      code: 'SERVER_EXITED_EARLY',
+      message: expect.stringMatching(/no stderr captured/i)
+    });
+  });
+
   it('preserves McpError instances thrown by inner callees (no double-wrap)', async () => {
     state.capabilities = { tools: {} };
     const inner = new McpError('cycle detected', 'SCHEMA_REF_CYCLE');
@@ -326,5 +377,53 @@ describe('extractMcpSkill — skillName override', () => {
 
     const skill = await extractMcpSkill(baseStdio);
     expect(skill.name).toBe('underlying');
+  });
+
+  it('kebab-cases serverInfo.name when falling back (multi-word with spaces)', async () => {
+    state.capabilities = { tools: {} };
+    state.serverInfo = { name: 'Filesystem MCP Server', version: '1.0.0' };
+    state.listToolsImpl = async () => ({ tools: [] });
+
+    const skill = await extractMcpSkill(baseStdio);
+    expect(skill.name).toBe('filesystem-mcp-server');
+  });
+
+  it('falls through to "mcp-server" when serverInfo.name is empty', async () => {
+    state.capabilities = { tools: {} };
+    state.serverInfo = { name: '', version: '1.0.0' };
+    state.listToolsImpl = async () => ({ tools: [] });
+
+    const skill = await extractMcpSkill(baseStdio);
+    expect(skill.name).toBe('mcp-server');
+  });
+
+  it('falls through to "mcp-server" when serverInfo.name is all special chars', async () => {
+    state.capabilities = { tools: {} };
+    state.serverInfo = { name: '!!!', version: '1.0.0' };
+    state.listToolsImpl = async () => ({ tools: [] });
+
+    const skill = await extractMcpSkill(baseStdio);
+    expect(skill.name).toBe('mcp-server');
+  });
+
+  it('falls through to "mcp-server" when serverInfo is undefined', async () => {
+    state.capabilities = { tools: {} };
+    state.serverInfo = undefined;
+    state.listToolsImpl = async () => ({ tools: [] });
+
+    const skill = await extractMcpSkill(baseStdio);
+    expect(skill.name).toBe('mcp-server');
+  });
+
+  it('does NOT transform options.skillName — user input is authoritative', async () => {
+    state.capabilities = { tools: {} };
+    state.serverInfo = { name: 'underlying', version: '1.0.0' };
+    state.listToolsImpl = async () => ({ tools: [] });
+
+    const skill = await extractMcpSkill({
+      ...baseStdio,
+      skillName: 'My Custom Name'
+    });
+    expect(skill.name).toBe('My Custom Name');
   });
 });

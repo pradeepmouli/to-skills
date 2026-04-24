@@ -96,15 +96,33 @@ export async function extractMcpSkill(options: McpExtractOptions): Promise<Extra
     { capabilities: {} }
   );
 
-  // Track whether the transport closed before connect resolved — that
-  // indicates the child process died before the handshake completed.
-  let exitedEarly = false;
+  // Capture stderr chunks so a pre-initialize crash can surface readable
+  // diagnostics in the SERVER_EXITED_EARLY message. The SDK exposes
+  // `transport.stderr` as `Stream | null` — guard against null and tolerate
+  // either Buffer or string chunks.
+  const stderrChunks: string[] = [];
+  const stderrStream = (transport as { stderr?: unknown }).stderr;
+  if (stderrStream && typeof stderrStream === 'object' && 'on' in stderrStream) {
+    (stderrStream as NodeJS.ReadableStream).on('data', (chunk: Buffer | string) => {
+      stderrChunks.push(typeof chunk === 'string' ? chunk : chunk.toString('utf8'));
+    });
+  }
+
+  /** Compose the SERVER_EXITED_EARLY message including any captured stderr. */
+  const buildEarlyExitMessage = (): string => {
+    const stderrText = stderrChunks.join('');
+    const trimmedStderr = stderrText.length > 2048 ? `…${stderrText.slice(-2048)}` : stderrText;
+    return trimmedStderr
+      ? `MCP server process exited before initialize completed.\nServer stderr:\n${trimmedStderr}`
+      : 'MCP server process exited before initialize completed (no stderr captured).';
+  };
+
+  // Promise that rejects when the transport closes before connect resolves.
+  // Raced against `client.connect()` so a process-death wins over a generic
+  // INITIALIZE_FAILED.
   const exitPromise = new Promise<never>((_, reject) => {
     transport.onclose = () => {
-      exitedEarly = true;
-      reject(
-        new McpError('MCP server process exited before initialize completed', 'SERVER_EXITED_EARLY')
-      );
+      reject(new McpError(buildEarlyExitMessage(), 'SERVER_EXITED_EARLY'));
     };
   });
 
@@ -127,7 +145,13 @@ export async function extractMcpSkill(options: McpExtractOptions): Promise<Extra
     const serverInfo = client.getServerVersion();
     const capabilities = client.getServerCapabilities() ?? {};
 
-    const skillName = options.skillName ?? serverInfo?.name ?? 'mcp-server';
+    // skillName fallback: when the user doesn't supply an explicit override,
+    // we kebab-case the server-reported name so a name like
+    // "Filesystem MCP Server" becomes "filesystem-mcp-server" (a safe skill
+    // identifier). The user's explicit `options.skillName` is authoritative
+    // and passes through unchanged.
+    const transformed = serverInfo?.name ? toKebabSkillName(serverInfo.name) : '';
+    const skillName = options.skillName ?? (transformed || 'mcp-server');
     const description =
       // serverInfo.title is the human-readable variant per MCP spec.
       (serverInfo as { title?: string } | undefined)?.title ?? serverInfo?.name ?? skillName;
@@ -165,13 +189,12 @@ export async function extractMcpSkill(options: McpExtractOptions): Promise<Extra
       throw new McpError(messageOf(err), 'TRANSPORT_FAILED', err);
     }
 
-    // Process exited early (already handled by exitPromise → McpError, but
-    // belt-and-suspenders for the case where the SDK surfaces it as a
-    // generic Error before our onclose fires).
-    if (exitedEarly) {
-      throw new McpError(messageOf(err), 'SERVER_EXITED_EARLY', err);
-    }
-
+    // Process-early-exit is handled exclusively by the Promise.race against
+    // `exitPromise` above (which rejects with an already-classified McpError
+    // and is short-circuited by the `instanceof McpError` branch). We do not
+    // re-classify a generic Error here as SERVER_EXITED_EARLY, because a
+    // legitimate INITIALIZE_FAILED followed by a delayed onclose would then
+    // be mis-labelled.
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
   } finally {
     // Clear the onclose handler so a late close (after we've decided to
@@ -210,4 +233,20 @@ function messageOf(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
   return 'unknown error';
+}
+
+/**
+ * Lower-case and kebab-case an arbitrary string into a safe skill identifier.
+ *
+ * Examples:
+ *   "Filesystem MCP Server" → "filesystem-mcp-server"
+ *   "GitHub_Tools"          → "github-tools"
+ *   "!!!"                   → ""   (caller falls back to 'mcp-server')
+ */
+function toKebabSkillName(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-') // any non-alphanumeric run → single hyphen
+    .replace(/^-+|-+$/g, ''); // trim leading/trailing hyphens
 }
