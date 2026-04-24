@@ -21,6 +21,16 @@ export type { McpErrorCode } from './errors.js';
 
 // Introspection helpers
 export { resolveSchema } from './introspect/schema.js';
+export { listTools } from './introspect/tools.js';
+export { listResources } from './introspect/resources.js';
+export { listPrompts } from './introspect/prompts.js';
+export type {
+  McpClient,
+  McpToolListEntry,
+  McpResourceListEntry,
+  McpPromptListEntry,
+  McpPromptArgumentEntry
+} from './introspect/client-types.js';
 
 // Option bags + results (from types.ts)
 export type {

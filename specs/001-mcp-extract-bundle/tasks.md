@@ -100,10 +100,10 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Introspection helpers (tools + resources + prompts)
 
-- [ ] T030 [P] [US1] Create `packages/mcp/src/introspect/tools.ts` exporting `listTools(client: McpClient): Promise<ExtractedFunction[]>` — paginates `tools/list` until cursor exhausted; for each tool, resolves inputSchema via `resolveSchema` (T026); maps to `ExtractedFunction` with `parameters` derived from schema properties
-- [ ] T031 [P] [US1] Create `packages/mcp/src/introspect/resources.ts` exporting `listResources(client: McpClient): Promise<ExtractedResource[]>` — paginates `resources/list`; skips when server's initialize capabilities omit `resources`
-- [ ] T032 [P] [US1] Create `packages/mcp/src/introspect/prompts.ts` exporting `listPrompts(client: McpClient): Promise<ExtractedPrompt[]>` — paginates `prompts/list`; skips when server's initialize capabilities omit `prompts`
-- [ ] T033 [P] [US1] Add unit test `packages/mcp/tests/unit/introspect-tools.test.ts` with a mocked `McpClient` returning paginated responses; assert full list is collected
+- [x] T030 [P] [US1] Create `packages/mcp/src/introspect/tools.ts` exporting `listTools(client: McpClient): Promise<ExtractedFunction[]>` — paginates `tools/list` until cursor exhausted; for each tool, resolves inputSchema via `resolveSchema` (T026); maps to `ExtractedFunction` with `parameters` derived from schema properties
+- [x] T031 [P] [US1] Create `packages/mcp/src/introspect/resources.ts` exporting `listResources(client: McpClient): Promise<ExtractedResource[]>` — paginates `resources/list`; skips when server's initialize capabilities omit `resources`
+- [x] T032 [P] [US1] Create `packages/mcp/src/introspect/prompts.ts` exporting `listPrompts(client: McpClient): Promise<ExtractedPrompt[]>` — paginates `prompts/list`; skips when server's initialize capabilities omit `prompts`
+- [x] T033 [P] [US1] Add unit test `packages/mcp/tests/unit/introspect-tools.test.ts` with a mocked `McpClient` returning paginated responses; assert full list is collected
 
 ### Main extract entry point
 
