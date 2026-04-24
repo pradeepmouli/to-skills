@@ -1,4 +1,5 @@
 import type {
+  AdapterRenderContext,
   ExtractedSkill,
   ExtractedFunction,
   ExtractedClass,
@@ -11,6 +12,7 @@ import type {
 } from './types.js';
 import { estimateTokens, truncateToTokenBudget } from './tokens.js';
 import { renderConfigSurfaceSection, renderConfigReference } from './config-renderer.js';
+import { canonicalize } from './canonical.js';
 
 /** agentskills.io spec: max 1024 chars for description */
 const DESCRIPTION_MAX = 1024;
@@ -63,8 +65,36 @@ export function renderSkills(
 export function renderSkill(
   skill: ExtractedSkill,
   options?: Partial<SkillRenderOptions>
-): RenderedSkill {
+): RenderedSkill;
+export function renderSkill(
+  skill: ExtractedSkill,
+  options: Partial<SkillRenderOptions> & {
+    invocation: NonNullable<SkillRenderOptions['invocation']>;
+  }
+): Promise<RenderedSkill>;
+export function renderSkill(
+  skill: ExtractedSkill,
+  options?: Partial<SkillRenderOptions>
+): RenderedSkill | Promise<RenderedSkill> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+
+  // --- Invocation adapter path: delegate dialect-specific rendering. ---
+  // The host still canonicalizes the adapter's output so re-runs are content-identical.
+  if (opts.invocation) {
+    const ctx: AdapterRenderContext = {
+      skillName: toSkillName(opts.namePrefix || skill.name),
+      maxTokens: opts.maxTokens,
+      canonicalize: true,
+      // packageName is undefined here — bundle mode (which injects packageName)
+      // flows through @to-skills/mcp on a separate code path.
+      packageName: undefined
+    };
+    return Promise.resolve(opts.invocation.render(skill, ctx)).then((rendered) =>
+      canonicalize(rendered)
+    );
+  }
+
+  // --- Default path: preserve today's synchronous output shape exactly. ---
   const skillName = toSkillName(opts.namePrefix || skill.name);
   const basePath = skillName;
 
@@ -203,14 +233,14 @@ export function renderSkill(
     }
   }
 
-  return {
+  return canonicalize({
     skill: {
       filename: `${basePath}/SKILL.md`,
       content: skillContent,
       tokens: estimateTokens(skillContent)
     },
     references
-  };
+  });
 }
 
 // ===========================================================================

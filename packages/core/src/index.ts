@@ -37,6 +37,8 @@ export type {
 } from './types.js';
 
 export { renderSkills, renderSkill } from './renderer.js';
+export { canonicalize } from './canonical.js';
+export type { CanonicalizeOptions } from './canonical.js';
 export { writeSkills } from './writer.js';
 export { estimateTokens, truncateToTokenBudget } from './tokens.js';
 export { renderLlmsTxt } from './llms-txt.js';

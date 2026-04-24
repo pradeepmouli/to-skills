@@ -62,9 +62,9 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Canonicalization pass
 
-- [ ] T017 Create `packages/core/src/canonical.ts` exporting `canonicalize(skill: RenderedSkill, opts?: CanonicalizeOptions): RenderedSkill` that applies: sorted object keys in YAML frontmatter, stable-sort arrays by name (tools/resources/prompts), stripped timestamps (regex list), LF line endings, collapsed blank-line runs, trimmed trailing whitespace
-- [ ] T018 [P] Add unit test `packages/core/tests/canonical.test.ts` asserting idempotence (`canonicalize(canonicalize(x)) === canonicalize(x)`), stable key order, and timestamp stripping
-- [ ] T019 Extend `renderSkill` in `packages/core/src/renderer.ts` to accept optional `invocation: InvocationAdapter`; when present, delegate to `invocation.render(skill, ctx)` for frontmatter + body; when absent, preserve today's TypeDoc/CLI-extractor output shape; always run canonicalization pass on the returned `RenderedSkill`
+- [x] T017 Create `packages/core/src/canonical.ts` exporting `canonicalize(skill: RenderedSkill, opts?: CanonicalizeOptions): RenderedSkill` that applies: sorted object keys in YAML frontmatter, stable-sort arrays by name (tools/resources/prompts), stripped timestamps (regex list), LF line endings, collapsed blank-line runs, trimmed trailing whitespace
+- [x] T018 [P] Add unit test `packages/core/tests/canonical.test.ts` asserting idempotence (`canonicalize(canonicalize(x)) === canonicalize(x)`), stable key order, and timestamp stripping
+- [x] T019 Extend `renderSkill` in `packages/core/src/renderer.ts` to accept optional `invocation: InvocationAdapter`; when present, delegate to `invocation.render(skill, ctx)` for frontmatter + body; when absent, preserve today's TypeDoc/CLI-extractor output shape; always run canonicalization pass on the returned `RenderedSkill`
 
 ### Adapter plugin interface (lives in host package)
 
