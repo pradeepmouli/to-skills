@@ -99,7 +99,6 @@ cp .specify/extensions/optimize/config-template.yml \
 ```
 
 Key settings:
-
 - `categories.*` — toggle individual analysis categories on/off
 - `thresholds.max_constitution_tokens` — flag constitutions exceeding this token estimate
 - `thresholds.governance_budget_percent` — max % of context window for governance overhead
@@ -116,7 +115,6 @@ Key settings:
 ## Reports
 
 Reports are saved to `.specify/optimize/` (with user consent):
-
 - `token-report.md` — latest token usage snapshot (enables historical trends)
 - `learning-report-<date>.md` — per-session learning analysis
 

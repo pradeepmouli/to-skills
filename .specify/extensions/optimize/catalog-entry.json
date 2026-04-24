@@ -17,7 +17,13 @@
     "commands": 3,
     "hooks": 0
   },
-  "tags": ["constitution", "optimization", "token-budget", "governance", "audit"],
+  "tags": [
+    "constitution",
+    "optimization",
+    "token-budget",
+    "governance",
+    "audit"
+  ],
   "verified": false,
   "downloads": 0,
   "stars": 0,

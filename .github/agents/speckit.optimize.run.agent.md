@@ -1,17 +1,17 @@
 ---
 description: Audit and optimize governance documents for AI context efficiency.
 handoffs:
-  - label: Amend constitution
-    agent: speckit.constitution
-    prompt: Apply the approved optimization changes to the constitution
-  - label: Verify consistency
-    agent: speckit.analyze
-    prompt: Verify cross-artifact consistency after governance changes
+- label: Amend constitution
+  agent: speckit.constitution
+  prompt: Apply the approved optimization changes to the constitution
+- label: Verify consistency
+  agent: speckit.analyze
+  prompt: Verify cross-artifact consistency after governance changes
 ---
+
 
 <!-- Extension: optimize -->
 <!-- Config: .specify/extensions/optimize/ -->
-
 ## User Input
 
 ```text
@@ -40,7 +40,6 @@ This command does NOT author or amend the constitution (that is `/speckit.consti
 ### 1. Locate and Load Constitution
 
 Resolution order:
-
 1. Read `.specify/memory/constitution.md`
 2. If it contains a redirect pattern (e.g., `Read and follow the constitution in <path>`), follow the redirect to the actual file
 3. If `.specify/memory/constitution.md` does not exist, check fallbacks: `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`
@@ -53,7 +52,6 @@ Record the resolved file path as `CONSTITUTION_PATH` for all subsequent steps.
 ### 2. Load Configuration
 
 Check for project config at `.specify/extensions/optimize/optimize-config.yml`. If not found, use `defaults` from `extension.yml`. Parse:
-
 - Which categories are enabled
 - Threshold values
 - Target context window size
@@ -61,7 +59,6 @@ Check for project config at `.specify/extensions/optimize/optimize-config.yml`. 
 ### 3. Parse Constitution Structure
 
 Extract and catalog:
-
 - **Sync Impact Report** (HTML comment at top) — version, dates, template status
 - **Version History** (HTML comment) — all version entries
 - **Title** (H1 heading)
@@ -75,7 +72,6 @@ Store each principle's rules as a flat list for cross-comparison.
 ### 4. Discover Governance Ecosystem
 
 Scan for all governance files that AI agents may load:
-
 - `.specify/memory/constitution.md` (and its redirect target)
 - `CLAUDE.md` (root)
 - `AGENTS.md` (root)
@@ -93,7 +89,7 @@ Run each enabled category. If `--category <name>` was provided, run only that on
 
 #### Category 1: Token Budget Analysis
 
-_Why AI-specific_: AI agents pay the full token cost of the constitution on every single invocation. A 3000-token constitution across 50 daily sessions = 150K tokens/day of governance overhead. Humans skim; AI tokenizes everything.
+*Why AI-specific*: AI agents pay the full token cost of the constitution on every single invocation. A 3000-token constitution across 50 daily sessions = 150K tokens/day of governance overhead. Humans skim; AI tokenizes everything.
 
 **Checks:**
 
@@ -112,7 +108,7 @@ _Why AI-specific_: AI agents pay the full token cost of the constitution on ever
    - Build tool config (glob for `build.gradle*`, `buildSrc/**`)
    - Dependency management (glob for `**/libs.versions.toml`, `**/pom.xml`)
    - CI pipeline config (glob for `.github/workflows/*`, `.pipelines/*`, `azure-pipelines*`)
-     If a tool already enforces the rule, the constitution copy is redundant — it can be compressed to a reference.
+   If a tool already enforces the rule, the constitution copy is redundant — it can be compressed to a reference.
 
 7. **Prose-table overlap**: Detect when the same information appears in both prose (paragraph/bullets) and a table within the same H3 section. Measure the overlap token cost.
 
@@ -122,7 +118,7 @@ _Why AI-specific_: AI agents pay the full token cost of the constitution on ever
 
 #### Category 2: Rule Health Analysis
 
-_Why AI-specific_: AI agents have no institutional memory. A rule added 6 months ago for a one-time incident is enforced with the same authority as a core architectural principle. There is no natural "forgetting" mechanism — stale rules persist forever.
+*Why AI-specific*: AI agents have no institutional memory. A rule added 6 months ago for a one-time incident is enforced with the same authority as a core architectural principle. There is no natural "forgetting" mechanism — stale rules persist forever.
 
 **Checks:**
 
@@ -134,7 +130,7 @@ _Why AI-specific_: AI agents have no institutional memory. A rule added 6 months
    - Parse checkstyle config for matching check names (e.g., `MagicNumberCheck` → "no magic numbers" rule)
    - Check `buildSrc/` for custom Gradle tasks (e.g., `CheckFileHeaderTask` → "file headers required")
    - Check CI pipeline for quality gates
-     If a rule is 100% enforced by tooling, the constitution statement is redundant and can be compressed to: "Enforced by [tool] — see `[config path]`."
+   If a rule is 100% enforced by tooling, the constitution statement is redundant and can be compressed to: "Enforced by [tool] — see `[config path]`."
 
 4. **Stale rules via git history**: Run `git log --follow -p` on the constitution file. For rules introduced in older versions (check the version history comment block), evaluate whether the context that motivated the rule still applies. Flag rules that haven't been touched in >3 versions AND reference specific artifacts.
 
@@ -144,7 +140,7 @@ _Why AI-specific_: AI agents have no institutional memory. A rule added 6 months
 
 #### Category 3: AI Interpretability Analysis
 
-_Why AI-specific_: Ambiguity in the constitution causes non-deterministic behavior — different AI sessions resolve the same ambiguity differently, leading to inconsistent codebases. Rules that require human judgment are dead code to AI agents.
+*Why AI-specific*: Ambiguity in the constitution causes non-deterministic behavior — different AI sessions resolve the same ambiguity differently, leading to inconsistent codebases. Rules that require human judgment are dead code to AI agents.
 
 **Checks:**
 
@@ -158,7 +154,7 @@ _Why AI-specific_: Ambiguity in the constitution causes non-deterministic behavi
    - **Direct contradictions**: Rule A says "MUST X" and Rule B says "MUST NOT X" or implies not-X
    - **Indirect contradictions**: Rule A requires pattern P, Rule B requires pattern Q, where P and Q are mutually exclusive in practice
    - **Scope conflicts**: Two principles claim authority over the same domain with different guidance
-     For each pair, assess severity: CRITICAL (direct), HIGH (indirect), MEDIUM (scope overlap).
+   For each pair, assess severity: CRITICAL (direct), HIGH (indirect), MEDIUM (scope overlap).
 
 5. **Implicit context dependencies**: Scan for rules referencing: "the team's convention", "our usual approach", "as discussed", "you know", "the standard pattern" (without specifying which). These rely on context that AI agents don't carry between sessions.
 
@@ -172,7 +168,7 @@ _Why AI-specific_: Ambiguity in the constitution causes non-deterministic behavi
 
 #### Category 4: Semantic Compression
 
-_Why AI-specific_: 10 verbose rules that could be expressed as 2 concise rules cost 5× more context tokens for identical governance. This is not about human readability — it is about information density for context-limited AI consumers.
+*Why AI-specific*: 10 verbose rules that could be expressed as 2 concise rules cost 5× more context tokens for identical governance. This is not about human readability — it is about information density for context-limited AI consumers.
 
 **Checks:**
 
@@ -192,7 +188,7 @@ _Why AI-specific_: 10 verbose rules that could be expressed as 2 concise rules c
 
 #### Category 5: Constitution Coherence
 
-_Why AI-specific_: AI agents read the constitution linearly and assign roughly equal weight to all sections. A constitution that has grown organically through many amendments tends to be structurally unbalanced — one principle with 30 rules, another with 3. Related rules scattered across principles. Missing cross-references. No clear narrative arc. A human can mentally reorganize; an AI agent cannot.
+*Why AI-specific*: AI agents read the constitution linearly and assign roughly equal weight to all sections. A constitution that has grown organically through many amendments tends to be structurally unbalanced — one principle with 30 rules, another with 3. Related rules scattered across principles. Missing cross-references. No clear narrative arc. A human can mentally reorganize; an AI agent cannot.
 
 **Checks:**
 
@@ -215,7 +211,7 @@ _Why AI-specific_: AI agents read the constitution linearly and assign roughly e
 
 #### Category 6: Governance Echo Detection
 
-_Why AI-specific_: AI-driven projects accumulate multiple governance files — each loaded into the AI context. The same rule restated across files wastes tokens on every invocation and introduces contradiction risk when one copy is updated but others are not.
+*Why AI-specific*: AI-driven projects accumulate multiple governance files — each loaded into the AI context. The same rule restated across files wastes tokens on every invocation and introduces contradiction risk when one copy is updated but others are not.
 
 **Checks:**
 
@@ -247,14 +243,14 @@ Combine all category results into a single report. Present to the user:
 
 ### Executive Summary
 
-| Category             | Findings | Severity  | Projected Savings |
-| -------------------- | -------- | --------- | ----------------- |
-| Token Budget         | X        | <highest> | ~Y tokens         |
-| Rule Health          | X        | <highest> | —                 |
-| AI Interpretability  | X        | <highest> | —                 |
-| Semantic Compression | X        | <highest> | ~Y tokens         |
-| Coherence            | X        | <highest> | —                 |
-| Governance Echo      | X        | <highest> | ~Y tokens         |
+| Category | Findings | Severity | Projected Savings |
+|----------|----------|----------|-------------------|
+| Token Budget | X | <highest> | ~Y tokens |
+| Rule Health | X | <highest> | — |
+| AI Interpretability | X | <highest> | — |
+| Semantic Compression | X | <highest> | ~Y tokens |
+| Coherence | X | <highest> | — |
+| Governance Echo | X | <highest> | ~Y tokens |
 
 **Overall Health Score**: X/100
 **Total Projected Token Reduction**: ~Y tokens (Z%)
@@ -276,11 +272,11 @@ Based on findings, produce a concrete plan:
 ```markdown
 ### Proposed Changes
 
-| #   | Change                                 | Category     | Files Affected | Token Impact | Risk |
-| --- | -------------------------------------- | ------------ | -------------- | ------------ | ---- |
-| 1   | Remove version history HTML comments   | Token Budget | constitution   | -X tokens    | Low  |
-| 2   | Compress checkstyle rules to reference | Compression  | constitution   | -X tokens    | Low  |
-| ... | ...                                    | ...          | ...            | ...          | ...  |
+| # | Change | Category | Files Affected | Token Impact | Risk |
+|---|--------|----------|----------------|--------------|------|
+| 1 | Remove version history HTML comments | Token Budget | constitution | -X tokens | Low |
+| 2 | Compress checkstyle rules to reference | Compression | constitution | -X tokens | Low |
+| ... | ... | ... | ... | ... | ... |
 
 ### Version Bump
 
@@ -307,7 +303,6 @@ For each user-approved change:
 ### 9. Post-Application Validation
 
 After writing changes:
-
 1. Re-parse the updated constitution — verify no remaining `[PLACEHOLDER]` bracket tokens
 2. Verify version footer matches Sync Impact Report
 3. Verify all dates are ISO format (YYYY-MM-DD)
@@ -324,25 +319,20 @@ After writing changes:
 **Token Reduction**: <old_tokens> → <new_tokens> (<percent>% savings)
 
 ### Changes Applied
-
 - [List of applied changes with token impact]
 
 ### Changes Declined
-
 - [List of user-declined changes, preserved for next run]
 
 ### Sync Impact Report Updated
-
 - Version change: <old> → <new>
 - Modified sections: [list]
 - Templates status: [all aligned / needs review]
 
 ### Suggested Commit Message
-
 docs: optimize constitution to v<new> — reduce governance token overhead by <percent>%
 
 ### Recommended Follow-Up
-
 - Review updated constitution for accuracy
 - Run `/speckit.constitution` if substantive amendments are needed beyond optimization
 - Run `/speckit.analyze` to verify cross-artifact consistency
@@ -352,21 +342,16 @@ docs: optimize constitution to v<new> — reduce governance token overhead by <p
 ## Operating Principles
 
 ### Suggest-Only
-
 Every change is proposed, never applied silently. The user has full veto power over every individual finding. "Apply all" is offered as a convenience but never the default.
 
 ### Semantic Preservation
-
 Optimization MUST NOT change the meaning of any rule. Compression removes redundancy in expression, not in intent. After optimization, every governance rule that existed before MUST still be expressible from the optimized document.
 
 ### Constitution Authority
-
 The review respects the constitution's own governance section. Version bumps follow the defined semver policy. If the governance section specifies an amendment process, the optimization follows it.
 
 ### Idempotency
-
 Running this command twice in succession on the same constitution MUST produce zero new findings on the second run. If it does not, there is a bug in the optimization logic.
 
 ### Context Efficiency
-
 The primary goal is making the constitution cheaper to include in AI context windows while maintaining full governance clarity. Every recommendation must be justified by a concrete token savings figure or a measurable improvement in AI interpretability.

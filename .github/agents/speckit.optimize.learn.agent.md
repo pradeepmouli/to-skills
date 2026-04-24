@@ -1,17 +1,17 @@
 ---
 description: Analyze AI session patterns to suggest constitution rules or memory entries.
 handoffs:
-  - label: Amend constitution
-    agent: speckit.constitution
-    prompt: Add the approved rules to the constitution
-  - label: Optimize governance
-    agent: speckit.optimize.run
-    prompt: Run a full governance audit after adding new rules
+- label: Amend constitution
+  agent: speckit.constitution
+  prompt: Add the approved rules to the constitution
+- label: Optimize governance
+  agent: speckit.optimize.run
+  prompt: Run a full governance audit after adding new rules
 ---
+
 
 <!-- Extension: optimize -->
 <!-- Config: .specify/extensions/optimize/ -->
-
 ## User Input
 
 ```text
@@ -65,7 +65,6 @@ If no git changes are found, inform the user: "No session changes detected. This
 Load the constitution (following the standard resolution chain from `.specify/memory/constitution.md`). Parse into a flat list of rules for gap analysis.
 
 Load config from `.specify/extensions/optimize/optimize-config.yml` (or defaults) for:
-
 - `min_corrections_to_flag` (default: 2)
 - `include_memory_suggestions` (default: true)
 - `include_rule_suggestions` (default: true)
@@ -125,7 +124,6 @@ For each detected pattern, generate a proposal. Proposals are either **constitut
 #### Constitution Rule Proposals
 
 Only propose constitution rules when the pattern:
-
 - Affects all developers (not just one person's preference)
 - Applies across all AI tools (not tool-specific)
 - Is project-wide (not component-specific)
@@ -141,13 +139,11 @@ Format for each proposed rule:
 **Severity**: MUST / SHOULD
 
 **Rule Text**:
-
 > <Concrete, deterministic rule text. MUST/SHOULD qualified. No vague language.>
 
 **Rationale**: <What session pattern triggered this>
 
 **Evidence**:
-
 - `<file>:<line>` — <what happened>
 - Commit `<hash>` — <what the fix was>
 - Pattern repeated <N> times across <files>
@@ -160,7 +156,6 @@ Format for each proposed rule:
 #### Memory Entry Proposals
 
 Propose memory entries when the pattern:
-
 - Is specific to this user or project (not universal)
 - Is preference-based rather than governance-based
 - Would help the AI agent in future sessions without being a formal rule
@@ -175,13 +170,11 @@ Format for each proposed memory:
 **File Name**: <proposed filename, e.g., feedback_import_order.md>
 
 **Content**:
-
 > <Proposed memory content, structured per the memory type's conventions>
 
 **Rationale**: <What session pattern triggered this>
 
 **Evidence**:
-
 - <specific examples from the session>
 ```
 
@@ -198,17 +191,17 @@ Present all proposals to the user:
 
 ### Session Patterns Detected
 
-| #   | Pattern               | Occurrences | Type       | Proposal      |
-| --- | --------------------- | ----------- | ---------- | ------------- |
-| 1   | <pattern description> | X times     | Mistake    | Rule / Memory |
-| 2   | <pattern description> | X times     | Repetitive | Rule / Memory |
-| ... | ...                   | ...         | ...        | ...           |
+| # | Pattern | Occurrences | Type | Proposal |
+|---|---------|-------------|------|----------|
+| 1 | <pattern description> | X times | Mistake | Rule / Memory |
+| 2 | <pattern description> | X times | Repetitive | Rule / Memory |
+| ... | ... | ... | ... | ... |
 
 ### Existing Rules Violated
 
-| #   | Rule        | Principle   | Violation Count | Issue                    |
-| --- | ----------- | ----------- | --------------- | ------------------------ |
-| 1   | <rule text> | <principle> | X               | Ambiguous / Easy to miss |
+| # | Rule | Principle | Violation Count | Issue |
+|---|------|-----------|-----------------|-------|
+| 1 | <rule text> | <principle> | X | Ambiguous / Easy to miss |
 
 **Suggestion**: Rewrite for clarity → <proposed rewrite>
 
@@ -238,19 +231,16 @@ Wait for user selection. Do NOT apply anything without explicit consent.
 For each user-approved proposal:
 
 **Constitution rules**:
-
 - Do NOT directly edit the constitution
 - Hand off to `/speckit.constitution` with the specific rule text, principle placement, and rationale
 - This ensures proper version bumping and governance compliance
 
 **Memory entries**:
-
 - Write the memory file to the appropriate memory directory
 - Update the memory index (e.g., `MEMORY.md`)
 - Confirm each write to the user
 
 **Rule rewrites** (for existing rules that were violated due to ambiguity):
-
 - Hand off to `/speckit.optimize.run --category ai_interpretability` for a targeted rewrite
 - Or hand off to `/speckit.constitution` for manual amendment
 
@@ -260,21 +250,17 @@ For each user-approved proposal:
 ## Session Learning Complete
 
 ### Applied
-
 - Constitution rules handed to `/speckit.constitution`: X
 - Memory entries written: X
 - Rule rewrites suggested: X
 
 ### Declined
-
 - [List of declined proposals — preserved in report for future reference]
 
 ### Learning Report Saved
-
 - Report: `.specify/optimize/learning-report-<date>.md`
 
 ### Recommended Follow-Up
-
 - Run `/speckit.constitution` to formally add approved rules
 - Run `/speckit.optimize.run` to verify the new rules don't create contradictions
 - Run `/speckit.optimize.tokens` to check token budget after additions
@@ -289,21 +275,16 @@ If approved, save the full report for historical reference. This enables trend a
 ## Operating Principles
 
 ### Evidence-Based Only
-
 Every proposal cites specific files, line numbers, commits, and pattern counts. No speculative rules based on general best practices — only rules motivated by observed session behavior.
 
 ### Minimal Governance Growth
-
 Prefer memory entries (zero token cost to future sessions) over constitution rules (permanent token cost). Only propose constitution rules when the pattern is project-wide, tool-agnostic, and would benefit all future AI sessions.
 
 ### Deterministic Proposals
-
 Every proposed rule text is concrete, MUST/SHOULD qualified, and deterministic. If the AI agent writing the proposal cannot make the rule deterministic, it should propose a memory entry instead.
 
 ### Suggest-Only
-
 The learning report is a proposal, not an action. The user reviews each suggestion individually and decides what to keep. Declined proposals are preserved in the report for future reconsideration.
 
 ### Session Boundary Respect
-
 This command only analyzes the current session's work. It does not dig into older history or make suggestions based on past sessions. For historical analysis, use `/speckit.optimize.run` which audits the full constitution.
