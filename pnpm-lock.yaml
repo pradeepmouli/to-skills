@@ -120,6 +120,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.39
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.39)(lightningcss@1.32.0)
 
   packages/target-mcpc:
     dependencies:

@@ -82,6 +82,45 @@ describe('renderSkill — invocation hook', () => {
     expect(render.mock.calls[0]![1].skillName).toBe('custom-name');
   });
 
+  it('merges additionalFrontmatter into SKILL.md (default path)', () => {
+    const out = renderSkill(minimalSkill, {
+      additionalFrontmatter: { mcp: { foo: 'bar' } }
+    });
+    // Canonicalization sorts keys alphabetically — verify both content and structure.
+    expect(out.skill.content).toMatch(/mcp:\n\s+foo: bar/);
+  });
+
+  it('does not overwrite existing keys via additionalFrontmatter', () => {
+    const out = renderSkill(minimalSkill, {
+      additionalFrontmatter: { name: 'override-attempt' }
+    });
+    // Original `name: my-lib` wins; the override must NOT appear.
+    expect(out.skill.content).toContain('name: my-lib');
+    expect(out.skill.content).not.toContain('override-attempt');
+  });
+
+  it('threads invocationLaunchCommand and invocationPackageName into ctx', async () => {
+    const render = vi.fn(
+      async (_s: ExtractedSkill, _c: AdapterRenderContext): Promise<RenderedSkill> => ({
+        skill: { filename: 's/SKILL.md', content: '---\nname: s\n---\n' },
+        references: []
+      })
+    );
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render
+    };
+    await renderSkill(minimalSkill, {
+      invocation: adapter,
+      invocationPackageName: '@org/my-server',
+      invocationLaunchCommand: { command: 'npx', args: ['-y', '@org/my-server'] }
+    });
+    const ctx = render.mock.calls[0]![1];
+    expect(ctx.packageName).toBe('@org/my-server');
+    expect(ctx.launchCommand).toEqual({ command: 'npx', args: ['-y', '@org/my-server'] });
+  });
+
   // Type-guard: renderSkills must reject an invocation adapter at compile time.
   // This is a compile-time assertion, not a runtime one — if the file type-checks,
   // the guard is in place. The runtime body is a no-op.

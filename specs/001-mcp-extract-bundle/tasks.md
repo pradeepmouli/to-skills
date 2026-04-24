@@ -114,12 +114,12 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Default adapter: `target-mcp-protocol`
 
-- [ ] T038 [US1] Create `packages/target-mcp-protocol/src/frontmatter.ts` exporting `emitMcpFrontmatter(skillName: string, launchCommand: { command: string; args?: string[]; env?: Record<string, string> }): string` — uses `yaml` lib with `sortMapEntries: false`, flow style for args arrays (per research.md §7); returns a YAML document fragment
-- [ ] T039 [US1] Create `packages/target-mcp-protocol/src/render.ts` exporting `McpProtocolAdapter` implementing `InvocationAdapter` — composes frontmatter from T038 with core's standard SKILL.md body emission, sets target `'mcp-protocol'`, fingerprint with package version
-- [ ] T039a [P] [US1] Extend `packages/target-mcp-protocol/src/render.ts` (and make the helper exportable from `packages/core/src/renderer.ts` or a new `packages/core/src/references-resources.ts`) to emit `references/resources.md` into the returned `RenderedSkill` when `skill.resources?.length > 0`. Each resource MUST render URI template, name, description, and MIME type (FR-019). SKILL.md Quick Reference MUST include resources with relative links to this file (FR-017)
-- [ ] T039b [P] [US1] Parallel counterpart to T039a for prompts — emit `references/prompts.md` into the returned `RenderedSkill` when `skill.prompts?.length > 0`, rendering each prompt's name, description, and argument table (name, description, required) per FR-020. Wire Quick Reference entries
-- [ ] T040 [US1] Create `packages/target-mcp-protocol/src/index.ts` with `export default new McpProtocolAdapter()` so `require('@to-skills/target-mcp-protocol').default` resolves correctly per adapter-loader contract
-- [ ] T041 [P] [US1] Add unit test `packages/target-mcp-protocol/tests/frontmatter.test.ts` snapshotting the YAML output for single-arg, multi-arg, and env-set cases
+- [x] T038 [US1] Create `packages/target-mcp-protocol/src/frontmatter.ts` exporting `emitMcpFrontmatter(skillName: string, launchCommand: { command: string; args?: string[]; env?: Record<string, string> }): string` — uses `yaml` lib with `sortMapEntries: false`, flow style for args arrays (per research.md §7); returns a YAML document fragment
+- [x] T039 [US1] Create `packages/target-mcp-protocol/src/render.ts` exporting `McpProtocolAdapter` implementing `InvocationAdapter` — composes frontmatter from T038 with core's standard SKILL.md body emission, sets target `'mcp-protocol'`, fingerprint with package version
+- [x] T039a [P] [US1] Extend `packages/target-mcp-protocol/src/render.ts` (and make the helper exportable from `packages/core/src/renderer.ts` or a new `packages/core/src/references-resources.ts`) to emit `references/resources.md` into the returned `RenderedSkill` when `skill.resources?.length > 0`. Each resource MUST render URI template, name, description, and MIME type (FR-019). SKILL.md Quick Reference MUST include resources with relative links to this file (FR-017)
+- [x] T039b [P] [US1] Parallel counterpart to T039a for prompts — emit `references/prompts.md` into the returned `RenderedSkill` when `skill.prompts?.length > 0`, rendering each prompt's name, description, and argument table (name, description, required) per FR-020. Wire Quick Reference entries
+- [x] T040 [US1] Create `packages/target-mcp-protocol/src/index.ts` with `export default new McpProtocolAdapter()` so `require('@to-skills/target-mcp-protocol').default` resolves correctly per adapter-loader contract
+- [x] T041 [P] [US1] Add unit test `packages/target-mcp-protocol/tests/frontmatter.test.ts` snapshotting the YAML output for single-arg, multi-arg, and env-set cases
 
 ### CLI wiring (extract subcommand, stdio form only for this phase)
 

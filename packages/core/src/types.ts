@@ -261,6 +261,34 @@ export interface SkillRenderOptions {
   license: string;
   /** Invocation adapter that selects rendering dialect. Defaults to the mcp-protocol adapter. */
   invocation?: InvocationAdapter;
+  /**
+   * Forwarded into `AdapterRenderContext.launchCommand` for invocation adapters.
+   * Used in extract mode where the host has determined how to launch a third-party
+   * MCP server (e.g. via stdio transport configuration). Mutually informative with
+   * `invocationPackageName`: when both are set, adapters typically prefer the
+   * package-name-driven launch (npx-by-name) for self-referential bundle output.
+   */
+  invocationLaunchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
+  };
+  /**
+   * Forwarded into `AdapterRenderContext.packageName` for bundle-mode self-reference.
+   * Set by `@to-skills/mcp` bundle commands so the emitted skill instructs MCP-native
+   * harnesses to launch the server via `npx <packageName>`.
+   */
+  invocationPackageName?: string;
+  /**
+   * Additional frontmatter keys merged into SKILL.md by the default renderer path.
+   *
+   * @remarks
+   * Used by invocation adapters that delegate body rendering to core's default
+   * path (e.g. `McpProtocolAdapter` injecting `mcp:` frontmatter). Existing keys
+   * (`name`, `description`, `license`) take precedence — collisions silently keep
+   * the existing value. The canonicalization pass alphabetizes keys after merge.
+   */
+  additionalFrontmatter?: Readonly<Record<string, unknown>>;
 }
 
 // NOTE: Forward-declared for backward-compatible extension point.
@@ -288,4 +316,15 @@ export interface AdapterRenderContext {
   maxTokens: number;
   /** When `true` (default), the host runs a canonicalization pass on the adapter's output so re-runs produce content-identical files. */
   canonicalize: boolean;
+  /**
+   * Launch command threaded through from the host (extract mode); `undefined` in
+   * bundle mode where `packageName` is used. Adapters may treat `packageName` as
+   * higher priority than `launchCommand` when both are present (e.g. preferring
+   * `npx <packageName>` for self-referential bundle output).
+   */
+  launchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
+  };
 }

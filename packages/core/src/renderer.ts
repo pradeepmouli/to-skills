@@ -1,3 +1,4 @@
+import YAML from 'yaml';
 import type {
   AdapterRenderContext,
   ExtractedSkill,
@@ -13,6 +14,7 @@ import type {
 import { estimateTokens, truncateToTokenBudget } from './tokens.js';
 import { renderConfigSurfaceSection, renderConfigReference } from './config-renderer.js';
 import { canonicalize } from './canonical.js';
+import { renderResourcesReference, renderPromptsReference } from './references-mcp.js';
 
 /** agentskills.io spec: max 1024 chars for description */
 const DESCRIPTION_MAX = 1024;
@@ -85,9 +87,8 @@ export function renderSkill(
       skillName: toSkillName(opts.namePrefix || skill.name),
       maxTokens: opts.maxTokens,
       canonicalize: true,
-      // packageName is undefined here — bundle mode (which injects packageName)
-      // flows through @to-skills/mcp on a separate code path.
-      packageName: undefined
+      packageName: opts.invocationPackageName,
+      launchCommand: opts.invocationLaunchCommand
     };
     return Promise.resolve(opts.invocation.render(skill, ctx)).then((rendered) =>
       canonicalize(rendered)
@@ -107,6 +108,8 @@ export function renderSkill(
   if (skill.variables.length > 0) refCategories.push('variables');
   if (skill.configSurfaces && skill.configSurfaces.length > 0) refCategories.push('config');
   if (skill.documents && skill.documents.length > 0) refCategories.push('docs');
+  if (skill.resources && skill.resources.length > 0) refCategories.push('resources');
+  if (skill.prompts && skill.prompts.length > 0) refCategories.push('prompts');
   if (opts.includeExamples && skill.examples.length > 1) refCategories.push('examples');
 
   // --- SKILL.md: lean discovery document ---
@@ -232,6 +235,20 @@ export function renderSkill(
       });
     }
   }
+
+  // MCP resources and prompts — emitted via shared helpers so every code path
+  // (default + invocation adapters that delegate here) gets consistent output.
+  const resourcesRef = renderResourcesReference(skill.resources ?? [], {
+    skillName: basePath,
+    maxTokens: opts.maxTokens
+  });
+  if (resourcesRef) references.push(resourcesRef);
+
+  const promptsRef = renderPromptsReference(skill.prompts ?? [], {
+    skillName: basePath,
+    maxTokens: opts.maxTokens
+  });
+  if (promptsRef) references.push(promptsRef);
 
   return canonicalize({
     skill: {
@@ -434,7 +451,14 @@ function renderSkillMd(
   const sections: string[] = [];
 
   const description = buildDescription(skill);
-  sections.push(renderFrontmatter(skillName, description, opts.license || skill.license || ''));
+  sections.push(
+    renderFrontmatter(
+      skillName,
+      description,
+      opts.license || skill.license || '',
+      opts.additionalFrontmatter
+    )
+  );
 
   sections.push(`# ${skill.name}`);
 
@@ -970,10 +994,33 @@ function truncateDescription(desc: string, max: number): string {
   return desc.slice(0, cutpoint > 0 ? cutpoint : max - 3) + '...';
 }
 
-function renderFrontmatter(name: string, description: string, license: string): string {
+function renderFrontmatter(
+  name: string,
+  description: string,
+  license: string,
+  additional?: Readonly<Record<string, unknown>>
+): string {
   const lines = ['---', `name: ${name}`];
   lines.push(`description: ${quoteYaml(description)}`);
   if (license) lines.push(`license: ${license}`);
+
+  if (additional) {
+    // Track existing keys so additional values cannot overwrite them — collisions
+    // silently keep the existing key (e.g. user passing `name` in additional is a no-op).
+    const existing = new Set<string>(['name', 'description']);
+    if (license) existing.add('license');
+
+    for (const [key, value] of Object.entries(additional)) {
+      if (existing.has(key)) continue;
+      // Serialize via yaml so nested objects/arrays produce proper block output.
+      // We trim the trailing newline that yaml.stringify appends so our caller
+      // can join with '\n' cleanly. Indented child lines retain their indent.
+      const serialized = YAML.stringify({ [key]: value }).replace(/\n$/, '');
+      lines.push(serialized);
+      existing.add(key);
+    }
+  }
+
   lines.push('---');
   return lines.join('\n');
 }
@@ -1046,6 +1093,10 @@ function renderLoadingTriggers(categories: string[]): string {
     variables: 'When using exported constants → read `references/variables.md`',
     config: 'When configuring options → read `references/config.md` for all settings and defaults',
     docs: 'When learning concepts or workflows → browse `references/docs/` by category',
+    resources:
+      'When you need to read MCP-exposed resources → read `references/resources.md` for URI templates and MIME types',
+    prompts:
+      'When invoking MCP-exposed prompts → read `references/prompts.md` for arguments and prompt names',
     examples: 'For additional usage patterns → read `references/examples.md`'
   };
 
