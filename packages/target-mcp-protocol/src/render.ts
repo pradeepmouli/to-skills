@@ -16,6 +16,7 @@ import type {
 } from '@to-skills/core';
 import { renderSkill } from '@to-skills/core';
 import type { InvocationAdapter } from '@to-skills/mcp';
+import { McpError } from '@to-skills/mcp';
 import { emitMcpFrontmatter, type McpLaunchCommand } from './frontmatter.js';
 import { PACKAGE_VERSION } from './version.js';
 
@@ -56,7 +57,8 @@ export class McpProtocolAdapter implements InvocationAdapter {
   /**
    * Render an `ExtractedSkill` into a `RenderedSkill` carrying `mcp:` frontmatter.
    *
-   * @throws `TypeError` when neither `ctx.packageName` nor `ctx.launchCommand` is set.
+   * @throws `McpError` with code `MISSING_LAUNCH_COMMAND` when neither
+   *   `ctx.packageName` nor `ctx.launchCommand` is set.
    */
   async render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill> {
     let launchCommand: McpLaunchCommand;
@@ -67,8 +69,9 @@ export class McpProtocolAdapter implements InvocationAdapter {
     } else if (ctx.launchCommand) {
       launchCommand = ctx.launchCommand;
     } else {
-      throw new TypeError(
-        'McpProtocolAdapter.render: neither ctx.packageName nor ctx.launchCommand provided'
+      throw new McpError(
+        'McpProtocolAdapter.render: neither ctx.packageName nor ctx.launchCommand provided',
+        'MISSING_LAUNCH_COMMAND'
       );
     }
 

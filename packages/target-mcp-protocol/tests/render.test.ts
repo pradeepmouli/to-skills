@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 import type { AdapterRenderContext, ExtractedSkill } from '@to-skills/core';
+import { McpError } from '@to-skills/mcp';
 import { McpProtocolAdapter } from '../src/render.js';
 
 const baseSkill: ExtractedSkill = {
@@ -141,7 +142,10 @@ describe('McpProtocolAdapter', () => {
     expect(inner.args).toEqual(['-y', '@org/my-server']);
   });
 
-  it('throws when neither packageName nor launchCommand is set', async () => {
-    await expect(adapter.render(baseSkill, makeCtx())).rejects.toThrow(/neither/);
+  it('throws McpError(MISSING_LAUNCH_COMMAND) when neither packageName nor launchCommand is set', async () => {
+    const promise = adapter.render(baseSkill, makeCtx());
+    await expect(promise).rejects.toBeInstanceOf(McpError);
+    await expect(promise).rejects.toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
+    await expect(promise).rejects.toThrow(/neither/);
   });
 });
