@@ -51,9 +51,24 @@ describe('buildProgram', () => {
     expect(subNames).toEqual(['bundle', 'extract']);
   });
 
-  it('bundle subcommand throws McpError with "not yet implemented"', async () => {
+  it('bundle subcommand is no longer a Phase-5 stub (action wired to runBundle)', async () => {
+    // Run against an empty tmpdir so readBundleConfig surfaces a real
+    // TRANSPORT_FAILED (no package.json) — proves the action ran, didn't
+    // throw the old stub message, and didn't try to extract.
     const program = makeProgram();
-    await expect(program.parseAsync(['node', 'bin', 'bundle'])).rejects.toBeInstanceOf(McpError);
+    const dir = mkdtempSync(join(tmpdir(), 'to-skills-mcp-bundle-stub-'));
+    try {
+      await expect(
+        program.parseAsync(['node', 'bin', 'bundle', '--package-root', dir])
+      ).rejects.toSatisfy(
+        (err) =>
+          err instanceof McpError &&
+          err.code === 'TRANSPORT_FAILED' &&
+          !/not yet implemented/i.test(err.message)
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   describe('extract flag validation', () => {

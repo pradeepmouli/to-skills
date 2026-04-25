@@ -14,8 +14,8 @@
  * | ---- | ----------- |
  * | 2    | TRANSPORT_FAILED, INITIALIZE_FAILED, PROTOCOL_VERSION_UNSUPPORTED |
  * | 3    | SCHEMA_REF_CYCLE, SERVER_EXITED_EARLY |
- * | 4    | DUPLICATE_SKILL_NAME, MISSING_LAUNCH_COMMAND |
- * | 5    | ADAPTER_NOT_FOUND, UNKNOWN_TARGET |
+ * | 4    | DUPLICATE_SKILL_NAME |
+ * | 5    | ADAPTER_NOT_FOUND, UNKNOWN_TARGET, MISSING_LAUNCH_COMMAND |
  * | 130  | SIGINT / SIGTERM |
  *
  * @module bin
@@ -31,7 +31,10 @@ const ERROR_EXIT_CODES: Record<string, number> = {
   SCHEMA_REF_CYCLE: 3,
   SERVER_EXITED_EARLY: 3,
   DUPLICATE_SKILL_NAME: 4,
-  MISSING_LAUNCH_COMMAND: 4,
+  // Spec contract (contracts/package-json-config.md): MISSING_LAUNCH_COMMAND
+  // is exit 5 — distinguishes "config exists but is incomplete" (5) from
+  // "two entries collide" (4). The neighboring DUPLICATE_SKILL_NAME stays at 4.
+  MISSING_LAUNCH_COMMAND: 5,
   ADAPTER_NOT_FOUND: 5,
   UNKNOWN_TARGET: 5
 };

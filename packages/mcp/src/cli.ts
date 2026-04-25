@@ -25,10 +25,20 @@
  */
 
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
 import { Command, InvalidArgumentError } from 'commander';
 import { renderSkill, writeSkills } from '@to-skills/core';
 import { loadAdapterAsync } from './adapter/loader.js';
+import { bundleMcpSkill } from './bundle.js';
+// Internal import: the bundle CLI does its own pre-flight DUPLICATE_SKILL_NAME
+// check (so --force semantics fire BEFORE bundleMcpSkill calls writeSkills,
+// which always rmSyncs the destination). readBundleConfig is the cleanest
+// hook — it returns normalized entries with skillName resolved, and we want
+// to short-circuit on collision without re-implementing config parsing. This
+// is an internal-only import; readBundleConfig stays out of the public API.
+import { readBundleConfig } from './bundle/config.js';
+import type { McpBundleOptions } from './types.js';
+import type { InvocationTarget } from './adapter/types.js';
 import { McpError } from './errors.js';
 import { extractMcpSkill } from './extract.js';
 import { PACKAGE_VERSION } from './version.js';
@@ -74,10 +84,22 @@ export function buildProgram(): Command {
 
   program
     .command('bundle')
-    .description('[Phase 5] Bundle MCP server into its own package as a skill')
-    .action(() => {
-      throw new McpError('Bundle mode not yet implemented (Phase 5).', 'TRANSPORT_FAILED');
-    });
+    .description('Bundle an MCP server into its host package as a generated skill')
+    .option('--package-root <dir>', 'Path to the host package (default: cwd)')
+    .option('-o, --out <dir>', 'Output directory (default: <packageRoot>/skills)')
+    .option('--max-tokens <n>', 'Per reference-file token budget', parsePositiveInt, 4000)
+    .option('--llms-txt', 'Emit llms.txt alongside SKILL.md')
+    .option('--force', 'Overwrite existing skill directories')
+    .option('--skip-audit', 'Skip audit rules')
+    .option('--canonicalize', 'Run canonicalization pass on output (default true)', true)
+    .option('--no-canonicalize', 'Disable canonicalization pass')
+    .option(
+      '--invocation <target>',
+      'Override per-entry invocation target (repeatable)',
+      collect,
+      [] as string[]
+    )
+    .action(runBundle);
 
   return program;
 }
@@ -279,4 +301,105 @@ function finalizeWrite(
   }
 
   process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
+}
+
+/** Parsed `bundle` subcommand options as produced by commander. @internal */
+interface BundleOpts {
+  packageRoot?: string;
+  out?: string;
+  maxTokens: number;
+  llmsTxt?: boolean;
+  force?: boolean;
+  skipAudit?: boolean;
+  canonicalize: boolean;
+  invocation: string[];
+}
+
+/**
+ * `bundle` action body. Reads `to-skills.mcp` from the host package, performs
+ * a pre-flight collision check (so --force semantics fire BEFORE writeSkills
+ * does an unconditional rmSync on each destination), then runs
+ * `bundleMcpSkill` and surfaces per-skill stdout / per-failure stderr lines.
+ *
+ * Throws `McpError` when any entry failed so `bin.ts` maps to a non-zero exit.
+ * The chosen code follows a stable hierarchy
+ * (DUPLICATE_SKILL_NAME → MISSING_LAUNCH_COMMAND → INITIALIZE_FAILED →
+ *  TRANSPORT_FAILED) so multi-failure runs converge on a deterministic code.
+ *
+ * @internal
+ */
+async function runBundle(opts: BundleOpts): Promise<void> {
+  const packageRoot = path.resolve(opts.packageRoot ?? process.cwd());
+  const outDir = opts.out !== undefined ? path.resolve(packageRoot, opts.out) : undefined;
+
+  // Notices for not-yet-wired flags — mirrors the stdio extract pattern so
+  // users get explicit feedback rather than silent acceptance.
+  if (!opts.canonicalize) {
+    process.stderr.write(
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+    );
+  }
+  if (opts.skipAudit) {
+    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
+  }
+  if (opts.llmsTxt) {
+    process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
+  }
+
+  // Pre-flight DUPLICATE_SKILL_NAME check. bundleMcpSkill → writeSkills will
+  // rmSync the destination unconditionally; that's fine when the user opted
+  // in via --force, but otherwise we should bail before any extract spawns.
+  // We import readBundleConfig from the internal config module to avoid
+  // re-parsing package.json ourselves.
+  const entries = await readBundleConfig(packageRoot);
+  const resolvedOutDir = outDir ?? path.join(packageRoot, 'skills');
+  if (!opts.force) {
+    for (const entry of entries) {
+      const dest = path.join(resolvedOutDir, entry.skillName);
+      if (existsSync(dest)) {
+        throw new McpError(
+          `Output directory already exists: ${dest}. Pass --force to overwrite.`,
+          'DUPLICATE_SKILL_NAME'
+        );
+      }
+    }
+  }
+
+  const bundleOptions: McpBundleOptions = {
+    packageRoot,
+    ...(outDir !== undefined ? { outDir } : {}),
+    ...(opts.invocation.length > 0 ? { invocation: opts.invocation as InvocationTarget[] } : {})
+  };
+
+  const result = await bundleMcpSkill(bundleOptions);
+
+  // Stdout: one success line per written skill.
+  for (const skill of Object.values(result.skills)) {
+    const refCount = Math.max(0, skill.files.length - 1);
+    process.stdout.write(`Wrote ${skill.dir}/SKILL.md (${refCount} references)\n`);
+  }
+  // Stderr: one line per failure. Files-field warnings were already emitted
+  // by bundleMcpSkill — we don't re-emit.
+  for (const [name, failure] of Object.entries(result.failures)) {
+    process.stderr.write(`Failed [${failure.code}] ${name}: ${failure.message}\n`);
+  }
+
+  // Exit-code policy: when ≥1 entries failed, throw with the worst code so
+  // bin.ts maps to a non-zero exit. Hierarchy below is intentional — when
+  // multiple entries fail with different codes, we surface the
+  // most-actionable one first (config issues over transport blips).
+  const codes = Object.values(result.failures).map((f) => f.code);
+  if (codes.length > 0) {
+    const ordered: McpError['code'][] = [
+      'DUPLICATE_SKILL_NAME',
+      'MISSING_LAUNCH_COMMAND',
+      'INITIALIZE_FAILED',
+      'TRANSPORT_FAILED'
+    ];
+    const worst = ordered.find((c) => codes.includes(c)) ?? codes[0]!;
+    throw new McpError(
+      `bundle: ${codes.length} ${codes.length === 1 ? 'entry' : 'entries'} failed. See stderr above.`,
+      worst
+    );
+  }
 }

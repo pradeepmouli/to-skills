@@ -192,16 +192,16 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### CLI wiring for bundle
 
-- [ ] T064 [US4] Add `bundle` subcommand to `packages/mcp/src/cli.ts` with flags `--package-root`, `--out`, `--max-tokens`, `--llms-txt`, `--force`, `--skip-audit`, `--canonicalize`/`--no-canonicalize`; calls `bundleMcpSkill`
-- [ ] T065 [US4] Add bundle-mode exit code mapping in `packages/mcp/src/cli.ts`: exit 4 when config missing/malformed; exit 5 on `MISSING_LAUNCH_COMMAND`
+- [x] T064 [US4] Add `bundle` subcommand to `packages/mcp/src/cli.ts` with flags `--package-root`, `--out`, `--max-tokens`, `--llms-txt`, `--force`, `--skip-audit`, `--canonicalize`/`--no-canonicalize`; calls `bundleMcpSkill`
+- [x] T065 [US4] Add bundle-mode exit code mapping in `packages/mcp/src/cli.ts`: exit 4 when config missing/malformed; exit 5 on `MISSING_LAUNCH_COMMAND`
 
 ### Integration test
 
-- [ ] T066 [P] [US4] Create test fixture `packages/mcp/tests/fixtures/fake-server-package/` — a minimal TypeScript package with `package.json` declaring `bin`, `to-skills.mcp`, a one-file MCP server in `dist/server.js` (pre-built; no tsc run in tests), and a lockfile
-- [ ] T067 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-basic.test.ts` running `bundle` against the T066 fixture, asserting `skills/my-server/SKILL.md` is written with correct npx-by-name frontmatter, and asserting the fixture's `package.json` is byte-identical before and after (no mutation)
-- [ ] T067a [P] [US4] Integration test `packages/mcp/tests/integration/bundle-idempotent.test.ts` running `bundleMcpSkill` twice against the T066 fixture; compute SHA-256 of `SKILL.md` and each `references/*.md` after each run; assert hashes match across runs. Exercises the content-identical guarantee from FR-038 / SC-009 (post-canonicalization)
-- [ ] T068 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-multi-server.test.ts` using a fixture with an array `to-skills.mcp` of two servers; asserts two skill directories are written independently
-- [ ] T069 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-files-warning.test.ts` using a fixture whose `package.json` omits `skills/` from `files`; assert stderr contains the warning line AND the file was still written AND package.json is unmodified
+- [x] T066 [P] [US4] Create test fixture `packages/mcp/tests/fixtures/fake-server-package/` — a minimal TypeScript package with `package.json` declaring `bin`, `to-skills.mcp`, a one-file MCP server in `dist/server.js` (pre-built; no tsc run in tests), and a lockfile
+- [x] T067 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-basic.test.ts` running `bundle` against the T066 fixture, asserting `skills/my-server/SKILL.md` is written with correct npx-by-name frontmatter, and asserting the fixture's `package.json` is byte-identical before and after (no mutation)
+- [x] T067a [P] [US4] Integration test `packages/mcp/tests/integration/bundle-idempotent.test.ts` running `bundleMcpSkill` twice against the T066 fixture; compute SHA-256 of `SKILL.md` and each `references/*.md` after each run; assert hashes match across runs. Exercises the content-identical guarantee from FR-038 / SC-009 (post-canonicalization)
+- [x] T068 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-multi-server.test.ts` using a fixture with an array `to-skills.mcp` of two servers; asserts two skill directories are written independently
+- [x] T069 [P] [US4] Add integration test `packages/mcp/tests/integration/bundle-files-warning.test.ts` using a fixture whose `package.json` omits `skills/` from `files`; assert stderr contains the warning line AND the file was still written AND package.json is unmodified
 
 **Checkpoint**: Bundle mode complete for default target. MCP-native consumption path works end-to-end.
 
