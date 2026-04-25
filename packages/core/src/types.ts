@@ -64,6 +64,59 @@ export interface ExtractedSkill {
   prompts?: ExtractedPrompt[];
   /** Setup instructions emitted when the invocation target is CLI-based. */
   setup?: SkillSetup;
+  /**
+   * MCP audit findings, surfaced on the return value of `extractMcpSkill`
+   * (FR-H006, US3) so programmatic callers can gate CI on structured results
+   * without parsing stderr.
+   *
+   * Tri-state semantics:
+   * - `undefined` — audit was skipped (`options.audit?.skip === true`) OR
+   *   this skill was produced by a non-MCP extractor (TypeDoc, CLI). Callers
+   *   cannot distinguish "ran clean" from "never ran" without the context.
+   * - `[]` — audit ran and found no issues.
+   * - `[…]` — audit ran and found issues. Length and `severity` distribution
+   *   are the gate criteria for CI.
+   *
+   * @remarks
+   * The element shape (`McpAuditIssue`) is forward-declared here in
+   * `@to-skills/core` so this field is typeable without a runtime dependency
+   * on `@to-skills/mcp`. The concrete audit engine lives in `@to-skills/mcp`,
+   * which re-exports the type as `AuditIssue` for adapter-author ergonomics.
+   */
+  readonly auditIssues?: readonly McpAuditIssue[];
+}
+
+// NOTE: Forward-declared for backward-compatible extension point.
+// The concrete audit engine lives in @to-skills/mcp; core has no runtime
+// dependency on it. Core owns the structural contract; @to-skills/mcp
+// re-exports as `AuditIssue` / `AuditSeverity` for ergonomics.
+//
+// The names are prefixed with `Mcp` here to avoid a collision with the
+// pre-existing skill-level `AuditIssue` exported from `audit-types.ts`,
+// which has a different shape (file/line/symbol/suggestion). Both are
+// re-exported from `@to-skills/core` under their respective names.
+/**
+ * Audit severity levels for MCP audit findings — same union as
+ * `@to-skills/mcp`'s `AuditSeverity`, declared here so
+ * `ExtractedSkill.auditIssues` is typeable from core.
+ */
+export type McpAuditSeverity = 'fatal' | 'error' | 'warning' | 'alert';
+
+/**
+ * Structural shape of an MCP audit issue, matching `@to-skills/mcp`'s
+ * `AuditIssue`. Forward-declared so `ExtractedSkill.auditIssues` is
+ * typeable without a core→mcp dependency. `@to-skills/mcp` re-exports
+ * this as `AuditIssue` so adapter authors get the familiar name.
+ */
+export interface McpAuditIssue {
+  /** M1-M99 for MCP audit codes. */
+  readonly code: `M${number}`;
+  /** Severity level. */
+  readonly severity: McpAuditSeverity;
+  /** Human-readable description of the finding. */
+  readonly message: string;
+  /** Where the issue was found (tool name, parameter path). */
+  readonly location?: { readonly tool?: string; readonly parameter?: string };
 }
 
 /** An MCP-exposed resource (static or templated URI, readable by the agent harness). */
@@ -360,44 +413,74 @@ export interface InvocationAdapter {
   render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill>;
 }
 
-export interface AdapterRenderContext {
-  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`; `undefined` in extract mode where the skill is for a third-party server. */
-  packageName?: string;
-  /**
-   * Bundle-mode multi-bin selector — when set alongside `packageName`, the
-   * adapter should emit the npx `--package=<packageName> <binName>` form
-   * (FR-034). Ignored when `packageName` is undefined.
-   */
-  binName?: string;
+/**
+ * Fields shared by every arm of {@link AdapterRenderContext}. Adapters can
+ * destructure these without first checking `mode`.
+ */
+export interface AdapterRenderContextBase {
   /** Output directory name chosen by the caller (e.g. "filesystem", "my-server"). */
-  skillName: string;
+  readonly skillName: string;
   /** Token budget ceiling per reference file — adapters should stay under this but the host will truncate if exceeded. */
-  maxTokens: number;
+  readonly maxTokens: number;
   /** When `true` (default), the host runs a canonicalization pass on the adapter's output so re-runs produce content-identical files. */
-  canonicalize: boolean;
+  readonly canonicalize: boolean;
+}
+
+/**
+ * Bundle-mode arm — the host bundle command flagged this skill as self-referential
+ * and the adapter should emit `npx <packageName>` (or the multi-bin
+ * `--package=<packageName> <binName>` form per FR-034) as the launch shape.
+ */
+export interface AdapterRenderContextBundle extends AdapterRenderContextBase {
+  readonly mode: 'bundle';
+  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`. */
+  readonly packageName: string;
   /**
-   * Launch command threaded through from the host (extract mode); `undefined` in
-   * bundle mode where `packageName` is used. Adapters may treat `packageName` as
-   * higher priority than `launchCommand` when both are present (e.g. preferring
-   * `npx <packageName>` for self-referential bundle output).
+   * Bundle-mode multi-bin selector — when set, the adapter emits the npx
+   * `--package=<packageName> <binName>` form (FR-034) so the right bin is
+   * invoked at run time. Optional; defaults to the package's single-bin
+   * default when omitted.
    */
-  launchCommand?: {
-    command: string;
-    args?: readonly string[];
-    env?: Readonly<Record<string, string>>;
-  };
-  /**
-   * HTTP endpoint threaded through from the host (HTTP-extract mode); `undefined`
-   * for stdio-extract or bundle modes.
-   *
-   * @remarks
-   * Adapters that emit MCP-launch frontmatter prefer this over `launchCommand`
-   * (and `packageName` wins over both for bundle self-reference). When set,
-   * the adapter should emit a `{ url, headers }` shape rather than a
-   * `{ command, args, env }` shape, because there is no subprocess to spawn.
-   */
-  httpEndpoint?: {
-    url: string;
-    headers?: Readonly<Record<string, string>>;
+  readonly binName?: string;
+}
+
+/**
+ * HTTP-extract arm — the host extracted the skill from an HTTP-based MCP
+ * server (`--url ...`). There is no shell launch command; adapters that emit
+ * MCP-launch frontmatter must produce a `{ url, headers }` shape.
+ */
+export interface AdapterRenderContextHttp extends AdapterRenderContextBase {
+  readonly mode: 'http';
+  readonly httpEndpoint: {
+    readonly url: string;
+    readonly headers?: Readonly<Record<string, string>>;
   };
 }
+
+/**
+ * Stdio-extract arm — the host extracted the skill from a stdio-transport MCP
+ * server. Adapters that emit MCP-launch frontmatter use the `{ command, args,
+ * env }` shape verbatim.
+ */
+export interface AdapterRenderContextStdio extends AdapterRenderContextBase {
+  readonly mode: 'stdio';
+  readonly launchCommand: {
+    readonly command: string;
+    readonly args?: readonly string[];
+    readonly env?: Readonly<Record<string, string>>;
+  };
+}
+
+/**
+ * Discriminated union over `mode` — encodes the "exactly one of
+ * packageName | httpEndpoint | launchCommand" invariant at compile time.
+ *
+ * Adapters narrow on `ctx.mode` via `switch` (with an exhaustive default).
+ * Constructing two arms simultaneously is rejected by TypeScript's
+ * excess-property checker on object literals; the renderer's invocation-adapter
+ * dispatch enforces the same invariant at runtime for non-literal callers.
+ */
+export type AdapterRenderContext =
+  | AdapterRenderContextBundle
+  | AdapterRenderContextHttp
+  | AdapterRenderContextStdio;

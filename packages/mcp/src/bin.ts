@@ -61,7 +61,7 @@ function reportAndExit(err: unknown): never {
 
 const program = buildProgram();
 
-// SIGINT / SIGTERM handler (T046). Exit 130 on Ctrl-C.
+// SIGINT / SIGTERM handler. Exit 130 on Ctrl-C.
 //
 // We don't attempt graceful cleanup of the spawned child here because
 // `finally` blocks do not run across `process.exit()`. Node's default

@@ -37,6 +37,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./adapter-utils": {
+      "types": "./dist/adapter/cli-tools-helpers.d.ts",
+      "import": "./dist/adapter/cli-tools-helpers.js"
     }
   },
   "scripts": {

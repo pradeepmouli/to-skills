@@ -91,47 +91,6 @@
       "registered_skills": [],
       "installed_at": "2026-04-21T14:31:23.885943+00:00"
     },
-    "superb": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:9403df65b0e6107b24d45c3de82a8d15fff475b3b9bd3a2154b194df767dff52",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "amp": [
-          "speckit.superb.clarify",
-          "speckit.superb.tdd",
-          "speckit.superb.review",
-          "speckit.superb.verify",
-          "speckit.superb.critique",
-          "speckit.superb.debug",
-          "speckit.superb.finish",
-          "speckit.superb.respond"
-        ],
-        "claude": [
-          "speckit.superb.clarify",
-          "speckit.superb.tdd",
-          "speckit.superb.review",
-          "speckit.superb.verify",
-          "speckit.superb.critique",
-          "speckit.superb.debug",
-          "speckit.superb.finish",
-          "speckit.superb.respond"
-        ],
-        "copilot": [
-          "speckit.superb.clarify",
-          "speckit.superb.tdd",
-          "speckit.superb.review",
-          "speckit.superb.verify",
-          "speckit.superb.critique",
-          "speckit.superb.debug",
-          "speckit.superb.finish",
-          "speckit.superb.respond"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-04-21T14:31:26.444810+00:00"
-    },
     "refine": {
       "version": "1.0.0",
       "source": "local",
@@ -160,32 +119,6 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-21T14:31:27.151605+00:00"
-    },
-    "security-review": {
-      "version": "1.1.0",
-      "source": "local",
-      "manifest_hash": "sha256:549840c2a584f4a18bbb1e4cf8b3ad330011f41464c0d9d6063ee148f87f9d8f",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "amp": [
-          "speckit.security-review.audit",
-          "speckit.security-review.staged",
-          "speckit.security-review.branch"
-        ],
-        "claude": [
-          "speckit.security-review.audit",
-          "speckit.security-review.staged",
-          "speckit.security-review.branch"
-        ],
-        "copilot": [
-          "speckit.security-review.audit",
-          "speckit.security-review.staged",
-          "speckit.security-review.branch"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-04-21T14:31:28.459757+00:00"
     },
     "workflows": {
       "version": "3.4.1",
@@ -465,6 +398,73 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-24T15:28:55.353771+00:00"
+    },
+    "superb": {
+      "version": "1.3.0",
+      "source": "local",
+      "manifest_hash": "sha256:67185f3f5a9e6617a3fc5e669e9dceeefe12f2a17eb7d5dd7099ac59e3297865",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "amp": [
+          "speckit.superb.check",
+          "speckit.superb.tdd",
+          "speckit.superb.review",
+          "speckit.superb.verify",
+          "speckit.superb.critique",
+          "speckit.superb.debug",
+          "speckit.superb.finish",
+          "speckit.superb.respond"
+        ],
+        "claude": [
+          "speckit.superb.check",
+          "speckit.superb.tdd",
+          "speckit.superb.review",
+          "speckit.superb.verify",
+          "speckit.superb.critique",
+          "speckit.superb.debug",
+          "speckit.superb.finish",
+          "speckit.superb.respond"
+        ],
+        "copilot": [
+          "speckit.superb.check",
+          "speckit.superb.tdd",
+          "speckit.superb.review",
+          "speckit.superb.verify",
+          "speckit.superb.critique",
+          "speckit.superb.debug",
+          "speckit.superb.finish",
+          "speckit.superb.respond"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-21T14:31:26.444810+00:00"
+    },
+    "security-review": {
+      "version": "1.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:549840c2a584f4a18bbb1e4cf8b3ad330011f41464c0d9d6063ee148f87f9d8f",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "amp": [
+          "speckit.security-review.audit",
+          "speckit.security-review.staged",
+          "speckit.security-review.branch"
+        ],
+        "claude": [
+          "speckit.security-review.audit",
+          "speckit.security-review.staged",
+          "speckit.security-review.branch"
+        ],
+        "copilot": [
+          "speckit.security-review.audit",
+          "speckit.security-review.staged",
+          "speckit.security-review.branch"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-21T14:31:28.459757+00:00"
     }
   }
 }

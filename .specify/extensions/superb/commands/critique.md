@@ -9,6 +9,7 @@ mode: speckit.superb.critique
 
 # Critique — Spec-Aligned Code Review Agent
 
+> **Type:** Bridge-native command
 > **Role:** You are the **Critique agent** — an independent code reviewer with
 > no implementation bias. You did not write the code under review. Your loyalty is
 > to the spec, not to the implementation.
@@ -38,7 +39,8 @@ User Context:
 $ARGUMENTS
 ```
 
-If no argument is provided, review the full implementation against the complete spec.
+If no argument is provided, or if $ARGUMENTS is empty or only whitespace, review the full implementation against the complete spec.
+Do not assume any specific task number unless explicitly provided in $ARGUMENTS.
 
 ---
 
@@ -69,8 +71,34 @@ Read in this exact order:
 5. The current git diff:
 
 ```bash
-# Get the diff since the last review checkpoint (or since branch start)
-git diff [BASE_SHA] HEAD
+# Automatically resolve a usable base ref for implementation changes.
+if [ -n "${BASE_REF:-}" ]; then
+  :
+elif [ -n "${BASE_BRANCH:-}" ]; then
+  if git show-ref --verify --quiet "refs/remotes/origin/$BASE_BRANCH"; then
+    BASE_REF="origin/$BASE_BRANCH"
+  elif git show-ref --verify --quiet "refs/heads/$BASE_BRANCH"; then
+    BASE_REF="$BASE_BRANCH"
+  else
+    echo "ERROR: BASE_BRANCH '$BASE_BRANCH' was not found on origin or as a local branch" >&2
+    exit 1
+  fi
+elif git show-ref --verify --quiet refs/remotes/origin/main; then
+  BASE_REF="origin/main"
+elif git show-ref --verify --quiet refs/remotes/origin/master; then
+  BASE_REF="origin/master"
+elif git show-ref --verify --quiet refs/heads/main; then
+  BASE_REF="main"
+elif git show-ref --verify --quiet refs/heads/master; then
+  BASE_REF="master"
+else
+  echo "ERROR: Could not resolve a review base. Set BASE_REF to a reachable ref (for example origin/main or main)." >&2
+  exit 1
+fi
+BASE_SHA=$(git merge-base "$BASE_REF" HEAD)
+
+# Get the diff since the last review checkpoint
+git diff "$BASE_SHA" HEAD
 # Or for staged changes only:
 git diff --cached
 # Or for a specific set of files:
@@ -127,10 +155,10 @@ Evaluate the implementation against the plan's architecture:
 
 For each issue found:
 
-#### 🔴 CRITICAL — Blocks proceeding
+#### 🔴 Critical — Blocks proceeding
 
 ```markdown
-### 🔴 CRITICAL: [Issue title]
+### 🔴 Critical: [Issue title]
 
 **Requirement violated:** spec.md §[section] — "[requirement text]"
 **What was implemented:** [what the code actually does]
@@ -141,20 +169,20 @@ For each issue found:
 This issue must be resolved before any further work. Do not proceed to next task.
 ```
 
-#### 🟡 IMPORTANT — Must fix before merge
+#### 🟠 Important — Must fix before merge
 
 ```markdown
-### 🟡 IMPORTANT: [Issue title]
+### 🟠 Important: [Issue title]
 
 **What:** [description]
 **Evidence:** [file:line or test output]
 **Fix:** [what to do]
 ```
 
-#### 🔵 MINOR — Note for later
+#### 🔵 Minor — Track for follow-up
 
 ```markdown
-### 🔵 MINOR: [Issue title]
+### 🔵 Minor: [Issue title]
 
 **What:** [description]
 **Suggestion:** [optional improvement]
@@ -200,7 +228,7 @@ Do not write new code or start new tasks until resolved.
 If no Critical issues, Important issues exist:
 
 ```
-🟡 FIX BEFORE MERGE: Address Important issues before creating PR.
+🟠 FIX BEFORE MERGE: Address Important issues before creating PR.
 You may continue to the next task but must return to fix these.
 ```
 

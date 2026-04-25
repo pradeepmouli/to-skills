@@ -31,9 +31,15 @@ export type {
   AdapterFingerprint,
   InvocationAdapter,
   AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
   RenderedFile,
   RenderedSkill,
-  SkillRenderOptions
+  SkillRenderOptions,
+  McpAuditSeverity,
+  McpAuditIssue
 } from './types.js';
 
 export { renderSkills, renderSkill } from './renderer.js';

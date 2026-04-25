@@ -38,7 +38,7 @@ export interface CliExtractionOptions {
 export async function extractCliSkill(options: CliExtractionOptions): Promise<ExtractedSkill> {
   const { program, helpTexts, metadata = {}, configSurfaces = [] } = options;
 
-  // Phase 1: Extract command structure (introspection or help)
+  // Extract command structure (introspection or help)
   let cliSurfaces: ExtractedConfigSurface[] = [];
 
   if (program !== undefined) {
@@ -49,7 +49,7 @@ export async function extractCliSkill(options: CliExtractionOptions): Promise<Ex
     );
   }
 
-  // Phase 2: Correlate with typed interfaces
+  // Correlate with typed interfaces
   // Build lookup from config surfaces by their name (case-insensitive)
   const configSurfaceLookup = new Map<string, ExtractedConfigSurface>();
   for (const surface of configSurfaces) {
@@ -69,7 +69,7 @@ export async function extractCliSkill(options: CliExtractionOptions): Promise<Ex
       matchingConfig = configSurfaceLookup.get(`${commandNameLower}options`);
     }
 
-    // Phase 3: Call correlateFlags to merge JSDoc
+    // Call correlateFlags to merge JSDoc
     return correlateFlags(cliSurface, matchingConfig);
   });
 
@@ -82,7 +82,7 @@ export async function extractCliSkill(options: CliExtractionOptions): Promise<Ex
     ...nonCliConfigSurfaces
   ];
 
-  // Phase 3: Build ExtractedSkill with empty functions/classes/types/enums/variables
+  // Build ExtractedSkill with empty functions/classes/types/enums/variables
   // but populated configSurfaces
   const skill: ExtractedSkill = {
     name: metadata.name ?? '',

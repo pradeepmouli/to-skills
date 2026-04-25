@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 import type { AdapterRenderContext, ExtractedSkill } from '@to-skills/core';
-import { McpError } from '@to-skills/mcp';
 import { FastMcpAdapter } from '../src/render.js';
 
 const baseSkill: ExtractedSkill = {
@@ -25,13 +24,61 @@ const baseSkill: ExtractedSkill = {
   examples: []
 };
 
-function makeCtx(overrides: Partial<AdapterRenderContext> = {}): AdapterRenderContext {
-  return {
-    skillName: 'demo-server',
-    maxTokens: 4000,
-    canonicalize: true,
-    ...overrides
+/**
+ * Inputs to {@link makeCtx} mirror the old flat-context API for test
+ * brevity; the helper picks the matching DU arm at construction. Exactly
+ * one of `packageName`/`httpEndpoint`/`launchCommand` is required — the
+ * renderer in `@to-skills/core` enforces this invariant at dispatch time.
+ */
+type CtxInput = {
+  skillName?: string;
+  maxTokens?: number;
+  canonicalize?: boolean;
+  packageName?: string;
+  binName?: string;
+  launchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
   };
+  httpEndpoint?: { url: string; headers?: Readonly<Record<string, string>> };
+};
+
+function makeCtx(overrides: CtxInput = {}): AdapterRenderContext {
+  const skillName = overrides.skillName ?? 'demo-server';
+  const maxTokens = overrides.maxTokens ?? 4000;
+  const canonicalize = overrides.canonicalize ?? true;
+  if (overrides.packageName !== undefined) {
+    return {
+      mode: 'bundle',
+      skillName,
+      maxTokens,
+      canonicalize,
+      packageName: overrides.packageName,
+      ...(overrides.binName !== undefined ? { binName: overrides.binName } : {})
+    };
+  }
+  if (overrides.httpEndpoint !== undefined) {
+    return {
+      mode: 'http',
+      skillName,
+      maxTokens,
+      canonicalize,
+      httpEndpoint: overrides.httpEndpoint
+    };
+  }
+  if (overrides.launchCommand !== undefined) {
+    return {
+      mode: 'stdio',
+      skillName,
+      maxTokens,
+      canonicalize,
+      launchCommand: overrides.launchCommand
+    };
+  }
+  throw new Error(
+    'test makeCtx: must supply one of packageName, httpEndpoint, launchCommand (DU invariant)'
+  );
 }
 
 function parseFrontmatter(content: string): Record<string, unknown> {
@@ -167,19 +214,10 @@ describe('FastMcpAdapter', () => {
     expect(pFile!.content).toContain('## summarize');
   });
 
-  it('throws McpError(MISSING_LAUNCH_COMMAND) when no launch info is set', async () => {
-    // Catch-once pattern: a rejected promise can only be safely consumed once
-    // through .rejects without risking unhandled-rejection warnings if the
-    // implementation ever gains async work before the throw.
-    let caught: unknown;
-    try {
-      await adapter.render(baseSkill, makeCtx());
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught).toBeInstanceOf(McpError);
-    expect(caught).toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
-  });
+  // NOTE: pre-DU "throws MISSING_LAUNCH_COMMAND when no launch info" test
+  // removed — the no-arm state is unrepresentable in AdapterRenderContext;
+  // the renderer in `@to-skills/core` enforces exactly-one-arm at dispatch
+  // time (see `core/test/renderer.invocation.test.ts`).
 
   it('falls back to npx-by-name when only packageName is set', async () => {
     const out = await adapter.render(baseSkill, makeCtx({ packageName: '@org/demo-server' }));

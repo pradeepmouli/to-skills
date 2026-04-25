@@ -38,12 +38,7 @@ import { bundleMcpSkill } from './bundle.js';
 // is an internal-only import; readBundleConfig stays out of the public API.
 import { readBundleConfig } from './bundle/config.js';
 import { readMcpConfigFile } from './config/file-reader.js';
-import type {
-  BundleFailure,
-  McpBundleOptions,
-  McpExtractOptions,
-  McpServerConfig
-} from './types.js';
+import type { BundleFailure, ConfigEntry, McpBundleOptions, McpExtractOptions } from './types.js';
 import type { InvocationTarget } from './adapter/types.js';
 import { McpError, type McpErrorCode } from './errors.js';
 import { extractMcpSkill } from './extract.js';
@@ -208,7 +203,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     );
   }
 
-  // Config-file batch mode (Phase 7 / US3). Delegates to runConfigExtract,
+  // Config-file batch mode. Delegates to runConfigExtract,
   // which handles per-entry containment + worst-code aggregation. We dispatch
   // BEFORE the single-entry --canonicalize / --skip-audit notices because
   // those notices fire inside runConfigExtract once per batch instead.
@@ -217,12 +212,12 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     return;
   }
 
-  // Notices for accepted-but-unwired flags (Phase 10 / T111 / audit rules).
+  // Notices for accepted-but-unwired flags.
   // Mirrors the --llms-txt pattern below so users get explicit feedback
   // rather than silent acceptance.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
 
@@ -234,7 +229,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
       ? (opts.invocation as InvocationTarget[])
       : (['mcp-protocol'] as InvocationTarget[]);
 
-  // Eager target validation (T081) — load every adapter BEFORE we spawn the
+  // Eager target validation — load every adapter BEFORE we spawn the
   // server, so a typo on `--invocation` exits 5 without paying the spawn
   // cost. The loader's per-process cache makes the subsequent
   // loadAdapterAsync() calls in the render loop free.
@@ -335,7 +330,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
 }
 
 /**
- * `extract --config <path>` action body (Phase 7 / US3).
+ * `extract --config <path>` action body.
  *
  * Reads the Claude-Desktop-shaped config file, then runs the full
  * extract → render → write pipeline once per enabled entry. Failures are
@@ -361,10 +356,10 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
   // many-server configs.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
-  const configFile = await readMcpConfigFile(opts.config!);
+  const entries = await readMcpConfigFile(opts.config!);
 
   // Resolve invocation targets eagerly — same approach as runExtract so a
   // typo on `--invocation` exits 5 BEFORE we spawn anything for any entry.
@@ -376,13 +371,13 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
 
   const failures: Record<string, BundleFailure> = {};
 
-  for (const [entryName, entry] of Object.entries(configFile.mcpServers)) {
+  for (const entry of entries) {
     if (entry.disabled === true) {
       continue;
     }
 
     try {
-      await runConfigEntry(entryName, entry, opts, adapters);
+      await runConfigEntry(entry, opts, adapters);
     } catch (err) {
       // Per-entry containment — match `bundle.ts::recordFailure`'s shape so
       // the partial-success contract documented at the top of this function
@@ -394,13 +389,13 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
       // TRANSPORT_FAILED, the conservative default already used by
       // `recordFailure`.
       if (err instanceof McpError) {
-        failures[entryName] = { code: err.code, message: err.message };
-        process.stderr.write(`Failed [${err.code}] ${entryName}: ${err.message}\n`);
+        failures[entry.name] = { code: err.code, message: err.message };
+        process.stderr.write(`Failed [${err.code}] ${entry.name}: ${err.message}\n`);
         continue;
       }
       const message = err instanceof Error ? err.message : String(err);
-      failures[entryName] = { code: 'TRANSPORT_FAILED', message };
-      process.stderr.write(`Failed [TRANSPORT_FAILED] ${entryName}: ${message}\n`);
+      failures[entry.name] = { code: 'TRANSPORT_FAILED', message };
+      process.stderr.write(`Failed [TRANSPORT_FAILED] ${entry.name}: ${message}\n`);
     }
   }
 
@@ -425,53 +420,30 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
  * @internal
  */
 async function runConfigEntry(
-  entryName: string,
-  entry: McpServerConfig,
+  entry: ConfigEntry,
   opts: ExtractOpts,
   adapters: InvocationAdapter[]
 ): Promise<void> {
-  // Build the McpExtractOptions from the entry. Stdio if `command` set,
-  // HTTP if `url` set. The reader has already enforced one-or-the-other.
+  // Build the McpExtractOptions from the entry. The reader has already
+  // collapsed `command`/`url` into a fully-discriminated `McpTransport`, so
+  // we just spread it through — no runtime narrowing needed at this layer.
   const auditOpts =
     opts.skipAudit === true
       ? { audit: { skip: true } }
       : opts.auditAlerts === true
         ? { audit: { includeAlerts: true } }
         : {};
-  let extractOpts: McpExtractOptions;
-  if (entry.command !== undefined) {
-    extractOpts = {
-      transport: {
-        type: 'stdio',
-        command: entry.command,
-        ...(entry.args !== undefined ? { args: entry.args } : {}),
-        ...(entry.env !== undefined ? { env: entry.env } : {})
-      },
-      skillName: entryName,
-      maxTokens: opts.maxTokens,
-      ...auditOpts
-    };
-  } else if (entry.url !== undefined) {
-    extractOpts = {
-      transport: {
-        type: 'http',
-        url: entry.url,
-        ...(entry.headers !== undefined ? { headers: entry.headers } : {})
-      },
-      skillName: entryName,
-      maxTokens: opts.maxTokens,
-      ...auditOpts
-    };
-  } else {
-    // Defensive — readMcpConfigFile guarantees one of the two is set, but
-    // narrowing requires us to handle the case explicitly.
-    throw new McpError(`Entry "${entryName}" has neither command nor url.`, 'TRANSPORT_FAILED');
-  }
+  const extractOpts: McpExtractOptions = {
+    transport: entry.transport,
+    skillName: entry.name,
+    maxTokens: opts.maxTokens,
+    ...auditOpts
+  };
 
   // Pre-flight collision check, per target. Mirrors runExtract so --force
   // semantics fire before writeSkills rmSyncs anything.
   for (const adapter of adapters) {
-    const dirName = dirNameForTarget(entryName, adapter, adapters.length);
+    const dirName = dirNameForTarget(entry.name, adapter, adapters.length);
     const skillDir = join(opts.out, dirName);
     if (existsSync(skillDir) && !opts.force) {
       throw new McpError(
@@ -483,14 +455,14 @@ async function runConfigEntry(
 
   const skill = await extractMcpSkill(extractOpts);
 
-  // Use entryName (the config key) consistently as the directory base. The
-  // pre-flight check above used entryName; we keep using it here so the
+  // Use entry.name (the config key) consistently as the directory base. The
+  // pre-flight check above used entry.name; we keep using it here so the
   // collision check protects the same directory writeSkills will write to.
-  // Since extractOpts.skillName === entryName, skill.name should already
-  // equal entryName in practice — but referencing entryName directly removes
-  // the implicit invariant.
+  // Since extractOpts.skillName === entry.name, skill.name should already
+  // equal entry.name in practice — but referencing entry.name directly
+  // removes the implicit invariant.
   for (const adapter of adapters) {
-    const dirName = dirNameForTarget(entryName, adapter, adapters.length);
+    const dirName = dirNameForTarget(entry.name, adapter, adapters.length);
     const skillDir = join(opts.out, dirName);
 
     const renderOptions: Parameters<typeof renderSkill>[1] = {
@@ -498,10 +470,10 @@ async function runConfigEntry(
       maxTokens: opts.maxTokens,
       ...(adapters.length > 1 ? { namePrefix: dirName } : {})
     };
-    if (entry.url !== undefined) {
+    if (entry.transport.type === 'http') {
       renderOptions.invocationHttpEndpoint = {
-        url: entry.url,
-        ...(entry.headers !== undefined ? { headers: entry.headers } : {})
+        url: entry.transport.url,
+        ...(entry.transport.headers !== undefined ? { headers: entry.transport.headers } : {})
       };
     } else {
       // Mirror extractOpts shape: omit `args` when the entry omits it rather
@@ -509,9 +481,9 @@ async function runConfigEntry(
       // would carry `args: []` for entries that didn't declare any args, while
       // the spawn would see undefined — observably different in the YAML.
       renderOptions.invocationLaunchCommand = {
-        command: entry.command!,
-        ...(entry.args !== undefined ? { args: entry.args } : {}),
-        ...(entry.env !== undefined ? { env: entry.env } : {})
+        command: entry.transport.command,
+        ...(entry.transport.args !== undefined ? { args: entry.transport.args } : {}),
+        ...(entry.transport.env !== undefined ? { env: entry.transport.env } : {})
       };
     }
 
@@ -579,7 +551,7 @@ function dirNameForTarget(
 }
 
 /**
- * Eagerly resolve every requested target before any extract spawn (T081).
+ * Eagerly resolve every requested target before any extract spawn.
  * Wraps `loadAdapterAsync` errors with a hint enumerating the installed
  * adapters so the user can fix `--invocation` typos and missing-package
  * issues without consulting the docs.
@@ -700,7 +672,7 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   // users get explicit feedback rather than silent acceptance.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
   // --max-tokens is parsed for forward-compatibility but not yet threaded into
@@ -712,7 +684,7 @@ async function runBundle(opts: BundleOpts): Promise<void> {
     );
   }
 
-  // Eager target validation (T081) — when the user supplied global
+  // Eager target validation — when the user supplied global
   // `--invocation` overrides, resolve every adapter NOW so a typo exits 5
   // before we read package.json or spawn anything. Per-entry targets (in the
   // package.json invocation field) get validated by bundle.ts inside the

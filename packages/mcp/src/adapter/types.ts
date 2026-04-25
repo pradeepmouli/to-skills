@@ -1,6 +1,10 @@
 import type {
   InvocationAdapter as CoreInvocationAdapter,
   AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
   AdapterFingerprint
 } from '@to-skills/core';
 
@@ -19,6 +23,13 @@ export interface InvocationAdapter extends Omit<CoreInvocationAdapter, 'target'>
   readonly target: InvocationTarget;
 }
 
-export type { AdapterRenderContext, AdapterFingerprint };
+export type {
+  AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
+  AdapterFingerprint
+};
 
 export type { ParameterPlan } from './classify.js';

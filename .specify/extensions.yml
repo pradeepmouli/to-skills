@@ -18,17 +18,6 @@ hooks:
     description: Check naming convention compliance before /specify creates a new
       branch
     condition: null
-  - extension: superb
-    command: speckit.superb.clarify
-    enabled: true
-    optional: true
-    prompt: Run intent-clarification before writing the spec? (recommended for new
-      features)
-    description: 'Socratic design refinement via the superpowers brainstorming skill.
-      Ensures the spec captures the real requirement, not just the stated one.
-
-      '
-    condition: null
   - extension: workflows
     command: speckit.workflows.issue-sync-before-specify
     enabled: true
@@ -125,22 +114,22 @@ hooks:
     prompt: Commit task changes?
     description: Auto-commit after task generation
     condition: null
-  - extension: superb
-    command: speckit.superb.review
-    enabled: true
-    optional: true
-    prompt: Review tasks.md against spec.md for coverage gaps before implementation?
-    description: 'Catches missing or under-specified tasks at planning time. Produces
-      a spec-coverage matrix with gap identification. Bridge-original logic.
-
-      '
-    condition: null
   - extension: workflows
     command: speckit.workflows.issue-sync-after-tasks
     enabled: true
     optional: false
     prompt: null
     description: Update linked issue for workflow boundary after_tasks
+    condition: null
+  - extension: superb
+    command: speckit.superb.review
+    enabled: true
+    optional: true
+    prompt: Review tasks.md for coverage and TDD-readiness before implementation?
+    description: 'Catches missing or under-specified tasks at planning time. Produces
+      a requirement coverage and TDD-readiness report. Bridge-native logic.
+
+      '
     condition: null
   before_implement:
   - extension: git
@@ -150,22 +139,22 @@ hooks:
     prompt: Commit outstanding changes before implementation?
     description: Auto-commit before implementation
     condition: null
-  - extension: superb
-    command: speckit.superb.tdd
-    enabled: true
-    optional: false
-    prompt: Execute speckit.superb.tdd?
-    description: 'Mandatory TDD gate. Loads the superpowers test-driven-development
-      skill and binds it to the spec-kit task structure before any code is written.
-
-      '
-    condition: null
   - extension: workflows
     command: speckit.workflows.issue-sync-before-implement
     enabled: true
     optional: false
     prompt: null
     description: Update linked issue for workflow boundary before_implement
+    condition: null
+  - extension: superb
+    command: speckit.superb.tdd
+    enabled: true
+    optional: false
+    prompt: Execute speckit.superb.tdd?
+    description: 'Mandatory TDD gate. Bridges an installed superpowers test-driven-development
+      skill into the spec-kit task structure before any code is written.
+
+      '
     condition: null
   after_implement:
   - extension: git
@@ -174,16 +163,6 @@ hooks:
     optional: true
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
-    condition: null
-  - extension: superb
-    command: speckit.superb.verify
-    enabled: true
-    optional: false
-    prompt: Execute speckit.superb.verify?
-    description: 'Mandatory completion gate. Loads the superpowers verification skill
-      and extends it with spec-kit spec-coverage checks. Prevents false completions.
-
-      '
     condition: null
   - extension: workflows
     command: speckit.workflows.issue-sync-after-implement
@@ -212,6 +191,16 @@ hooks:
     optional: true
     prompt: Run verify to validate implementation against specification?
     description: Post-implementation verification gate
+    condition: null
+  - extension: superb
+    command: speckit.superb.verify
+    enabled: true
+    optional: false
+    prompt: Execute speckit.superb.verify?
+    description: 'Mandatory completion gate. Bridges an installed superpowers verification-before-completion
+      skill and extends it with spec-kit spec-coverage checks. Prevents false completions.
+
+      '
     condition: null
   before_constitution:
   - extension: git

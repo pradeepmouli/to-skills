@@ -1,7 +1,29 @@
+import type { McpAuditIssue, McpAuditSeverity } from '@to-skills/core';
 import type { InvocationTarget } from './adapter/types.js';
 
 export type McpTransport =
-  | { type: 'stdio'; command: string; args?: string[]; env?: Record<string, string> }
+  | {
+      type: 'stdio';
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+      /**
+       * Maximum time (ms) to wait for `client.connect()` (the MCP `initialize`
+       * handshake) before failing with `INITIALIZE_FAILED`.
+       *
+       * Defaults to `30000` (30 s). Set to `0` (or any non-positive number) to
+       * disable the timeout entirely — useful when a caller explicitly opts
+       * into waiting indefinitely (e.g. an interactive session attached to a
+       * known-slow server).
+       *
+       * Without a timeout, a server that accepts the spawn but never completes
+       * the handshake (e.g. blocked on a sync call, deadlocked init code) hangs
+       * the extract process forever; the default 30 s ceiling preserves user
+       * sanity at the cost of a hard failure on legitimately-slow servers
+       * (callers can opt out via `initializeTimeoutMs: 0`).
+       */
+      initializeTimeoutMs?: number;
+    }
   | { type: 'http'; url: string; headers?: Record<string, string> };
 
 export interface AuditOptions {
@@ -76,29 +98,40 @@ export interface McpBundleOptions {
   llmsTxt?: boolean;
 }
 
-export type AuditSeverity = 'fatal' | 'error' | 'warning' | 'alert';
+/**
+ * Audit severity levels for MCP audit findings.
+ *
+ * @remarks
+ * Sourced from `@to-skills/core` as `McpAuditSeverity` (forward-declared
+ * there so `ExtractedSkill.auditIssues` is typeable from core without a
+ * core→mcp dependency). Re-exported here under the familiar `AuditSeverity`
+ * name so existing adapter-author imports from `@to-skills/mcp` keep working.
+ */
+export type AuditSeverity = McpAuditSeverity;
 
-export interface AuditIssue {
-  /** M1-M99 for MCP audit codes. */
-  code: `M${number}`;
-  severity: AuditSeverity;
-  message: string;
-  /** Where the issue was found. */
-  location?: { tool?: string; parameter?: string };
-}
+/**
+ * MCP audit finding emitted by `runMcpAudit`.
+ *
+ * @remarks
+ * Sourced from `@to-skills/core` as `McpAuditIssue` (forward-declared there
+ * so `ExtractedSkill.auditIssues` is typeable from core). Re-exported here
+ * under the historical `AuditIssue` name to preserve the public surface of
+ * `@to-skills/mcp`. Single source of truth: `McpAuditIssue` in core.
+ */
+export type AuditIssue = McpAuditIssue;
 
 export interface AuditResult {
   /** Issues found, sorted by severity descending. */
-  issues: AuditIssue[];
+  readonly issues: readonly AuditIssue[];
   /** Highest severity present, or 'none' if no issues. */
-  worstSeverity: AuditSeverity | 'none';
+  readonly worstSeverity: AuditSeverity | 'none';
 }
 
 export interface WrittenSkill {
   /** Absolute path to the skill directory. */
   dir: string;
   /** Files written, relative to dir. */
-  files: string[];
+  readonly files: readonly string[];
   /** Invocation target used. */
   target: InvocationTarget;
   /** Audit result. */
@@ -157,4 +190,31 @@ export interface McpServerConfig {
 
 export interface McpConfigFile {
   mcpServers: Record<string, McpServerConfig>;
+}
+
+/**
+ * A validated `mcpServers[name]` entry, with the wire-shape's optional
+ * `command`/`url` collapsed into a fully-discriminated {@link McpTransport}.
+ *
+ * @remarks
+ * This is the boundary type produced by {@link readMcpConfigFile}. Once an
+ * entry has been parsed and validated, downstream code (CLI batch loop,
+ * extract orchestrator) gets a `ConfigEntry` rather than the un-validated
+ * {@link McpServerConfig} wire shape — the type system now guarantees the
+ * one-of-two invariant that the reader enforces, so consumers no longer
+ * need runtime narrowing or "defensive" branches.
+ *
+ * The wire-shape `McpServerConfig` remains exported for tooling that needs
+ * to inspect the raw JSON shape (e.g. config-file linters), but the rest
+ * of `@to-skills/mcp` works with `ConfigEntry` past the file boundary.
+ *
+ * @public
+ */
+export interface ConfigEntry {
+  /** The `mcpServers[name]` key from the source file. */
+  readonly name: string;
+  /** Fully-discriminated transport (stdio or http) — one of `command` or `url` is guaranteed present. */
+  readonly transport: McpTransport;
+  /** When `true`, the entry is configured but skipped at extract time. */
+  readonly disabled?: boolean;
 }

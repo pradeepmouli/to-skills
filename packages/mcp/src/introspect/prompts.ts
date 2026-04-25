@@ -13,7 +13,7 @@ import { paginate } from './paginate.js';
  *
  * Capability gating — i.e. skipping the call entirely when the server's
  * `initialize` capabilities omit `prompts` — is the caller's responsibility
- * (see `extract.ts` T036). This function unconditionally calls the method.
+ * (see `extract.ts`). This function unconditionally calls the method.
  *
  * @param client structural MCP client (real SDK `Client` or a test mock)
  * @returns one `ExtractedPrompt` per entry, in server-returned order

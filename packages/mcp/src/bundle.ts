@@ -1,5 +1,5 @@
 /**
- * Bundle-mode orchestrator (T060a, T060b, T060c, T060d, T063).
+ * Bundle-mode orchestrator.
  *
  * `bundleMcpSkill(options)` reads `to-skills.mcp` from the host package's
  * `package.json`, then for each declared server it:
@@ -12,12 +12,11 @@
  *
  * Batch semantics: a single server's failure is recorded on
  * {@link BundleResult.failures} and the loop continues with the remaining
- * entries. The CLI (T065, deferred to B13) maps the worst code in the
- * failures map to an exit code.
+ * entries. The CLI maps the worst code in the failures map to an exit code.
  *
  * Multi-target rendering — one server → multiple `invocation` entries →
- * multiple skill directories with disambiguated names — is wired in Phase 6
- * (T083). Each (entry, target) tuple produces its own `WrittenSkill` keyed by
+ * multiple skill directories with disambiguated names — produces one
+ * `WrittenSkill` per (entry, target) tuple keyed by
  * `<skillName>` (single-target) or `<skillName>-<targetSuffix>` (multi-target,
  * matching the FR-IT-009 disambiguation rule the CLI uses for extract mode).
  *
@@ -194,7 +193,7 @@ async function processEntry(
       rendered = await renderSkill(skill, renderOptions);
       if (llmsTxt) {
         // Append before writeSkills so the writer persists llms.txt alongside
-        // SKILL.md (T111). Per-target — each disambiguated directory gets its
+        // SKILL.md. Per-target — each disambiguated directory gets its
         // own index file.
         rendered.references.push(renderLlmsTxt(rendered, skill));
       }

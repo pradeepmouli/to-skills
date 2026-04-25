@@ -75,6 +75,7 @@ describe.skipIf(!RUN)('token budget: 20-tool fixture stays inside default budget
     const skill = makeFixtureSkill();
     const adapter = new McpProtocolAdapter();
     const rendered = await adapter.render(skill, {
+      mode: 'stdio',
       skillName: 'budget-server',
       maxTokens: 4000,
       canonicalize: true,
@@ -89,6 +90,7 @@ describe.skipIf(!RUN)('token budget: 20-tool fixture stays inside default budget
     const skill = makeFixtureSkill();
     const adapter = new McpcAdapter();
     const rendered = await adapter.render(skill, {
+      mode: 'stdio',
       skillName: 'budget-server',
       maxTokens: 4000,
       canonicalize: true,
@@ -107,6 +109,7 @@ describe.skipIf(!RUN)('token budget: 20-tool fixture stays inside default budget
     const skill = makeFixtureSkill();
     const adapter = new McpcAdapter();
     const rendered = await adapter.render(skill, {
+      mode: 'stdio',
       skillName: 'budget-server',
       maxTokens: 4000,
       canonicalize: true,

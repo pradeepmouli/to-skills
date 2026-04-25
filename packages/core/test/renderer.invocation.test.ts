@@ -50,7 +50,13 @@ describe('renderSkill — invocation hook', () => {
       render
     };
 
-    const out = await renderSkill(minimalSkill, { invocation: adapter, maxTokens: 1234 });
+    const out = await renderSkill(minimalSkill, {
+      invocation: adapter,
+      maxTokens: 1234,
+      // The renderer now requires exactly one of the three launch-info options
+      // to determine the DU arm — pick stdio for this baseline test.
+      invocationLaunchCommand: { command: 'node', args: ['./server.js'] }
+    });
 
     expect(render).toHaveBeenCalledTimes(1);
     const [passedSkill, passedCtx] = render.mock.calls[0]!;
@@ -58,7 +64,7 @@ describe('renderSkill — invocation hook', () => {
     expect(passedCtx.skillName).toBe('my-lib');
     expect(passedCtx.maxTokens).toBe(1234);
     expect(passedCtx.canonicalize).toBe(true);
-    expect(passedCtx.packageName).toBeUndefined();
+    expect(passedCtx.mode).toBe('stdio');
 
     // Result is canonicalized: keys sorted, whitespace normalized.
     expect(out.skill.content.startsWith('---\na: 2\nz: 1\n---\n')).toBe(true);
@@ -78,7 +84,11 @@ describe('renderSkill — invocation hook', () => {
       fingerprint: { adapter: 'x', version: '0' },
       render
     };
-    await renderSkill(minimalSkill, { invocation: adapter, namePrefix: 'custom-name' });
+    await renderSkill(minimalSkill, {
+      invocation: adapter,
+      namePrefix: 'custom-name',
+      invocationLaunchCommand: { command: 'node', args: ['./server.js'] }
+    });
     expect(render.mock.calls[0]![1].skillName).toBe('custom-name');
   });
 
@@ -99,7 +109,7 @@ describe('renderSkill — invocation hook', () => {
     expect(out.skill.content).not.toContain('override-attempt');
   });
 
-  it('threads invocationLaunchCommand and invocationPackageName into ctx', async () => {
+  it('threads invocationPackageName into ctx as the bundle arm', async () => {
     const render = vi.fn(
       async (_s: ExtractedSkill, _c: AdapterRenderContext): Promise<RenderedSkill> => ({
         skill: { filename: 's/SKILL.md', content: '---\nname: s\n---\n' },
@@ -113,12 +123,62 @@ describe('renderSkill — invocation hook', () => {
     };
     await renderSkill(minimalSkill, {
       invocation: adapter,
-      invocationPackageName: '@org/my-server',
+      invocationPackageName: '@org/my-server'
+    });
+    const ctx = render.mock.calls[0]![1];
+    expect(ctx.mode).toBe('bundle');
+    if (ctx.mode === 'bundle') {
+      expect(ctx.packageName).toBe('@org/my-server');
+    }
+  });
+
+  it('threads invocationLaunchCommand into ctx as the stdio arm', async () => {
+    const render = vi.fn(
+      async (_s: ExtractedSkill, _c: AdapterRenderContext): Promise<RenderedSkill> => ({
+        skill: { filename: 's/SKILL.md', content: '---\nname: s\n---\n' },
+        references: []
+      })
+    );
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render
+    };
+    await renderSkill(minimalSkill, {
+      invocation: adapter,
       invocationLaunchCommand: { command: 'npx', args: ['-y', '@org/my-server'] }
     });
     const ctx = render.mock.calls[0]![1];
-    expect(ctx.packageName).toBe('@org/my-server');
-    expect(ctx.launchCommand).toEqual({ command: 'npx', args: ['-y', '@org/my-server'] });
+    expect(ctx.mode).toBe('stdio');
+    if (ctx.mode === 'stdio') {
+      expect(ctx.launchCommand).toEqual({ command: 'npx', args: ['-y', '@org/my-server'] });
+    }
+  });
+
+  it('throws when more than one of invocationPackageName/HttpEndpoint/LaunchCommand is set (FR-H002)', () => {
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render: async () => ({ skill: { filename: 's/SKILL.md', content: '' }, references: [] })
+    };
+    // The renderer throws synchronously before reaching its Promise return, so
+    // assert via a thunk rather than a `rejects.toThrow` matcher.
+    expect(() =>
+      renderSkill(minimalSkill, {
+        invocation: adapter,
+        invocationPackageName: '@org/my-server',
+        invocationLaunchCommand: { command: 'npx', args: ['-y', '@org/my-server'] }
+      })
+    ).toThrow(/more than one of/);
+  });
+
+  it('throws when none of the three launch-info options is set (FR-H002)', () => {
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render: async () => ({ skill: { filename: 's/SKILL.md', content: '' }, references: [] })
+    };
+    expect(() => renderSkill(minimalSkill, { invocation: adapter })).toThrow(/missing launch info/);
   });
 
   it('threads invocationHttpEndpoint into ctx', async () => {
@@ -141,10 +201,13 @@ describe('renderSkill — invocation hook', () => {
       }
     });
     const ctx = render.mock.calls[0]![1];
-    expect(ctx.httpEndpoint).toEqual({
-      url: 'https://example.com/mcp',
-      headers: { Authorization: 'Bearer' }
-    });
+    expect(ctx.mode).toBe('http');
+    if (ctx.mode === 'http') {
+      expect(ctx.httpEndpoint).toEqual({
+        url: 'https://example.com/mcp',
+        headers: { Authorization: 'Bearer' }
+      });
+    }
   });
 
   it('threads invocationBinName into ctx (multi-bin bundle path)', async () => {
@@ -164,7 +227,11 @@ describe('renderSkill — invocation hook', () => {
       invocationPackageName: '@org/multi',
       invocationBinName: 'tool-b'
     });
-    expect(render.mock.calls[0]![1].binName).toBe('tool-b');
+    const ctx = render.mock.calls[0]![1];
+    expect(ctx.mode).toBe('bundle');
+    if (ctx.mode === 'bundle') {
+      expect(ctx.binName).toBe('tool-b');
+    }
   });
 
   it('bodyPrefix injects content between frontmatter and the existing body (default path)', () => {

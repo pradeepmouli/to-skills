@@ -81,6 +81,27 @@ When a bundle entry omits `args`, the MCP frontmatter formerly emitted `args: []
 
 ---
 
+## Delta 6 — PR 20 comprehensive-review follow-ups resolved in `002-mcp-hardening`
+
+**Context**: After `001-mcp-extract-bundle` shipped via PR 20, the comprehensive review surfaced ten follow-ups spanning type-shape hardening, leak/OOM/hang fixes, helper consolidation, config-boundary parsing, audit programmatic surfacing, malformed-annotation visibility, and integration coverage. All were tracked into feature `002-mcp-hardening` and fully landed.
+
+**Items + resolving commits**:
+
+1. `AdapterRenderContext` discriminated union over `mode: 'bundle' | 'http' | 'stdio'` — **RESOLVED-IN-002**: US1 (commit `2b87d72`).
+2. `ParameterPlan` discriminated union over `type: 'scalar' | 'enum' | 'string-array' | 'json'`; dead `'object'` arm dropped — **RESOLVED-IN-002**: US7 (commit `b21be5d`).
+3. CLI invocation-adapter helper consolidation into `@to-skills/mcp/adapter-utils` (~250 LOC removed across `target-mcpc` + `target-fastmcp`) — **RESOLVED-IN-002**: US2 (commit `a96e1db`).
+4. `extractMcpSkill` now exposes `auditIssues?: readonly McpAuditIssue[]` for programmatic CI gates — **RESOLVED-IN-002**: US3 (commit `8c050d3`).
+5. stdio extract: 64 KiB stderr ring-buffer + default 30 s `initializeTimeoutMs` — **RESOLVED-IN-002**: US4 (commit `7e14b3f`).
+6. stdio extract: `data` listener cleanup via named-listener `removeListener` in `finally` — **RESOLVED-IN-002**: US5 (commit `2af9963`).
+7. Malformed `_meta.toSkills` annotations surface as warning-severity M3 audit issues instead of being silently dropped — **RESOLVED-IN-002**: US6 (commit `69bc9f9`). (Distinct from Delta 4 above, which concerns server-level `_meta` SDK-validation strip; that remains FORWARD-COMPAT.)
+8. `readMcpConfigFile` returns fully-discriminated `ConfigEntry[]` so the wire-shape `McpServerConfig` no longer leaks past the file boundary — **RESOLVED-IN-002**: US8 (commit `b264ad9`).
+9. `WrittenSkill.files`, `AuditResult.issues`, `ParameterPlan.path` tightened to `readonly` at the type level — **RESOLVED-IN-002**: US11 (commit `efaf6b4`).
+10. Integration coverage: HTTP `--header` end-to-end + bundle multi-target tests gated on `RUN_INTEGRATION_TESTS=true` — **RESOLVED-IN-002**: US9 (commit `0a887be`).
+
+**Status**: RESOLVED-IN-002. See `specs/002-mcp-hardening/{spec,plan,quickstart,tasks}.md` for detailed rationale per user-story; this delta closes the audit trail for the PR-20 follow-ups against the original `001-mcp-extract-bundle` baseline.
+
+---
+
 ## Conventions for adding deltas
 
 When future batches need to record a deviation:

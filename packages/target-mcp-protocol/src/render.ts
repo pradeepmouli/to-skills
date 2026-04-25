@@ -16,7 +16,6 @@ import type {
 } from '@to-skills/core';
 import { renderSkill } from '@to-skills/core';
 import type { InvocationAdapter } from '@to-skills/mcp';
-import { McpError } from '@to-skills/mcp';
 import { emitMcpFrontmatter, type McpLaunchCommand } from './frontmatter.js';
 import { PACKAGE_VERSION } from './version.js';
 
@@ -25,18 +24,18 @@ import { PACKAGE_VERSION } from './version.js';
  * MCP-native agent harnesses parse to launch the server over stdio or
  * connect to it over HTTP.
  *
- * Launch-shape resolution (per research.md §7):
+ * Launch-shape resolution narrows on `ctx.mode` (per data-model.md §1):
  *
- * 1. **Bundle mode** — if `ctx.packageName` is set (the host's bundle command
- *    flagged this skill as self-referential), the adapter emits
- *    `command: npx` + `args: [-y, <packageName>]`. This wins over both
- *    `httpEndpoint` and `launchCommand`.
- * 2. **HTTP-extract mode** — else if `ctx.httpEndpoint` is set, emits a
- *    `{ url, headers }` shape (no shell launch).
- * 3. **Stdio-extract mode** — else `ctx.launchCommand` is used verbatim. The
- *    host extract pipeline derives this from the user-supplied stdio config.
- * 4. **None set** — `render()` throws `McpError(MISSING_LAUNCH_COMMAND)`. The
- *    host always populates exactly one of the three.
+ * 1. **`mode: 'bundle'`** — the host bundle command flagged this skill as
+ *    self-referential. Emits `command: npx` + `args: [-y, <packageName>]`
+ *    (or the multi-bin `--package=<pkg> <bin>` form per FR-034).
+ * 2. **`mode: 'http'`** — emits a `{ url, headers? }` shape (no shell launch).
+ * 3. **`mode: 'stdio'`** — `ctx.launchCommand` is used verbatim.
+ *
+ * The renderer's invocation-adapter dispatch in `@to-skills/core` guarantees
+ * `mode` is always one of these three arms, so the previous runtime
+ * `MISSING_LAUNCH_COMMAND` throw is no longer needed at the adapter level.
+ * An exhaustive `default` branch is kept for compile-time exhaustiveness.
  *
  * @remarks
  * The adapter does NOT render its own body content — it calls `renderSkill`
@@ -60,32 +59,37 @@ export class McpProtocolAdapter implements InvocationAdapter {
   /**
    * Render an `ExtractedSkill` into a `RenderedSkill` carrying `mcp:` frontmatter.
    *
-   * @throws `McpError` with code `MISSING_LAUNCH_COMMAND` when none of
-   *   `ctx.packageName`, `ctx.httpEndpoint`, or `ctx.launchCommand` is set.
+   * Narrows on `ctx.mode` to pick the launch shape — see the class-level
+   * docstring for the per-arm dialect.
    */
   async render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill> {
     let launchCommand: McpLaunchCommand;
-    if (ctx.packageName) {
-      // Bundle mode: emit npx-by-name self-reference. Wins over any explicit
-      // launchCommand because the package is the canonical self-launch entry point.
-      // When the host also passes binName (multi-bin packages, FR-034), use the
-      // explicit `--package=` form so npx invokes the right bin rather than the
-      // package's "directories.bin" or single-bin default.
-      launchCommand = ctx.binName
-        ? { command: 'npx', args: ['-y', `--package=${ctx.packageName}`, ctx.binName] }
-        : { command: 'npx', args: ['-y', ctx.packageName] };
-    } else if (ctx.httpEndpoint) {
-      // HTTP-extract mode: emit {url, headers} shape. No shell launch.
-      launchCommand = ctx.httpEndpoint.headers
-        ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
-        : { url: ctx.httpEndpoint.url };
-    } else if (ctx.launchCommand) {
-      launchCommand = ctx.launchCommand;
-    } else {
-      throw new McpError(
-        'McpProtocolAdapter.render: none of ctx.packageName, ctx.httpEndpoint, or ctx.launchCommand provided',
-        'MISSING_LAUNCH_COMMAND'
-      );
+    switch (ctx.mode) {
+      case 'bundle':
+        // Bundle mode: emit npx-by-name self-reference. When the host also
+        // passes binName (multi-bin packages, FR-034), use the explicit
+        // `--package=` form so npx invokes the right bin rather than the
+        // package's "directories.bin" or single-bin default.
+        launchCommand = ctx.binName
+          ? { command: 'npx', args: ['-y', `--package=${ctx.packageName}`, ctx.binName] }
+          : { command: 'npx', args: ['-y', ctx.packageName] };
+        break;
+      case 'http':
+        // HTTP-extract mode: emit {url, headers} shape. No shell launch.
+        launchCommand = ctx.httpEndpoint.headers
+          ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
+          : { url: ctx.httpEndpoint.url };
+        break;
+      case 'stdio':
+        launchCommand = ctx.launchCommand;
+        break;
+      default: {
+        // Exhaustiveness: if a new arm is added to AdapterRenderContext
+        // without updating this switch, TypeScript flags `_exhaustive`'s
+        // type as non-`never` here.
+        const _exhaustive: never = ctx;
+        throw new Error(`McpProtocolAdapter.render: unknown ctx.mode (${String(_exhaustive)})`);
+      }
     }
 
     const additionalFrontmatter = emitMcpFrontmatter(ctx.skillName, launchCommand);

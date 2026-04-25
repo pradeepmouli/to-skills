@@ -1,4 +1,4 @@
-// Public surface for @to-skills/mcp — populated in Phase 2 (foundational) and Phase 3 (US1).
+// Public surface for @to-skills/mcp.
 // See specs/001-mcp-extract-bundle/tasks.md for the implementation plan.
 
 // Version — kept for downstream tests that may want to assert against it.
@@ -9,6 +9,10 @@ export type {
   InvocationTarget,
   InvocationAdapter,
   AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
   AdapterFingerprint,
   ParameterPlan
 } from './adapter/types.js';
@@ -36,7 +40,7 @@ export { extractMcpSkill } from './extract.js';
 export { bundleMcpSkill } from './bundle.js';
 export type { NormalizedBundleEntry } from './bundle/config.js';
 
-// Config-file batch reader (Phase 7 / US3)
+// Config-file batch reader
 export { readMcpConfigFile } from './config/file-reader.js';
 
 // CLI program builder — exposed so consumers can embed the commander program
@@ -73,7 +77,8 @@ export type {
   BundleFailure,
   BundleResult,
   McpServerConfig,
-  McpConfigFile
+  McpConfigFile,
+  ConfigEntry
 } from './types.js';
 
 // Re-export useful core types for adapter/author ergonomics

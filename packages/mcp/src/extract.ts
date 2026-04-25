@@ -1,4 +1,4 @@
-// Top-level MCP extraction orchestrator (T034–T037, T049–T050).
+// Top-level MCP extraction orchestrator.
 //
 // `extractMcpSkill(options)` connects to a live MCP server, runs the
 // initialize handshake, enumerates tools/resources/prompts (with capability
@@ -11,9 +11,9 @@
 //  - Cleanup is enforced via try/finally: `client.close()` runs on both
 //    success and failure so the spawned child process can't leak.
 //  - Error classification distinguishes spawn failures (ENOENT, EACCES, …)
-//    from initialize handshake failures from process-early-exit. See T035.
-//  - HTTP transport (Phase 4): StreamableHTTPClientTransport with content-
-//    negotiation fallback to SSEClientTransport on 404/405 (T049–T050).
+//    from initialize handshake failures from process-early-exit.
+//  - HTTP transport: StreamableHTTPClientTransport with content-
+//    negotiation fallback to SSEClientTransport on 404/405.
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
@@ -26,7 +26,7 @@ import type { McpClient } from './introspect/client-types.js';
 import { listPrompts } from './introspect/prompts.js';
 import { listResources } from './introspect/resources.js';
 import { listTools } from './introspect/tools.js';
-import type { McpExtractOptions } from './types.js';
+import type { AuditIssue, McpExtractOptions } from './types.js';
 import { PACKAGE_VERSION } from './version.js';
 
 /**
@@ -36,6 +36,24 @@ import { PACKAGE_VERSION } from './version.js';
  * handshake failure (`INITIALIZE_FAILED`).
  */
 const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', 'EBUSY']);
+
+/**
+ * Maximum bytes of stderr we retain from the spawned MCP server. Bounded so a
+ * chatty server can't OOM the extract process (FR-H007). Implemented as a
+ * ring-buffer over a list of {@link Buffer} chunks: when the running total
+ * exceeds the cap, the oldest chunk(s) are dropped. Buffer-level (not string-
+ * level) accumulation avoids splitting multi-byte UTF-8 sequences during
+ * capture; the {@link buildEarlyExitMessage} helper applies a separate
+ * 2 KiB display-trim before returning a string.
+ */
+const MAX_STDERR_BYTES = 64 * 1024;
+
+/**
+ * Default cap (ms) on the SDK `client.connect()` call (the MCP `initialize`
+ * handshake) for stdio transports (FR-H008). Caller-overridable via
+ * {@link McpTransport} (`initializeTimeoutMs`); set to `0` to disable.
+ */
+const DEFAULT_INITIALIZE_TIMEOUT_MS = 30_000;
 
 /**
  * Connect to a live MCP server, introspect its surface, and produce an
@@ -66,7 +84,7 @@ const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', '
  *   5. Capability-gated introspection runs identically to the stdio path.
  *   6. Always `client.close()` in finally.
  *
- * Error mapping (T035):
+ * Error mapping:
  * - Stdio process exits before connect resolves → `SERVER_EXITED_EARLY`
  * - Spawn failure (ENOENT/EACCES/EPERM/ENOTDIR/EBUSY) → `TRANSPORT_FAILED`
  * - Invalid HTTP URL → `TRANSPORT_FAILED`
@@ -74,7 +92,7 @@ const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', '
  * - Errors from inner introspection helpers that are already `McpError`
  *   instances (e.g. `SCHEMA_REF_CYCLE`) are re-thrown unchanged.
  *
- * Protocol-version compatibility (T037):
+ * Protocol-version compatibility:
  * The `checkProtocolVersion` helper is implemented and unit-tested but not
  * yet wired here, because SDK 1.29.0 does not expose a public getter for the
  * negotiated protocol version. The SDK already validates min/max protocol
@@ -119,20 +137,51 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
   );
 
   // Capture stderr chunks so a pre-initialize crash can surface readable
-  // diagnostics in the SERVER_EXITED_EARLY message. The SDK exposes
-  // `transport.stderr` as `Stream | null` — guard against null and tolerate
-  // either Buffer or string chunks.
-  const stderrChunks: string[] = [];
+  // diagnostics in the SERVER_EXITED_EARLY message. Bounded as a ring-buffer
+  // so a chatty server can't OOM the extract process (US4 / FR-H007). The SDK
+  // exposes `transport.stderr` as `Stream | null` — guard against null and
+  // tolerate either Buffer or string chunks.
+  //
+  // Buffer-level (not string-level) accumulation avoids splitting multi-byte
+  // UTF-8 sequences while we're still appending; the rendered message decodes
+  // once at the very end and applies an additional 2 KiB display-trim on top
+  // of the 64 KiB capture cap (both layers are intentional).
+  const stderrBuffers: Buffer[] = [];
+  let stderrBytes = 0;
+  /**
+   * Named listener so US5 (FR-H009) can `removeListener` it in `finally` —
+   * EventEmitter looks listeners up by reference identity, so an anonymous
+   * arrow would be unrecoverable across bundle iterations. Keep the cap logic
+   * inline here (rather than a free helper) so the closure's hot-path stays
+   * one allocation per chunk.
+   */
+  const onStderr = (chunk: Buffer | string): void => {
+    const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+    stderrBuffers.push(buf);
+    stderrBytes += buf.length;
+    // Drop whole oldest chunks until either (a) we're under the cap, or (b)
+    // we're down to the single most-recent chunk — at which point we slice
+    // its tail to fit the budget exactly.
+    while (stderrBytes > MAX_STDERR_BYTES && stderrBuffers.length > 1) {
+      const dropped = stderrBuffers.shift()!;
+      stderrBytes -= dropped.length;
+    }
+    if (stderrBytes > MAX_STDERR_BYTES && stderrBuffers.length === 1) {
+      const tail = stderrBuffers[0]!.subarray(stderrBuffers[0]!.length - MAX_STDERR_BYTES);
+      stderrBytes = tail.length;
+      stderrBuffers[0] = tail;
+    }
+  };
   const stderrStream = (transport as { stderr?: unknown }).stderr;
-  if (stderrStream && typeof stderrStream === 'object' && 'on' in stderrStream) {
-    (stderrStream as NodeJS.ReadableStream).on('data', (chunk: Buffer | string) => {
-      stderrChunks.push(typeof chunk === 'string' ? chunk : chunk.toString('utf8'));
-    });
-  }
+  const stderrEmitter =
+    stderrStream && typeof stderrStream === 'object' && 'on' in stderrStream
+      ? (stderrStream as NodeJS.ReadableStream)
+      : undefined;
+  stderrEmitter?.on('data', onStderr);
 
   /** Compose the SERVER_EXITED_EARLY message including any captured stderr. */
   const buildEarlyExitMessage = (): string => {
-    const stderrText = stderrChunks.join('');
+    const stderrText = Buffer.concat(stderrBuffers, stderrBytes).toString('utf8');
     const trimmedStderr = stderrText.length > 2048 ? `…${stderrText.slice(-2048)}` : stderrText;
     return trimmedStderr
       ? `MCP server process exited before initialize completed.\nServer stderr:\n${trimmedStderr}`
@@ -148,10 +197,30 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
     };
   });
 
+  // Optional initialize-handshake timeout (FR-H008). When `initializeTimeoutMs`
+  // is `<= 0`, the caller has explicitly opted out of the race.
+  const timeoutMs = options.transport.initializeTimeoutMs ?? DEFAULT_INITIALIZE_TIMEOUT_MS;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  const timeoutPromise =
+    timeoutMs > 0
+      ? new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            reject(
+              new McpError(
+                `MCP server initialize handshake timed out after ${timeoutMs}ms`,
+                'INITIALIZE_FAILED'
+              )
+            );
+          }, timeoutMs);
+        })
+      : null;
+
   try {
-    // Race connect() against the early-exit signal so a process-death
-    // beats a generic INITIALIZE_FAILED.
-    await Promise.race([client.connect(transport), exitPromise]);
+    // Race connect() against the early-exit signal (process death) and, when
+    // configured, the initialize-handshake timeout.
+    const racers: Promise<unknown>[] = [client.connect(transport), exitPromise];
+    if (timeoutPromise) racers.push(timeoutPromise);
+    await Promise.race(racers);
     return await introspect(client, options);
   } catch (err) {
     if (err instanceof McpError) throw err;
@@ -161,6 +230,15 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
     }
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
   } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    // US5 (FR-H009): detach the named stderr listener so bundle mode can't
+    // accumulate listeners across iterations and trip Node's
+    // MaxListenersExceeded warning. EventEmitter.removeListener finds the
+    // listener by reference identity — that's why `onStderr` was hoisted to
+    // a named const above (an anonymous arrow would be unrecoverable here).
+    if (stderrEmitter && 'removeListener' in stderrEmitter) {
+      stderrEmitter.removeListener('data', onStderr);
+    }
     transport.onclose = undefined;
     try {
       await client.close();
@@ -318,7 +396,7 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   if (resources !== undefined) skill.resources = resources;
   if (prompts !== undefined) skill.prompts = prompts;
 
-  // US7 (Phase 9): annotation enrichment via `_meta.toSkills`. Server- and
+  // Annotation enrichment via `_meta.toSkills`. Server- and
   // tool-level metadata produced by `_meta.toSkills.{useWhen, avoidWhen,
   // pitfalls, remarks, packageDescription}` is read here and projected onto
   // the skill so the core renderer's existing "When to Use" / "NEVER" /
@@ -326,7 +404,7 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // absent metadata leaves the skill unchanged.
   applyMetaEnrichment(skill, serverInfo, functions);
 
-  // Phase 10 / T106: surface audit findings to stderr at extract time.
+  // Surface audit findings to stderr at extract time.
   //
   // Extract returns a single ExtractedSkill — there is no AuditResult slot to
   // populate, and we don't have an embedded fingerprint or installed adapter
@@ -342,6 +420,15 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // at the IR layer; bundle mode owns the failure-on-fatal/error policy.
   if (options.audit?.skip !== true) {
     const issues = runMcpAudit(skill);
+    // US3 (FR-H006): surface audit findings on the return value so
+    // programmatic callers can gate CI on structured `auditIssues` without
+    // forking stderr. Tri-state semantics on the field:
+    //   undefined  — audit was skipped
+    //   []         — audit ran clean
+    //   [...]      — audit found issues
+    // The `as` cast bypasses the readonly modifier on `ExtractedSkill.auditIssues`;
+    // we own this skill literal end-to-end so the localized mutation is safe.
+    (skill as { auditIssues: readonly AuditIssue[] }).auditIssues = issues;
     const includeAlerts = options.audit?.includeAlerts === true;
     for (const issue of issues) {
       if (issue.severity === 'alert' && !includeAlerts) continue;

@@ -22,7 +22,7 @@
  *       FOO: bar
  * ```
  *
- * HTTP (url-based — Phase 4):
+ * HTTP (url-based):
  *
  * ```yaml
  * mcp:

@@ -26,6 +26,7 @@ import type {
   AuditSeverity,
   BundleFailure,
   BundleResult,
+  ConfigEntry,
   ExtractedPrompt,
   ExtractedResource,
   ExtractedSkill,
@@ -139,6 +140,7 @@ describe('@to-skills/mcp public API surface', () => {
       _bundleResult: BundleResult,
       _serverCfg: McpServerConfig,
       _cfgFile: McpConfigFile,
+      _configEntry: ConfigEntry,
       _normEntry: NormalizedBundleEntry,
       _client: McpClient,
       _toolEntry: McpToolListEntry,
@@ -168,6 +170,7 @@ describe('@to-skills/mcp public API surface', () => {
       void _bundleResult;
       void _serverCfg;
       void _cfgFile;
+      void _configEntry;
       void _normEntry;
       void _client;
       void _toolEntry;

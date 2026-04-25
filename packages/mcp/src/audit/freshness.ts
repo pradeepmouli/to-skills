@@ -16,9 +16,6 @@
  * exactly-equal versions emit no issue — neither is a freshness concern from
  * the auditor's perspective.
  *
- * The wire-up of this rule into `extract.ts` / `bundle.ts` is deferred to
- * Phase 10 (T106). This module only provides the rule.
- *
  * @module audit/freshness
  */
 
@@ -91,7 +88,7 @@ export function auditAdapterFreshness(
  *    semantics are not relevant to the freshness check (a `1.0.0-rc.1` and
  *    a `1.0.0` register as equal here, which is fine: stale prerelease
  *    output is not actionable in the same way as a stale stable release,
- *    and Phase 10 can add finer rules if needed).
+ *    and finer rules can be added later if needed).
  * 3. Splits the remaining string on `.` and parses the first three parts as
  *    integers, treating missing parts as 0.
  * 4. Compares left-to-right and returns -1 / 0 / 1.
