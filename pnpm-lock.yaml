@@ -103,13 +103,22 @@ importers:
       '@to-skills/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       '@to-skills/mcp':
         specifier: workspace:*
         version: link:../mcp
+      yaml:
+        specifier: ^2.0.0
+        version: 2.8.3
+    devDependencies:
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.39
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.39)(lightningcss@1.32.0)
 
   packages/target-mcp-protocol:
     dependencies:

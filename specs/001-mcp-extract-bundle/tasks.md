@@ -229,14 +229,14 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### `target-fastmcp` adapter (secondary)
 
-- [ ] T076 [P] [US5] Create `packages/target-fastmcp/src/args.ts` — mirrors T070 but emits `key=value` (always stringy, fastmcp convention) and single-JSON-argument form for Tier 3
-- [ ] T077 [P] [US5] Create `packages/target-fastmcp/src/setup.ts` — mirrors T071 with `pip install fastmcp` and fastmcp-specific connection instructions
-- [ ] T078a [P] [US5] Create `packages/target-fastmcp/src/render.ts` scaffolding exporting `FastMcpAdapter` implementing `InvocationAdapter` with target `'cli:fastmcp'`, fingerprint from package version. `.render()` stubbed as throwing `'not implemented'`
-- [ ] T078b [P] [US5] Fill in `FastMcpAdapter.render()` frontmatter emission — uses `generatedByFrontmatter()` (T084); MUST NOT emit `mcp:` block
-- [ ] T078c [P] [US5] Fill in `FastMcpAdapter.render()` body — Setup section via `renderFastMcpSetup` (T077), then overview/description from IR
-- [ ] T078d [P] [US5] Fill in `FastMcpAdapter.render()` Quick Reference + references/tools.md (+ resources.md + prompts.md when populated) using `renderCliParamTable` (T074a) with fastmcp's `key=value` encoder from T076. Same shared resources/prompts helpers as T072d
-- [ ] T078e [P] [US5] Create `packages/target-fastmcp/src/index.ts` with `export default new FastMcpAdapter()`
-- [ ] T079 [P] [US5] Add unit test `packages/target-fastmcp/tests/args.test.ts` covering all tiers with fastmcp-specific encoding
+- [x] T076 [P] [US5] Create `packages/target-fastmcp/src/args.ts` — mirrors T070 but emits `key=value` (always stringy, fastmcp convention) and single-JSON-argument form for Tier 3
+- [x] T077 [P] [US5] Create `packages/target-fastmcp/src/setup.ts` — mirrors T071 with `pip install fastmcp` and fastmcp-specific connection instructions
+- [x] T078a [P] [US5] Create `packages/target-fastmcp/src/render.ts` scaffolding exporting `FastMcpAdapter` implementing `InvocationAdapter` with target `'cli:fastmcp'`, fingerprint from package version. `.render()` stubbed as throwing `'not implemented'`
+- [x] T078b [P] [US5] Fill in `FastMcpAdapter.render()` frontmatter emission — uses `generatedByFrontmatter()` (T084); MUST NOT emit `mcp:` block
+- [x] T078c [P] [US5] Fill in `FastMcpAdapter.render()` body — Setup section via `renderFastMcpSetup` (T077), then overview/description from IR
+- [x] T078d [P] [US5] Fill in `FastMcpAdapter.render()` Quick Reference + references/tools.md (+ resources.md + prompts.md when populated) using `renderCliParamTable` (T074a) with fastmcp's `key=value` encoder from T076. Same shared resources/prompts helpers as T072d
+- [x] T078e [P] [US5] Create `packages/target-fastmcp/src/index.ts` with `export default new FastMcpAdapter()`
+- [x] T079 [P] [US5] Add unit test `packages/target-fastmcp/tests/args.test.ts` covering all tiers with fastmcp-specific encoding
 
 ### CLI wiring: `--invocation` flag + multi-target dispatch
 
