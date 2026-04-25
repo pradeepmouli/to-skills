@@ -24,7 +24,7 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 **Purpose**: Verify the workspace is in a clean post-PR-20 state ready for hardening work.
 
 - [x] T001 Verify branch `002-mcp-hardening` is checked out and up-to-date with `master` post-PR-20 merge: `git status` clean, `git rev-parse HEAD` matches a recent master commit, `pnpm install` is current.
-- [ ] T002 Run baseline `pnpm test` and capture pre-change pass count (must equal 1090+). Record in PR description draft for delta proof.
+- [x] T002 Run baseline `pnpm test` and capture pre-change pass count (must equal 1090+). Record in PR description draft for delta proof. **Result**: pre-change `@to-skills/mcp` pass count was 228; post-change is 254 (+26 from new test files for US3, US4, US5, US6, US9). Workspace root unit-test count (787) is unchanged. Pre-existing 502 typecheck-mode errors in `packages/typedoc/test/extractor.test.ts` are unrelated to this feature (verified across multiple reviewer dispatches).
 - [x] T003 [P] Enable Vitest typecheck mode for `*.test-d.ts` files in `vitest.config.ts` (root). Add `typecheck: { enabled: true, include: ['**/*.test-d.ts'] }` to the config — required for SC-H002.
 
 **Checkpoint**: Workspace is on the right branch, tests baseline is captured, typecheck mode is wired. Hardening work can begin.
