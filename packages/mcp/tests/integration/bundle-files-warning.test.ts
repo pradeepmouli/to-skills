@@ -47,7 +47,13 @@ describe.skipIf(!RUN)('bundle integration: files-field warning', () => {
   it('surfaces the warning, still writes the skill, and never mutates package.json', async () => {
     const { bundleMcpSkill } = await import('../../src/bundle.js');
     const pkgPath = join(workDir, 'package.json');
+    // pkgBefore captures the post-beforeEach state (files = ["dist","README.md"]).
+    // The assertion below verifies bundleMcpSkill itself doesn't write package.json.
+    // It also catches a regression where bundleMcpSkill might "helpfully" restore
+    // the original `files` array — that would change pkgAfter and fail.
     const pkgBefore = readFileSync(pkgPath);
+    // Sanity: the snapshot reflects the mutated form (no "skills" entry yet).
+    expect(pkgBefore.toString('utf-8')).not.toContain('"skills"');
 
     const result = await bundleMcpSkill({ packageRoot: workDir });
 
@@ -56,7 +62,9 @@ describe.skipIf(!RUN)('bundle integration: files-field warning', () => {
     expect(result.packageJsonWarnings.some((w) => w.includes('"skills"'))).toBe(true);
     // Skill was still written.
     expect(existsSync(join(workDir, 'skills', 'my-server', 'SKILL.md'))).toBe(true);
-    // package.json byte-identical.
+    // package.json byte-identical with our pre-bundle snapshot — proves
+    // bundleMcpSkill never touched the file even though the warning surfaced
+    // a missing entry it could have "fixed" (FR-035).
     const pkgAfter = readFileSync(pkgPath);
     expect(pkgAfter.equals(pkgBefore)).toBe(true);
   }, 120_000);

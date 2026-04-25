@@ -345,6 +345,14 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
+  // --max-tokens is parsed for forward-compatibility but not yet threaded into
+  // McpBundleOptions (no maxTokens field there). Notice the user only when
+  // they explicitly chose a non-default value, so the default 4000 stays quiet.
+  if (opts.maxTokens !== 4000) {
+    process.stderr.write(
+      '[to-skills-mcp] --max-tokens is not yet threaded into bundle mode; value ignored.\n'
+    );
+  }
 
   // Pre-flight DUPLICATE_SKILL_NAME check. bundleMcpSkill → writeSkills will
   // rmSync the destination unconditionally; that's fine when the user opted
@@ -390,9 +398,17 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   // most-actionable one first (config issues over transport blips).
   const codes = Object.values(result.failures).map((f) => f.code);
   if (codes.length > 0) {
+    // Ordered by descending exit-code severity, with config issues most
+    // actionable first. Covers every McpErrorCode so the find() always hits
+    // and the result is deterministic across multi-failure runs.
     const ordered: McpError['code'][] = [
       'DUPLICATE_SKILL_NAME',
       'MISSING_LAUNCH_COMMAND',
+      'UNKNOWN_TARGET',
+      'ADAPTER_NOT_FOUND',
+      'SCHEMA_REF_CYCLE',
+      'SERVER_EXITED_EARLY',
+      'PROTOCOL_VERSION_UNSUPPORTED',
       'INITIALIZE_FAILED',
       'TRANSPORT_FAILED'
     ];

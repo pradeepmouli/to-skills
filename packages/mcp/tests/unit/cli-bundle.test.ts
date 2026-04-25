@@ -213,4 +213,46 @@ describe('bundle subcommand', () => {
     expect(err).toMatch(/--skip-audit is not yet implemented/);
     expect(err).toMatch(/--llms-txt is not yet implemented/);
   });
+
+  it('emits a stderr notice when --max-tokens is set to a non-default value', async () => {
+    configEntries.push({ skillName: 'my-server' });
+    bundleResults.push({ skills: {}, failures: {}, packageJsonWarnings: [] });
+    const program = makeProgram();
+    await program.parseAsync([
+      'node',
+      'bin',
+      'bundle',
+      '--package-root',
+      workDir,
+      '--max-tokens',
+      '8000'
+    ]);
+    expect(stderrLines.join('')).toMatch(/--max-tokens is not yet threaded/);
+  });
+
+  it('stays silent on --max-tokens default (4000) — no spurious notice', async () => {
+    configEntries.push({ skillName: 'my-server' });
+    bundleResults.push({ skills: {}, failures: {}, packageJsonWarnings: [] });
+    const program = makeProgram();
+    await program.parseAsync(['node', 'bin', 'bundle', '--package-root', workDir]);
+    expect(stderrLines.join('')).not.toMatch(/--max-tokens/);
+  });
+
+  it('worst-failure-code hierarchy covers SCHEMA_REF_CYCLE and SERVER_EXITED_EARLY (deterministic across multi-failure runs)', async () => {
+    // Two failures: SCHEMA_REF_CYCLE (more actionable) + INITIALIZE_FAILED.
+    // Ordered hierarchy says SCHEMA_REF_CYCLE wins.
+    configEntries.push({ skillName: 'a' }, { skillName: 'b' });
+    bundleResults.push({
+      skills: {},
+      failures: {
+        a: { code: 'INITIALIZE_FAILED', message: 'x' },
+        b: { code: 'SCHEMA_REF_CYCLE', message: 'cycle' }
+      },
+      packageJsonWarnings: []
+    });
+    const program = makeProgram();
+    await expect(
+      program.parseAsync(['node', 'bin', 'bundle', '--package-root', workDir])
+    ).rejects.toSatisfy((err) => err instanceof McpError && err.code === 'SCHEMA_REF_CYCLE');
+  });
 });
