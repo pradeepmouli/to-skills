@@ -21,6 +21,9 @@ export { renderCliParamTable } from './adapter/param-table.js';
 export { McpError } from './errors.js';
 export type { McpErrorCode } from './errors.js';
 
+// Audit rules
+export { auditAdapterFreshness } from './audit/freshness.js';
+
 // Extract orchestrator
 export { extractMcpSkill } from './extract.js';
 

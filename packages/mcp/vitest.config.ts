@@ -7,7 +7,8 @@ export default defineConfig({
     include: [
       'tests/unit/**/*.test.ts',
       'tests/integration/**/*.test.ts',
-      'tests/contract/**/*.test.ts'
+      'tests/contract/**/*.test.ts',
+      'tests/e2e/**/*.test.ts'
     ],
     environment: 'node',
     coverage: {
