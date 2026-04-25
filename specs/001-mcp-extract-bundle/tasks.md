@@ -176,19 +176,19 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Config reader and normalizer
 
-- [ ] T057 [US4] Create `packages/mcp/src/bundle/config.ts` exporting `readBundleConfig(packageRoot: string): Promise<NormalizedConfig[]>` — reads `package.json`, parses `to-skills.mcp` (object or array), validates each entry against the JSON Schema in `contracts/package-json-config.md`, returns a normalized array
-- [ ] T058 [US4] Add `bin` derivation to `packages/mcp/src/bundle/config.ts`: when entry has no `command`, read `package.json` `bin` field, derive `command: "node"` + `args: [binPath]` for single-bin; for multi-bin object, require explicit `command` or throw `MISSING_LAUNCH_COMMAND`
-- [ ] T059 [P] [US4] Add unit test `packages/mcp/tests/unit/bundle-config.test.ts` covering: single-server object, server array, bin-derived launch command, multi-bin rejection, kebab-pattern enforcement for skillName, DUPLICATE_SKILL_NAME detection
+- [x] T057 [US4] Create `packages/mcp/src/bundle/config.ts` exporting `readBundleConfig(packageRoot: string): Promise<NormalizedConfig[]>` — reads `package.json`, parses `to-skills.mcp` (object or array), validates each entry against the JSON Schema in `contracts/package-json-config.md`, returns a normalized array
+- [x] T058 [US4] Add `bin` derivation to `packages/mcp/src/bundle/config.ts`: when entry has no `command`, read `package.json` `bin` field, derive `command: "node"` + `args: [binPath]` for single-bin; for multi-bin object, require explicit `command` or throw `MISSING_LAUNCH_COMMAND`
+- [x] T059 [P] [US4] Add unit test `packages/mcp/tests/unit/bundle-config.test.ts` covering: single-server object, server array, bin-derived launch command, multi-bin rejection, kebab-pattern enforcement for skillName, DUPLICATE_SKILL_NAME detection
 
 ### Main bundle entry point
 
-- [ ] T060a [US4] Create `packages/mcp/src/bundle.ts` exporting `bundleMcpSkill(options?: McpBundleOptions): Promise<BundleResult>` skeleton — resolves `packageRoot`, calls `readBundleConfig` (T057), returns an empty `BundleResult`. No per-server work yet; this task establishes the entry point and config-loading boundary
-- [ ] T060b [US4] Extend `packages/mcp/src/bundle.ts` with the per-server extract step — iterate normalized config entries, for each call `extractMcpSkill` with derived transport; on `McpError`, record the failure on the result but continue (batch semantics)
-- [ ] T060c [US4] Extend `packages/mcp/src/bundle.ts` with the per-server render+write step — loop over requested invocation targets (single-target in this phase; multi-target wired in Phase 6), call `renderSkill` with the target's adapter, invoke the core filesystem writer to `<packageRoot>/skills/<skillName>/`, populate `WrittenSkill` entries in `BundleResult.skills`
-- [ ] T060d [US4] Extend `packages/mcp/src/bundle.ts` with final bookkeeping — compute overall audit worst-severity across all skills, collect package.json warnings (T063 contributes content), return the populated `BundleResult`
+- [x] T060a [US4] Create `packages/mcp/src/bundle.ts` exporting `bundleMcpSkill(options?: McpBundleOptions): Promise<BundleResult>` skeleton — resolves `packageRoot`, calls `readBundleConfig` (T057), returns an empty `BundleResult`. No per-server work yet; this task establishes the entry point and config-loading boundary
+- [x] T060b [US4] Extend `packages/mcp/src/bundle.ts` with the per-server extract step — iterate normalized config entries, for each call `extractMcpSkill` with derived transport; on `McpError`, record the failure on the result but continue (batch semantics)
+- [x] T060c [US4] Extend `packages/mcp/src/bundle.ts` with the per-server render+write step — loop over requested invocation targets (single-target in this phase; multi-target wired in Phase 6), call `renderSkill` with the target's adapter, invoke the core filesystem writer to `<packageRoot>/skills/<skillName>/`, populate `WrittenSkill` entries in `BundleResult.skills`
+- [x] T060d [US4] Extend `packages/mcp/src/bundle.ts` with final bookkeeping — compute overall audit worst-severity across all skills, collect package.json warnings (T063 contributes content), return the populated `BundleResult`
 - [ ] T061 [US4] Add self-reference frontmatter in `packages/target-mcp-protocol/src/frontmatter.ts`: when `AdapterContext.packageName` is set (bundle mode), emit `mcp: { <skillName>: { command: "npx", args: ["-y", "<packageName>"] } }` instead of the extract-mode's launch command (implements FR-033)
 - [ ] T062 [US4] Add multi-bin `--package` form in `packages/target-mcp-protocol/src/frontmatter.ts`: when bundle-mode config indicates a named bin, emit `args: ["-y", "--package=<packageName>", "<binName>"]` per FR-034
-- [ ] T063 [US4] Add `files`-field verification in `packages/mcp/src/bundle.ts`: after write, read `package.json.files`; if missing `dist` or `skills`, add an entry to `BundleResult.packageJsonWarnings` with the exact line the user should add; never writes to package.json (FR-035)
+- [x] T063 [US4] Add `files`-field verification in `packages/mcp/src/bundle.ts`: after write, read `package.json.files`; if missing `dist` or `skills`, add an entry to `BundleResult.packageJsonWarnings` with the exact line the user should add; never writes to package.json (FR-035)
 
 ### CLI wiring for bundle
 

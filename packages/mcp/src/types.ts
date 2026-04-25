@@ -68,9 +68,31 @@ export interface WrittenSkill {
   audit: AuditResult;
 }
 
+/**
+ * Per-entry failure record on {@link BundleResult.failures}. Keyed by the
+ * entry's `skillName`. Bundle mode keeps successful sibling writes in
+ * `skills`; the failed entry's diagnostic lands here so the CLI exit-code
+ * mapper can pick the worst code without surfacing a single failure as a
+ * top-level rejection.
+ */
+export interface BundleFailure {
+  /** Stable error code for exit-code mapping. */
+  code: import('./errors.js').McpErrorCode;
+  /** Human-readable message — already includes context (server name, etc.). */
+  message: string;
+}
+
 export interface BundleResult {
   /** One entry per (server × target) combination. Keyed by skill directory name. */
   skills: Record<string, WrittenSkill>;
+  /**
+   * Per-server extract/render failures keyed by `skillName`. Bundle mode is
+   * batch-semantics: a single server's failure is recorded here and the loop
+   * continues with the remaining entries, so callers can present a partial
+   * success (FR-IT-010-ish). The CLI maps the worst code in this map to an
+   * exit code.
+   */
+  failures: Record<string, BundleFailure>;
   /** Warnings about package.json `files` field — not errors. */
   packageJsonWarnings: string[];
 }

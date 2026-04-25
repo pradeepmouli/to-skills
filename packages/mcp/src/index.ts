@@ -22,6 +22,10 @@ export type { McpErrorCode } from './errors.js';
 // Extract orchestrator
 export { extractMcpSkill } from './extract.js';
 
+// Bundle orchestrator + config types
+export { bundleMcpSkill } from './bundle.js';
+export type { NormalizedBundleEntry } from './bundle/config.js';
+
 // CLI program builder — exposed so consumers can embed the commander program
 // into a parent CLI. The `bin.ts` executable entry point is not exported.
 export { buildProgram } from './cli.js';
@@ -49,6 +53,7 @@ export type {
   AuditIssue,
   AuditResult,
   WrittenSkill,
+  BundleFailure,
   BundleResult,
   McpServerConfig,
   McpConfigFile
