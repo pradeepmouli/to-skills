@@ -80,11 +80,24 @@ function renderConnectCommand(
   launchCommand: StdioLaunchCommand | HttpLaunchEndpoint
 ): string {
   if ('url' in launchCommand) {
-    return `pyfastmcp connect ${skillName} --url ${launchCommand.url}`;
+    return `pyfastmcp connect ${shellQuote(skillName)} --url ${shellQuote(launchCommand.url)}`;
   }
   const argv =
-    launchCommand.args && launchCommand.args.length > 0 ? ` ${launchCommand.args.join(' ')}` : '';
-  return `pyfastmcp connect ${skillName} -- ${launchCommand.command}${argv}`;
+    launchCommand.args && launchCommand.args.length > 0
+      ? ` ${launchCommand.args.map(shellQuote).join(' ')}`
+      : '';
+  return `pyfastmcp connect ${shellQuote(skillName)} -- ${shellQuote(launchCommand.command)}${argv}`;
+}
+
+/**
+ * Minimal POSIX shell quoting for tokens emitted into a copy/paste-ready
+ * Setup command. See target-mcpc's `setup.ts` for full rationale; the
+ * heuristic is identical (`safe charset` passthrough, single-quote with
+ * `'\''` escape otherwise).
+ */
+function shellQuote(token: string): string {
+  if (token.length > 0 && /^[A-Za-z0-9_./@:=+-]+$/.test(token)) return token;
+  return `'${token.replace(/'/g, `'\\''`)}'`;
 }
 
 /**

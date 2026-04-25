@@ -126,11 +126,11 @@ function describeParam(param: ExtractedParameter, plan: ParameterPlan): string {
 }
 
 /**
- * Escape pipe characters in cell content so Markdown tables don't break.
- * We don't escape backslashes because the renderer never produces them in
- * the values we substitute; if `encodeFlag` returns a backslash itself,
- * that's the caller's responsibility.
+ * Escape pipe characters and backslashes in cell content so Markdown tables
+ * don't break. Backslashes are escaped FIRST so a literal `\|` in input
+ * doesn't get double-encoded; otherwise we'd emit `\\|` which a Markdown
+ * parser reads as "escaped backslash then unescaped pipe" — a row break.
  */
 function escape(value: string): string {
-  return value.replace(/\|/g, '\\|');
+  return value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
 }

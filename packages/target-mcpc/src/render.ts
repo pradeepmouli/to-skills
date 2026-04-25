@@ -226,7 +226,19 @@ function renderToolsBody(functions: readonly ExtractedFunction[], skillName: str
     }
   }
 
-  return lines.join('\n').replace(/\n+$/, '\n');
+  return collapseTrailingNewlines(lines.join('\n'));
+}
+
+/**
+ * Trim runs of trailing newlines down to a single `\n`. We avoid the regex
+ * `s.replace(/\n+$/, '\n')` because CodeQL flags the unbounded `+` repeat
+ * as a polynomial-ReDoS risk on adversarial input. Manual slice is O(n) and
+ * has the same observable behavior.
+ */
+function collapseTrailingNewlines(s: string): string {
+  let end = s.length;
+  while (end > 0 && s.charCodeAt(end - 1) === 0x0a) end--;
+  return s.slice(0, end) + '\n';
 }
 
 /**

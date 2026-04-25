@@ -80,11 +80,26 @@ function renderConnectCommand(
   launchCommand: StdioLaunchCommand | HttpLaunchEndpoint
 ): string {
   if ('url' in launchCommand) {
-    return `mcpc connect ${skillName} --url ${launchCommand.url}`;
+    return `mcpc connect ${shellQuote(skillName)} --url ${shellQuote(launchCommand.url)}`;
   }
   const argv =
-    launchCommand.args && launchCommand.args.length > 0 ? ` ${launchCommand.args.join(' ')}` : '';
-  return `mcpc connect ${skillName} -- ${launchCommand.command}${argv}`;
+    launchCommand.args && launchCommand.args.length > 0
+      ? ` ${launchCommand.args.map(shellQuote).join(' ')}`
+      : '';
+  return `mcpc connect ${shellQuote(skillName)} -- ${shellQuote(launchCommand.command)}${argv}`;
+}
+
+/**
+ * Minimal POSIX shell quoting for tokens emitted into a copy/paste-ready
+ * Setup command. Tokens that match `[A-Za-z0-9_./@:=+-]+` are passed
+ * verbatim; anything else is wrapped in single quotes with embedded `'`
+ * escaped via `'\''`. This keeps the common case (npx, package names,
+ * hyphenated args) readable while preventing shell injection or breakage
+ * when a token contains spaces, `$`, backticks, or globs.
+ */
+function shellQuote(token: string): string {
+  if (token.length > 0 && /^[A-Za-z0-9_./@:=+-]+$/.test(token)) return token;
+  return `'${token.replace(/'/g, `'\\''`)}'`;
 }
 
 /**

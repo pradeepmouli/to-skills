@@ -59,7 +59,7 @@ Plus a Setup section with one-time install + connection registration commands, a
 The fastmcp CLI parses each positional after `call <server> <tool>` as `key=value`. Unlike mcpc, fastmcp does not currently expose a typed-literal form (`:=`) — every value is passed as a string and the server-side schema validator coerces. The adapter:
 
 - Emits `key=<value>` for every parameter (Tier 1).
-- Falls back to a single `--json '<...>'` payload when an argument is a complex object or array that wouldn't survive shell tokenization.
+- Falls back to a single `--input-json '<JSON-payload>'` flag when any parameter is a complex object or array that wouldn't survive shell tokenization (Tier 3).
 
 The Parameters table in the rendered Markdown shows the literal CLI form so the consumer can copy-paste with confidence.
 
@@ -73,11 +73,12 @@ The Setup section the adapter emits looks like this (verbatim):
 # 1. Install fastmcp (Python CLI for invoking MCP servers; tested with fastmcp 2.x)
 pip install fastmcp
 
-# 2. Register this server
-fastmcp connect <skill-name> -- <launchCommand>
+# 2. Register this server (the renderer emits `pyfastmcp connect`, fastmcp's
+#    Python CLI binary name; some distributions alias it to `fastmcp`)
+pyfastmcp connect <skill-name> -- <launchCommand>
 
 # 3. (Optional) Verify the registration
-fastmcp list
+pyfastmcp list
 ```
 
 ---

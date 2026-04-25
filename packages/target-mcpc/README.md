@@ -55,15 +55,15 @@ Plus a Setup section with one-time install + `mcpc connect` registration command
 
 ## Argument encoding
 
-mcpc parses each positional after `tools-call <tool>` as `KEY=VALUE` (string) or `KEY:=VALUE` (JSON). The adapter encodes parameters with a three-tier strategy (driven by `args.ts`):
+mcpc parses each positional after `tools-call <tool>` as `KEY=VALUE` (literal string) or `KEY:=VALUE` (JSON-typed). The adapter classifies each parameter via the host's shared `classifyParameters` helper and emits the appropriate form (driven by `args.ts`):
 
-| Tier | Form                            | Used when                                                                    |
-| ---- | ------------------------------- | ---------------------------------------------------------------------------- |
-| 1    | `key=<value>`                   | Parameter is a string.                                                       |
-| 2    | `key:=<value>`                  | Parameter is a number, boolean, or simple JSON literal.                      |
-| 3    | `--json '<...>'` (single token) | Parameter is a complex object/array that doesn't survive shell tokenization. |
+| Tier | Per-parameter form                                                                              | Used when                                                                                                   |
+| ---- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 1    | `key=<value>` (string scalar / enum) **or** `key:=<value>` (number/integer/bool / string-array) | Parameter is a scalar, enum, or simple string array — encoder picks `:=` for typed, `=` for literal-string. |
+| 2    | `parent.child=<value>` / `parent.child:=<value>` (dotted, same string-vs-typed rule)            | Parameter is a flat object whose every leaf is itself a Tier-1 type — flattened into dotted keys.           |
+| 3    | One additional `--json '<JSON-payload>'` flag for the whole tool call                           | Any parameter that doesn't fit Tier 1 or 2 (nested objects deeper than one level, arrays of objects, $ref). |
 
-The Parameters table in the rendered Markdown shows the tier each parameter falls into so the consumer can copy-paste with confidence.
+The Parameters table in the rendered Markdown shows both the tier and the literal CLI form per parameter so the consumer can copy-paste with confidence.
 
 ---
 
