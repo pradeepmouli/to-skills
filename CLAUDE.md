@@ -59,6 +59,8 @@ shell commands, and other important information, read the current plan
 
 ## Active Technologies
 
+- none (same as parent feature — filesystem-only, no DB) (002-mcp-hardening)
+
 - TypeScript 5.x, Node.js ≥20 (matches existing workspace root and `@to-skills/cli`) (001-mcp-extract-bundle)
 - none (filesystem only — reads `package.json`, `mcp.json` / `claude_desktop_config.json`; writes `skills/<name>/SKILL.md` + `references/*.md`) (001-mcp-extract-bundle)
 

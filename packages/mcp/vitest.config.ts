@@ -14,6 +14,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov']
+    },
+    typecheck: {
+      enabled: true,
+      include: ['tests/types/**/*.test-d.ts']
     }
   }
 });

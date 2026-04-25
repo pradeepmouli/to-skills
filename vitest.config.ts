@@ -48,7 +48,9 @@ export default defineConfig({
       }
     },
     typecheck: {
-      enabled: false
+      enabled: true,
+      include: ['packages/**/tests/types/**/*.test-d.ts'],
+      tsconfig: './tsconfig.json'
     }
   }
 });
