@@ -80,25 +80,27 @@ export function encodeFastMcpArgs(plan: Map<string, ParameterPlan>): EncodedArgs
 }
 
 function encodeOne(key: string, plan: ParameterPlan): string {
-  // Tier 1/2 leaves only — Tier 3 short-circuited above.
-  if (plan.type === 'scalar') {
-    if (plan.scalarType === 'boolean') {
-      return `${key}=<true|false>`;
+  // Tier 1/2 leaves only — Tier 3 (`type: 'json'`) short-circuited in the
+  // caller. We still cover the `'json'` arm explicitly so `switch` is
+  // exhaustive and TS proves no arm is missed.
+  switch (plan.type) {
+    case 'scalar': {
+      if (plan.scalarType === 'boolean') return `${key}=<true|false>`;
+      // string / number / integer — fastmcp parses by schema.
+      return `${key}=<value>`;
     }
-    // string / number / integer / unspecified — fastmcp parses by schema.
-    return `${key}=<value>`;
-  }
-  if (plan.type === 'enum') {
-    if (plan.enum && plan.enum.length > 0) {
+    case 'enum':
+      // DU guarantees `plan.enum.length >= 1`.
       return `${key}=<one-of-${plan.enum.join('|')}>`;
+    case 'string-array':
+      return `${key}=<comma-separated>`;
+    case 'json':
+      // Defensive: callers filter Tier 3 above. fastmcp accepts
+      // `key=<value>` as a JSON literal when the schema demands it.
+      return `${key}=<value>`;
+    default: {
+      const _exhaustive: never = plan;
+      throw new Error(`encodeOne: unhandled ParameterPlan arm: ${JSON.stringify(_exhaustive)}`);
     }
-    return `${key}=<value>`;
   }
-  if (plan.type === 'string-array') {
-    return `${key}=<comma-separated>`;
-  }
-  // Catch-all for object/json types that somehow reached here despite tier
-  // filtering. fastmcp will still accept `key=<value>` as a JSON literal
-  // when the schema demands it.
-  return `${key}=<value>`;
 }

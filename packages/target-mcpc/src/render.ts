@@ -248,20 +248,27 @@ function collapseTrailingNewlines(s: string): string {
  */
 function encodePlanForTable(plan: ParameterPlan): string {
   const key = plan.path.join('.');
-  if (plan.tier === 3) return `--json '<JSON-payload>'`;
-  if (plan.type === 'scalar') {
-    if (plan.scalarType === 'string') return `${key}=<value>`;
-    if (plan.scalarType === 'boolean') return `${key}:=<true|false>`;
-    return `${key}:=<value>`;
-  }
-  if (plan.type === 'enum') {
-    if (plan.enum && plan.enum.length > 0) {
-      return `${key}=<one-of-${plan.enum.join('|')}>`;
+  switch (plan.type) {
+    case 'json':
+      return `--json '<JSON-payload>'`;
+    case 'scalar': {
+      if (plan.scalarType === 'string') return `${key}=<value>`;
+      if (plan.scalarType === 'boolean') return `${key}:=<true|false>`;
+      // number / integer
+      return `${key}:=<value>`;
     }
-    return `${key}=<value>`;
+    case 'enum':
+      // DU guarantees `plan.enum.length >= 1`.
+      return `${key}=<one-of-${plan.enum.join('|')}>`;
+    case 'string-array':
+      return `${key}:=<json-array>`;
+    default: {
+      const _exhaustive: never = plan;
+      throw new Error(
+        `encodePlanForTable: unhandled ParameterPlan arm: ${JSON.stringify(_exhaustive)}`
+      );
+    }
   }
-  if (plan.type === 'string-array') return `${key}:=<json-array>`;
-  return `${key}:=<value>`;
 }
 
 /**

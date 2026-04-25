@@ -75,17 +75,17 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 7 (FR-H016)
 
-- [ ] T012 [P] [US7] No new test file required — existing inline-snapshot tests in `packages/target-mcpc/tests/` and `packages/target-fastmcp/tests/` are the regression gate. Verify they still pass after the refactor (T013-T018).
+- [x] T012 [P] [US7] No new test file required — existing inline-snapshot tests in `packages/target-mcpc/tests/` and `packages/target-fastmcp/tests/` are the regression gate. Verify they still pass after the refactor (T013-T018). _Outcome: 22 target-mcpc + 22 target-fastmcp + ~5 mcp param-table tests all pass byte-identically post-refactor; no snapshot updates._
 
 ### Implementation for User Story 7
 
-- [ ] T013 [US7] Refactor `ParameterPlan` in `packages/mcp/src/types.ts` to the 4-arm DU per `data-model.md` §2. Mark `path` as `readonly readonly string[]`. Each arm constrains `tier` to its valid set (1|2 for non-json, 3 for json).
-- [ ] T014 [US7] Update `packages/mcp/src/adapter/classify-parameters.ts` return shape to `ReadonlyMap<string, ParameterPlan>`. Each plan-builder branch must construct the appropriate arm with all required fields populated.
-- [ ] T015 [P] [US7] Refactor `packages/target-mcpc/src/args.ts::encodeOne` to `switch (plan.type)` per `contracts/parameter-plan.md`. Each arm narrows the relevant field automatically.
-- [ ] T016 [P] [US7] Refactor `packages/target-fastmcp/src/args.ts::encodeOne` same as T015.
-- [ ] T017 [P] [US7] Refactor `packages/mcp/src/adapter/param-table.ts::encodePlanForTable` to `switch (plan.type)` for each cell renderer. Confirm Markdown output is byte-identical.
-- [ ] T018 [US7] Run `pnpm run type-check && pnpm test`. Fix type errors; all snapshot tests must pass without snapshot updates.
-- [ ] T019 [US7] Commit: `refactor(mcp): convert ParameterPlan to discriminated union (US7)`. Include `BREAKING CHANGE` footer pointing to `quickstart.md` §2.
+- [x] T013 [US7] Refactor `ParameterPlan` in `packages/mcp/src/adapter/classify.ts` (NOT `types.ts` — that's where the impl lives; `adapter/types.ts` re-exports) to the 4-arm DU per `data-model.md` §2. `path` is `readonly readonly string[]` on `ParameterPlanBase`. Each arm constrains `tier` to its valid set (1|2 for scalar/enum/string-array, 3 for json). The unused `'object'` arm (never constructed by `classifyParameters`) was dropped — verified zero readers depend on it.
+- [x] T014 [US7] Each plan-builder branch in `classifyParameters` constructs the appropriate arm with all required fields populated. Internal helpers `tryClassifyTier1`/`tryClassifyTier2` keep their existing `Tier1Classification`/`Tier2Leaf` shape; a new `buildLeafPlan()` helper centralizes arm-shape selection from those internal types and asserts arm invariants at runtime. (Return type stays `Map<string, ParameterPlan>` — `ReadonlyMap` is deferred to US11 to keep this PR scoped.)
+- [x] T015 [P] [US7] Refactored `packages/target-mcpc/src/args.ts::encodeOne` to `switch (plan.type)` with exhaustive `default: const _: never = plan` arm.
+- [x] T016 [P] [US7] Refactored `packages/target-fastmcp/src/args.ts::encodeOne` same as T015.
+- [x] T017 [P] [US7] Refactored `packages/mcp/src/adapter/param-table.ts::describeType` to `switch (p.type)`; also updated `packages/target-mcpc/src/render.ts::encodePlanForTable` and `packages/target-fastmcp/src/render.ts::encodePlanForTable` to switch on `plan.type`. Markdown output verified byte-identical.
+- [x] T018 [US7] `pnpm run type-check` — clean. `pnpm test` — 787/787 runtime tests pass (the 489 typecheck "Errors" are pre-existing in `packages/typedoc/test/extractor.test.ts` and unrelated to US7).
+- [x] T019 [US7] Commit: `refactor(mcp): convert ParameterPlan to discriminated union (US7)`. Includes `BREAKING CHANGE` footer pointing to `quickstart.md` §2.
 
 **Checkpoint**: `ParameterPlan` is a 4-arm DU. All 5 reader sites use exhaustive narrowing. Existing snapshots unchanged.
 

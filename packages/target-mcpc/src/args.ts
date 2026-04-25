@@ -73,32 +73,34 @@ export function encodeMcpcArgs(plan: Map<string, ParameterPlan>): EncodedArgs {
 }
 
 function encodeOne(key: string, plan: ParameterPlan): string {
-  // Tier 1/2 leaves only — Tier 3 short-circuited above.
-  if (plan.type === 'scalar') {
-    // String scalars use literal-string form `key=`. Number/integer/boolean
-    // scalars use typed form `key:=`. When `scalarType` is unset (older
-    // plans not produced by the current classifier), default to typed form
-    // because mcpc can also coerce strings via JSON parsing.
-    if (plan.scalarType === 'string') {
-      return `${key}=<value>`;
+  // Tier 1/2 leaves only — Tier 3 (`type: 'json'`) short-circuited in the
+  // caller. We still cover the `'json'` arm explicitly so `switch` is
+  // exhaustive and TS proves no arm is missed.
+  switch (plan.type) {
+    case 'scalar': {
+      // String scalars use literal-string form `key=`. Number/integer/boolean
+      // scalars use typed form `key:=` because mcpc parses the right-hand
+      // side as JSON for `:=`.
+      if (plan.scalarType === 'string') return `${key}=<value>`;
+      if (plan.scalarType === 'boolean') return `${key}:=<true|false>`;
+      // number / integer
+      return `${key}:=<value>`;
     }
-    if (plan.scalarType === 'boolean') {
-      return `${key}:=<true|false>`;
-    }
-    // number/integer fallthrough — and unspecified scalar.
-    return `${key}:=<value>`;
-  }
-  if (plan.type === 'enum') {
-    if (plan.enum && plan.enum.length > 0) {
+    case 'enum': {
+      // The DU guarantees `plan.enum.length >= 1` (classifier only emits
+      // this arm when the schema declares non-empty `enum`), so the
+      // `<one-of-...>` placeholder always has values.
       return `${key}=<one-of-${plan.enum.join('|')}>`;
     }
-    return `${key}=<value>`;
+    case 'string-array':
+      return `${key}:=<json-array>`;
+    case 'json':
+      // Defensive: callers filter Tier 3 above, but if a `'json'` arm
+      // somehow reaches here we fall back to the typed-JSON shape.
+      return `${key}:=<value>`;
+    default: {
+      const _exhaustive: never = plan;
+      throw new Error(`encodeOne: unhandled ParameterPlan arm: ${JSON.stringify(_exhaustive)}`);
+    }
   }
-  if (plan.type === 'string-array') {
-    return `${key}:=<json-array>`;
-  }
-  // Catch-all for object/json types that somehow reached here despite tier
-  // filtering. Encoding as typed is safest because object/array literals
-  // require JSON form.
-  return `${key}:=<value>`;
 }

@@ -24,25 +24,66 @@
 
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 
-export interface ParameterPlan {
+/**
+ * Common fields present on every `ParameterPlan` arm. Every reader needs the
+ * dot-notation `path` (for keying) and the `required` boolean (for table
+ * rendering and arg shape). Per-arm fields live on the specific arm
+ * interfaces below.
+ */
+export interface ParameterPlanBase {
   /** Dot-notation path, e.g. ["user", "email"] */
-  path: string[];
-  /** Rendering tier (see Research §6) */
-  tier: 1 | 2 | 3;
-  /** Structural type */
-  type: 'scalar' | 'enum' | 'string-array' | 'object' | 'json';
+  readonly path: readonly string[];
   /** Whether this parameter is required */
-  required: boolean;
-  /** Optional enum values (only when type === 'enum') */
-  enum?: string[];
-  /**
-   * Underlying JSON Schema scalar type — populated only when `type === 'scalar'`
-   * (Tier 1 or Tier 2 leaves). Lets CLI adapters distinguish typed encodings
-   * (`key:=value` for number/integer/boolean) from string encodings
-   * (`key=value` for string). Backward-compatible additive field.
-   */
-  scalarType?: 'string' | 'number' | 'integer' | 'boolean';
+  readonly required: boolean;
 }
+
+/**
+ * Tier 1 or Tier 2 scalar leaf — `string`, `number`, `integer`, or `boolean`.
+ * `scalarType` is mandatory so encoders can choose between typed (`key:=`) and
+ * string (`key=`) shapes without nullability checks.
+ */
+export interface ParameterPlanScalar extends ParameterPlanBase {
+  readonly type: 'scalar';
+  readonly tier: 1 | 2;
+  readonly scalarType: 'string' | 'number' | 'integer' | 'boolean';
+}
+
+/**
+ * Tier 1 or Tier 2 enum leaf. The list of allowed string values is mandatory —
+ * the classifier only emits this arm when the underlying schema declares
+ * `enum: string[]` with at least one entry.
+ */
+export interface ParameterPlanEnum extends ParameterPlanBase {
+  readonly type: 'enum';
+  readonly tier: 1 | 2;
+  readonly enum: readonly string[];
+}
+
+/** Tier 1 or Tier 2 simple string array (`type: 'array', items: { type: 'string' }`). */
+export interface ParameterPlanStringArray extends ParameterPlanBase {
+  readonly type: 'string-array';
+  readonly tier: 1 | 2;
+}
+
+/**
+ * Tier 3 fallback — anything we couldn't safely flatten (deeply nested
+ * objects, arrays of objects, unresolved `$ref`, unions, boolean schemas,
+ * missing `type`). Adapters render this as a single JSON-payload flag.
+ */
+export interface ParameterPlanJson extends ParameterPlanBase {
+  readonly type: 'json';
+  readonly tier: 3;
+}
+
+/**
+ * Discriminated union over `type`. Readers should `switch (plan.type)` (with
+ * an exhaustive `default` arm) so per-arm fields narrow automatically.
+ */
+export type ParameterPlan =
+  | ParameterPlanScalar
+  | ParameterPlanEnum
+  | ParameterPlanStringArray
+  | ParameterPlanJson;
 
 type Tier1Kind = 'scalar' | 'enum' | 'string-array';
 
@@ -125,15 +166,7 @@ export function classifyParameters(inputSchema: JSONSchema7): Map<string, Parame
 
     const tier1 = tryClassifyTier1(schema);
     if (tier1) {
-      const plan: ParameterPlan = {
-        path: [name],
-        tier: 1,
-        type: tier1.kind,
-        required: isRequired
-      };
-      if (tier1.enum) plan.enum = tier1.enum;
-      if (tier1.scalarType) plan.scalarType = tier1.scalarType;
-      plans.set(name, plan);
+      plans.set(name, buildLeafPlan([name], 1, isRequired, tier1));
       continue;
     }
 
@@ -143,19 +176,9 @@ export function classifyParameters(inputSchema: JSONSchema7): Map<string, Parame
       for (const leaf of tier2) {
         const path = [name, leaf.name];
         const key = path.join('.');
-        const plan: ParameterPlan = {
-          path,
-          tier: 2,
-          // Every Tier 2 leaf is itself Tier 1, so its `type` is the
-          // leaf's Tier 1 kind ('scalar' | 'enum' | 'string-array').
-          type: leaf.kind,
-          // Required-inheritance: use the OUTER property's required flag.
-          // See function doc comment for rationale.
-          required: isRequired
-        };
-        if (leaf.enum) plan.enum = leaf.enum;
-        if (leaf.scalarType) plan.scalarType = leaf.scalarType;
-        plans.set(key, plan);
+        // Required-inheritance: use the OUTER property's required flag.
+        // See function doc comment for rationale.
+        plans.set(key, buildLeafPlan(path, 2, isRequired, leaf));
       }
       continue;
     }
@@ -252,6 +275,50 @@ interface Tier2Leaf {
   kind: Tier1Kind;
   enum?: string[];
   scalarType?: 'string' | 'number' | 'integer' | 'boolean';
+}
+
+/**
+ * Construct the appropriate `ParameterPlan` arm for a Tier 1 / Tier 2 leaf.
+ * Centralizes the arm-shape selection so both the top-level Tier 1 branch
+ * and the per-leaf Tier 2 branch share the invariant that:
+ *   - `kind === 'scalar'` ⇒ `scalarType` is set on the input
+ *   - `kind === 'enum'`   ⇒ `enum` is set on the input
+ * Both invariants are guaranteed by `tryClassifyTier1` / `tryClassifyTier2`,
+ * but we still defensively validate at runtime so a future refactor that
+ * forgets to populate them fails loudly instead of silently producing a
+ * malformed DU instance.
+ */
+function buildLeafPlan(
+  path: readonly string[],
+  tier: 1 | 2,
+  required: boolean,
+  leaf: {
+    kind: Tier1Kind;
+    enum?: string[];
+    scalarType?: 'string' | 'number' | 'integer' | 'boolean';
+  }
+): ParameterPlan {
+  switch (leaf.kind) {
+    case 'scalar': {
+      if (!leaf.scalarType) {
+        throw new Error(
+          `classifyParameters: scalar leaf missing scalarType (path=${path.join('.')})`
+        );
+      }
+      return { type: 'scalar', tier, path, required, scalarType: leaf.scalarType };
+    }
+    case 'enum': {
+      if (!leaf.enum) {
+        throw new Error(
+          `classifyParameters: enum leaf missing enum values (path=${path.join('.')})`
+        );
+      }
+      return { type: 'enum', tier, path, required, enum: leaf.enum };
+    }
+    case 'string-array': {
+      return { type: 'string-array', tier, path, required };
+    }
+  }
 }
 
 /**

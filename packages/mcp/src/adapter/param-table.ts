@@ -106,15 +106,22 @@ function findPlanForParameter(
 }
 
 function describeType(p: ParameterPlan): string {
-  if (p.type === 'enum') {
-    if (p.enum && p.enum.length > 0) return `enum(${p.enum.join('\\|')})`;
-    return 'enum';
+  switch (p.type) {
+    case 'enum':
+      // DU guarantees `p.enum` is a non-empty list.
+      return `enum(${p.enum.join('\\|')})`;
+    case 'string-array':
+      return 'string[]';
+    case 'json':
+      return 'json';
+    case 'scalar':
+      // DU guarantees `p.scalarType` is set on the 'scalar' arm.
+      return p.scalarType;
+    default: {
+      const _exhaustive: never = p;
+      throw new Error(`describeType: unhandled ParameterPlan arm: ${JSON.stringify(_exhaustive)}`);
+    }
   }
-  if (p.type === 'string-array') return 'string[]';
-  if (p.type === 'json') return 'json';
-  // Tier 1/2 scalar — show the underlying scalarType when available.
-  if (p.type === 'scalar' && p.scalarType) return p.scalarType;
-  return p.type;
 }
 
 function describeParam(param: ExtractedParameter, plan: ParameterPlan): string {
