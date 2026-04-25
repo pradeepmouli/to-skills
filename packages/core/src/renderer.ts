@@ -252,14 +252,19 @@ export function renderSkill(
   });
   if (promptsRef) references.push(promptsRef);
 
-  return canonicalize({
+  const result: RenderedSkill = {
     skill: {
       filename: `${basePath}/SKILL.md`,
       content: skillContent,
       tokens: estimateTokens(skillContent)
     },
     references
-  });
+  };
+  // Default canonicalize unless the caller explicitly opts out — adapters that
+  // mutate references after the inner renderSkill returns (e.g. target-mcpc
+  // appending its own tools.md) pass `canonicalize: false` so canonicalization
+  // runs exactly once at the host's outer wrapper.
+  return opts.canonicalize === false ? result : canonicalize(result);
 }
 
 // ===========================================================================

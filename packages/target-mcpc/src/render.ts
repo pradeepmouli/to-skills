@@ -82,21 +82,24 @@ export class McpcAdapter implements InvocationAdapter {
     // Setup section — install + connect commands + FR-IT-012 trace line.
     const bodyPrefix = renderMcpcSetup(ctx.skillName, launchCommand, this.fingerprint);
 
-    // Delegate body to core's default path. We disable the default
-    // functions.md emission because we'll emit our own tools.md with
-    // command-shape rows instead.
+    // Delegate body to core's default path. We disable:
+    //  - the default functions.md emission (we emit our own tools.md below)
+    //  - the inner canonicalize pass — because we mutate `references` after
+    //    this call, and a single canonicalize run at the host's outer wrapper
+    //    is sufficient (and avoids a redundant second pass on the body).
     const baseRendered = renderSkill(skill, {
       maxTokens: ctx.maxTokens,
       additionalFrontmatter,
       bodyPrefix,
       skipDefaultFunctionsRef: true,
+      canonicalize: false,
       invocation: undefined,
       namePrefix: ctx.skillName
     });
 
-    // Append our own tools.md if there are any tools. We do this AFTER the
-    // base render so we can append to the references list (canonicalize is
-    // re-run by the host on the final result).
+    // Append our own tools.md if there are any tools. The host's outer
+    // canonicalize wrapper (in renderSkill's invocation-adapter dispatch) runs
+    // exactly once over this final shape, including tools.md.
     const toolsRef = renderToolsReference(skill.functions, ctx.skillName);
     if (toolsRef) {
       baseRendered.references.push(toolsRef);

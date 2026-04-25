@@ -330,6 +330,18 @@ export interface SkillRenderOptions {
    * instead of TypeScript signatures. Defaults to `false`.
    */
   skipDefaultFunctionsRef?: boolean;
+  /**
+   * When `false`, the default renderer path returns its `RenderedSkill`
+   * without running the trailing canonicalization pass. Adapters that wrap
+   * `renderSkill` for body rendering and then mutate `references` (e.g.
+   * `@to-skills/target-mcpc` appending its own `tools.md`) pass `false` here
+   * so canonicalization runs exactly once — at the host's outer wrapper —
+   * over the final shape including the appended files. Defaults to `true`.
+   *
+   * Has no effect on the invocation-adapter dispatch path (which always
+   * canonicalizes the adapter's output at the host wrapper).
+   */
+  canonicalize?: boolean;
 }
 
 // NOTE: Forward-declared for backward-compatible extension point.

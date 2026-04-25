@@ -40,16 +40,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@to-skills/core": "workspace:*"
-  },
-  "devDependencies": {
+    "@to-skills/core": "workspace:*",
     "@to-skills/mcp": "workspace:*",
-    "@types/json-schema": "^7.0.15",
-    "@types/node": "^20.0.0",
-    "vitest": "^2.0.0",
     "yaml": "^2.0.0"
   },
-  "peerDependencies": {
-    "@to-skills/mcp": "workspace:*"
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^20.0.0",
+    "vitest": "^2.0.0"
   }
 }
