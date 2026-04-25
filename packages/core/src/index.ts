@@ -31,6 +31,10 @@ export type {
   AdapterFingerprint,
   InvocationAdapter,
   AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
   RenderedFile,
   RenderedSkill,
   SkillRenderOptions

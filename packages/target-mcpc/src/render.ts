@@ -70,9 +70,7 @@ export class McpcAdapter implements InvocationAdapter {
    * Render an `ExtractedSkill` into a `RenderedSkill` carrying mcpc
    * command-shape SKILL.md output.
    *
-   * @throws `McpError` with code `MISSING_LAUNCH_COMMAND` when neither
-   *   `ctx.launchCommand` nor `ctx.httpEndpoint` is set. (`packageName` is
-   *   accepted only as a fallback into npx-by-name stdio launch.)
+   * The launch shape is selected by `resolveLaunchCommand` from `ctx.mode`.
    */
   async render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill> {
     const launchCommand = resolveLaunchCommand(ctx);
@@ -112,39 +110,41 @@ export class McpcAdapter implements InvocationAdapter {
 }
 
 /**
- * Pick the launch shape passed to `renderMcpcSetup`.
+ * Pick the launch shape passed to `renderMcpcSetup`. Narrows on `ctx.mode`:
  *
- * Resolution order — same general intent as `McpProtocolAdapter` but the
- * CLI adapter doesn't have a "bundle wins" override because mcpc skills are
- * extract-time artifacts (you wouldn't usually mcpc-proxy your own bundle).
- * Still, when `packageName` is set with no other launch info, we fall back
- * to `npx -y <packageName>` so the connect command remains valid.
+ * 1. **`mode: 'http'`** — emit `{ url, headers? }` shape.
+ * 2. **`mode: 'stdio'`** — verbatim stdio command.
+ * 3. **`mode: 'bundle'`** — synthesize `{ command: 'npx', args: ['-y', <name>] }`
+ *    (or the multi-bin `--package=` form, FR-034).
  *
- * 1. `ctx.httpEndpoint` — emit `{ url, headers? }` shape.
- * 2. `ctx.launchCommand` — verbatim stdio command.
- * 3. `ctx.packageName` — synthesize `{ command: 'npx', args: ['-y', name] }`.
- *
- * Throws `MISSING_LAUNCH_COMMAND` if none of the three are set.
+ * The renderer's invocation-adapter dispatch guarantees `ctx.mode` is set; the
+ * `default` branch exists solely for compile-time exhaustiveness.
  */
 function resolveLaunchCommand(ctx: AdapterRenderContext): StdioLaunchCommand | HttpLaunchEndpoint {
-  if (ctx.httpEndpoint) {
-    return ctx.httpEndpoint.headers
-      ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
-      : { url: ctx.httpEndpoint.url };
+  switch (ctx.mode) {
+    case 'http':
+      return ctx.httpEndpoint.headers
+        ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
+        : { url: ctx.httpEndpoint.url };
+    case 'stdio':
+      return ctx.launchCommand;
+    case 'bundle': {
+      const args = ctx.binName
+        ? ['-y', `--package=${ctx.packageName}`, ctx.binName]
+        : ['-y', ctx.packageName];
+      return { command: 'npx', args };
+    }
+    default: {
+      // Exhaustiveness check: a new arm without a case here surfaces as a
+      // type error on `_exhaustive`. The runtime throw is unreachable
+      // because the renderer always sets `mode`.
+      const _exhaustive: never = ctx;
+      throw new McpError(
+        `McpcAdapter.render: unknown ctx.mode (${String(_exhaustive)})`,
+        'MISSING_LAUNCH_COMMAND'
+      );
+    }
   }
-  if (ctx.launchCommand) {
-    return ctx.launchCommand;
-  }
-  if (ctx.packageName) {
-    const args = ctx.binName
-      ? ['-y', `--package=${ctx.packageName}`, ctx.binName]
-      : ['-y', ctx.packageName];
-    return { command: 'npx', args };
-  }
-  throw new McpError(
-    'McpcAdapter.render: none of ctx.httpEndpoint, ctx.launchCommand, or ctx.packageName provided',
-    'MISSING_LAUNCH_COMMAND'
-  );
 }
 
 /**

@@ -9,6 +9,10 @@ export type {
   InvocationTarget,
   InvocationAdapter,
   AdapterRenderContext,
+  AdapterRenderContextBase,
+  AdapterRenderContextBundle,
+  AdapterRenderContextHttp,
+  AdapterRenderContextStdio,
   AdapterFingerprint,
   ParameterPlan
 } from './adapter/types.js';

@@ -360,44 +360,74 @@ export interface InvocationAdapter {
   render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill>;
 }
 
-export interface AdapterRenderContext {
-  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`; `undefined` in extract mode where the skill is for a third-party server. */
-  packageName?: string;
-  /**
-   * Bundle-mode multi-bin selector — when set alongside `packageName`, the
-   * adapter should emit the npx `--package=<packageName> <binName>` form
-   * (FR-034). Ignored when `packageName` is undefined.
-   */
-  binName?: string;
+/**
+ * Fields shared by every arm of {@link AdapterRenderContext}. Adapters can
+ * destructure these without first checking `mode`.
+ */
+export interface AdapterRenderContextBase {
   /** Output directory name chosen by the caller (e.g. "filesystem", "my-server"). */
-  skillName: string;
+  readonly skillName: string;
   /** Token budget ceiling per reference file — adapters should stay under this but the host will truncate if exceeded. */
-  maxTokens: number;
+  readonly maxTokens: number;
   /** When `true` (default), the host runs a canonicalization pass on the adapter's output so re-runs produce content-identical files. */
-  canonicalize: boolean;
+  readonly canonicalize: boolean;
+}
+
+/**
+ * Bundle-mode arm — the host bundle command flagged this skill as self-referential
+ * and the adapter should emit `npx <packageName>` (or the multi-bin
+ * `--package=<packageName> <binName>` form per FR-034) as the launch shape.
+ */
+export interface AdapterRenderContextBundle extends AdapterRenderContextBase {
+  readonly mode: 'bundle';
+  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`. */
+  readonly packageName: string;
   /**
-   * Launch command threaded through from the host (extract mode); `undefined` in
-   * bundle mode where `packageName` is used. Adapters may treat `packageName` as
-   * higher priority than `launchCommand` when both are present (e.g. preferring
-   * `npx <packageName>` for self-referential bundle output).
+   * Bundle-mode multi-bin selector — when set, the adapter emits the npx
+   * `--package=<packageName> <binName>` form (FR-034) so the right bin is
+   * invoked at run time. Optional; defaults to the package's single-bin
+   * default when omitted.
    */
-  launchCommand?: {
-    command: string;
-    args?: readonly string[];
-    env?: Readonly<Record<string, string>>;
-  };
-  /**
-   * HTTP endpoint threaded through from the host (HTTP-extract mode); `undefined`
-   * for stdio-extract or bundle modes.
-   *
-   * @remarks
-   * Adapters that emit MCP-launch frontmatter prefer this over `launchCommand`
-   * (and `packageName` wins over both for bundle self-reference). When set,
-   * the adapter should emit a `{ url, headers }` shape rather than a
-   * `{ command, args, env }` shape, because there is no subprocess to spawn.
-   */
-  httpEndpoint?: {
-    url: string;
-    headers?: Readonly<Record<string, string>>;
+  readonly binName?: string;
+}
+
+/**
+ * HTTP-extract arm — the host extracted the skill from an HTTP-based MCP
+ * server (`--url ...`). There is no shell launch command; adapters that emit
+ * MCP-launch frontmatter must produce a `{ url, headers }` shape.
+ */
+export interface AdapterRenderContextHttp extends AdapterRenderContextBase {
+  readonly mode: 'http';
+  readonly httpEndpoint: {
+    readonly url: string;
+    readonly headers?: Readonly<Record<string, string>>;
   };
 }
+
+/**
+ * Stdio-extract arm — the host extracted the skill from a stdio-transport MCP
+ * server. Adapters that emit MCP-launch frontmatter use the `{ command, args,
+ * env }` shape verbatim.
+ */
+export interface AdapterRenderContextStdio extends AdapterRenderContextBase {
+  readonly mode: 'stdio';
+  readonly launchCommand: {
+    readonly command: string;
+    readonly args?: readonly string[];
+    readonly env?: Readonly<Record<string, string>>;
+  };
+}
+
+/**
+ * Discriminated union over `mode` — encodes the "exactly one of
+ * packageName | httpEndpoint | launchCommand" invariant at compile time.
+ *
+ * Adapters narrow on `ctx.mode` via `switch` (with an exhaustive default).
+ * Constructing two arms simultaneously is rejected by TypeScript's
+ * excess-property checker on object literals; the renderer's invocation-adapter
+ * dispatch enforces the same invariant at runtime for non-literal callers.
+ */
+export type AdapterRenderContext =
+  | AdapterRenderContextBundle
+  | AdapterRenderContextHttp
+  | AdapterRenderContextStdio;

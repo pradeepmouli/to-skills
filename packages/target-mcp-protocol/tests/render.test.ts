@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 import type { AdapterRenderContext, ExtractedSkill } from '@to-skills/core';
-import { McpError } from '@to-skills/mcp';
 import { McpProtocolAdapter } from '../src/render.js';
 
 const baseSkill: ExtractedSkill = {
@@ -25,13 +24,62 @@ const baseSkill: ExtractedSkill = {
   examples: []
 };
 
-function makeCtx(overrides: Partial<AdapterRenderContext> = {}): AdapterRenderContext {
-  return {
-    skillName: 'my-server',
-    maxTokens: 4000,
-    canonicalize: true,
-    ...overrides
+/**
+ * Inputs to {@link makeCtx} mirror the old flat-context API for test
+ * brevity; the helper picks the matching DU arm at construction. Exactly
+ * one of `packageName`/`httpEndpoint`/`launchCommand` is required — the
+ * renderer in `@to-skills/core` enforces this invariant at dispatch time
+ * (see `core/test/renderer.invocation.test.ts`).
+ */
+type CtxInput = {
+  skillName?: string;
+  maxTokens?: number;
+  canonicalize?: boolean;
+  packageName?: string;
+  binName?: string;
+  launchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
   };
+  httpEndpoint?: { url: string; headers?: Readonly<Record<string, string>> };
+};
+
+function makeCtx(overrides: CtxInput = {}): AdapterRenderContext {
+  const skillName = overrides.skillName ?? 'my-server';
+  const maxTokens = overrides.maxTokens ?? 4000;
+  const canonicalize = overrides.canonicalize ?? true;
+  if (overrides.packageName !== undefined) {
+    return {
+      mode: 'bundle',
+      skillName,
+      maxTokens,
+      canonicalize,
+      packageName: overrides.packageName,
+      ...(overrides.binName !== undefined ? { binName: overrides.binName } : {})
+    };
+  }
+  if (overrides.httpEndpoint !== undefined) {
+    return {
+      mode: 'http',
+      skillName,
+      maxTokens,
+      canonicalize,
+      httpEndpoint: overrides.httpEndpoint
+    };
+  }
+  if (overrides.launchCommand !== undefined) {
+    return {
+      mode: 'stdio',
+      skillName,
+      maxTokens,
+      canonicalize,
+      launchCommand: overrides.launchCommand
+    };
+  }
+  throw new Error(
+    'test makeCtx: must supply one of packageName, httpEndpoint, launchCommand (DU invariant)'
+  );
 }
 
 function parseFrontmatter(content: string): Record<string, unknown> {
@@ -139,51 +187,12 @@ describe('McpProtocolAdapter', () => {
     expect(inner.args).toEqual(['-y', '--package=@org/my-server', 'mcp-tool']);
   });
 
-  it('binName without packageName is ignored (extract mode does not honor it)', async () => {
-    const out = await adapter.render(
-      baseSkill,
-      makeCtx({ binName: 'orphan', launchCommand: { command: 'node', args: ['./a.js'] } })
-    );
-    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
-    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
-      command: string;
-      args: string[];
-    };
-    // Extract-mode launchCommand is used verbatim; binName has no effect.
-    expect(inner.command).toBe('node');
-    expect(inner.args).toEqual(['./a.js']);
-  });
-
-  it('bundle mode wins — packageName + launchCommand both set, packageName takes precedence', async () => {
-    const out = await adapter.render(
-      baseSkill,
-      makeCtx({
-        packageName: '@org/my-server',
-        launchCommand: { command: 'node', args: ['./local.js'] }
-      })
-    );
-    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
-    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
-      command: string;
-      args: string[];
-    };
-    expect(inner.command).toBe('npx');
-    expect(inner.args).toEqual(['-y', '@org/my-server']);
-  });
-
-  it('throws McpError(MISSING_LAUNCH_COMMAND) when neither packageName nor launchCommand is set', async () => {
-    // Catch-once pattern: avoids attaching three rejection handlers to the
-    // same promise (would warn under future async refactors of render()).
-    let caught: unknown;
-    try {
-      await adapter.render(baseSkill, makeCtx());
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught).toBeInstanceOf(McpError);
-    expect(caught).toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
-    expect((caught as Error).message).toMatch(/none of/);
-  });
+  // NOTE: pre-DU tests for "binName without packageName ignored",
+  // "bundle wins over launchCommand", and "MISSING_LAUNCH_COMMAND when no
+  // arm set" have been removed — these states are now unrepresentable in
+  // AdapterRenderContext (3-arm DU over `mode`). The renderer in
+  // `@to-skills/core` enforces exactly-one-arm at dispatch time; see
+  // `core/test/renderer.invocation.test.ts` for the new coverage.
 
   it('http-extract mode — ctx.httpEndpoint emits {url, headers} shape', async () => {
     const out = await adapter.render(
@@ -210,37 +219,8 @@ describe('McpProtocolAdapter', () => {
     });
   });
 
-  it('packageName wins over httpEndpoint (bundle mode precedence)', async () => {
-    const out = await adapter.render(
-      baseSkill,
-      makeCtx({
-        packageName: '@org/my-server',
-        httpEndpoint: { url: 'https://example.com/mcp' }
-      })
-    );
-    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
-    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
-      command?: string;
-      url?: string;
-    };
-    expect(inner.command).toBe('npx');
-    expect(inner.url).toBeUndefined();
-  });
-
-  it('httpEndpoint wins over launchCommand (HTTP > stdio)', async () => {
-    const out = await adapter.render(
-      baseSkill,
-      makeCtx({
-        httpEndpoint: { url: 'https://example.com/mcp' },
-        launchCommand: { command: 'node', args: ['./local.js'] }
-      })
-    );
-    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
-    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
-      command?: string;
-      url?: string;
-    };
-    expect(inner.url).toBe('https://example.com/mcp');
-    expect(inner.command).toBeUndefined();
-  });
+  // NOTE: pre-DU multi-arm precedence tests ("packageName wins over
+  // httpEndpoint", "httpEndpoint wins over launchCommand") removed — the
+  // renderer can no longer produce a multi-arm ctx, so adapter-level
+  // precedence is moot.
 });

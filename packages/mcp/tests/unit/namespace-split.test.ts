@@ -150,6 +150,7 @@ describe('namespace-split integration with McpcAdapter', () => {
 
     const adapter = new McpcAdapter();
     const rendered = await adapter.render(skill, {
+      mode: 'stdio',
       skillName: 'small-server',
       maxTokens: 4000,
       canonicalize: true,
@@ -173,6 +174,7 @@ describe('namespace-split integration with McpcAdapter', () => {
 
     const adapter = new McpcAdapter();
     const rendered = await adapter.render(skill, {
+      mode: 'stdio',
       skillName: 'big-server',
       // Tight budget forces the split helper to chop by namespace.
       maxTokens: 500,

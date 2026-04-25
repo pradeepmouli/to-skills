@@ -49,17 +49,17 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 1 (FR-H017, SC-H002)
 
-- [ ] T004 [P] [US1] Create `packages/mcp/tests/types/adapter-render-context-types.test-d.ts` with three `// @ts-expect-error` assertions: (a) two arms set (`mode: 'bundle'` + `launchCommand`), (b) wrong field for arm (`mode: 'http'` + `packageName`), (c) missing required field (`mode: 'bundle'` with no `packageName`). Run `pnpm vitest --typecheck` to confirm all three fail compilation as expected.
+- [x] T004 [P] [US1] Create `packages/mcp/tests/types/adapter-render-context-types.test-d.ts` with three `// @ts-expect-error` assertions: (a) two arms set (`mode: 'bundle'` + `launchCommand`), (b) wrong field for arm (`mode: 'http'` + `packageName`), (c) missing required field (`mode: 'bundle'` with no `packageName`). Run `pnpm vitest --typecheck` to confirm all three fail compilation as expected.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Refactor `AdapterRenderContext` in `packages/mcp/src/types.ts` to the 3-arm DU per `data-model.md` §1: define `AdapterRenderContextBase`, `AdapterRenderContextBundle`, `AdapterRenderContextHttp`, `AdapterRenderContextStdio`, and union them. Keep all existing fields readonly.
-- [ ] T006 [US1] Update `packages/core/src/renderer.ts` invocation-adapter dispatch (FR-H002): set `ctx.mode` deterministically from `SkillRenderOptions` — `invocationPackageName` → `'bundle'`, `invocationHttpEndpoint` → `'http'`, `invocationLaunchCommand` → `'stdio'`. Throw `McpError('TRANSPORT_FAILED', /more than one of/)` when multiple are set. Throw existing `MISSING_LAUNCH_COMMAND` when none.
-- [ ] T007 [P] [US1] Update `packages/target-mcp-protocol/src/render.ts::render` to use `switch (ctx.mode)` for narrowing (FR-H003). Remove the existing optional-chain checks.
-- [ ] T008 [P] [US1] Update `packages/target-mcpc/src/render.ts::resolveLaunchCommand` (and any callsite that destructures `ctx.launchCommand`) to use `switch (ctx.mode)`. Remove the runtime `MISSING_LAUNCH_COMMAND` throw — the renderer guarantees presence per-arm now.
-- [ ] T009 [P] [US1] Update `packages/target-fastmcp/src/render.ts::resolveLaunchCommand` same as T008.
-- [ ] T010 [US1] Run `pnpm run type-check` across the workspace; fix any narrowing-related type errors surfaced. All 1090+ existing tests must still pass (`pnpm test`).
-- [ ] T011 [US1] Commit with conventional message: `refactor(mcp): convert AdapterRenderContext to discriminated union (US1)`. Include `BREAKING CHANGE` footer noting the consumer migration path (point to `quickstart.md` §1).
+- [x] T005 [US1] Refactor `AdapterRenderContext` in `packages/mcp/src/types.ts` to the 3-arm DU per `data-model.md` §1: define `AdapterRenderContextBase`, `AdapterRenderContextBundle`, `AdapterRenderContextHttp`, `AdapterRenderContextStdio`, and union them. Keep all existing fields readonly. _(Implemented in `packages/core/src/types.ts` per the InvocationAdapter forward-declaration pattern; mcp re-exports.)_
+- [x] T006 [US1] Update `packages/core/src/renderer.ts` invocation-adapter dispatch (FR-H002): set `ctx.mode` deterministically from `SkillRenderOptions` — `invocationPackageName` → `'bundle'`, `invocationHttpEndpoint` → `'http'`, `invocationLaunchCommand` → `'stdio'`. Throw `McpError('TRANSPORT_FAILED', /more than one of/)` when multiple are set. Throw existing `MISSING_LAUNCH_COMMAND` when none. _(Core has no dep on mcp; surfaced as plain `Error` with the prescribed message — `bundle.ts::recordFailure` already maps non-McpError throws to `TRANSPORT_FAILED`.)_
+- [x] T007 [P] [US1] Update `packages/target-mcp-protocol/src/render.ts::render` to use `switch (ctx.mode)` for narrowing (FR-H003). Remove the existing optional-chain checks.
+- [x] T008 [P] [US1] Update `packages/target-mcpc/src/render.ts::resolveLaunchCommand` (and any callsite that destructures `ctx.launchCommand`) to use `switch (ctx.mode)`. Remove the runtime `MISSING_LAUNCH_COMMAND` throw — the renderer guarantees presence per-arm now.
+- [x] T009 [P] [US1] Update `packages/target-fastmcp/src/render.ts::resolveLaunchCommand` same as T008.
+- [x] T010 [US1] Run `pnpm run type-check` across the workspace; fix any narrowing-related type errors surfaced. All 1090+ existing tests must still pass (`pnpm test`).
+- [x] T011 [US1] Commit with conventional message: `refactor(mcp): convert AdapterRenderContext to discriminated union (US1)`. Include `BREAKING CHANGE` footer noting the consumer migration path (point to `quickstart.md` §1).
 
 **Checkpoint**: `AdapterRenderContext` is a DU. All 3 in-tree adapters narrow on `ctx.mode`. Compile-time test asserts mis-construction is rejected.
 

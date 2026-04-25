@@ -83,15 +83,60 @@ export function renderSkill(
   // --- Invocation adapter path: delegate dialect-specific rendering. ---
   // The host still canonicalizes the adapter's output so re-runs are content-identical.
   if (opts.invocation) {
-    const ctx: AdapterRenderContext = {
-      skillName: toSkillName(opts.namePrefix || skill.name),
-      maxTokens: opts.maxTokens,
-      canonicalize: true,
-      packageName: opts.invocationPackageName,
-      binName: opts.invocationBinName,
-      launchCommand: opts.invocationLaunchCommand,
-      httpEndpoint: opts.invocationHttpEndpoint
-    };
+    // Determine `mode` deterministically from SkillRenderOptions. Exactly one
+    // of invocationPackageName | invocationHttpEndpoint | invocationLaunchCommand
+    // must be set — the DU encodes this as a compile-time invariant on
+    // `AdapterRenderContext` and we surface a runtime error here for any
+    // non-literal callers (programmatic API consumers).
+    const hasPackage = opts.invocationPackageName !== undefined;
+    const hasHttp = opts.invocationHttpEndpoint !== undefined;
+    const hasStdio = opts.invocationLaunchCommand !== undefined;
+    const setCount = (hasPackage ? 1 : 0) + (hasHttp ? 1 : 0) + (hasStdio ? 1 : 0);
+
+    if (setCount > 1) {
+      // NOTE: McpError lives in @to-skills/mcp and core has no dependency on
+      // mcp. Plain Error is fine — the mcp wrapper that invokes renderSkill
+      // (bundle.ts → recordFailure) maps non-McpError throws onto
+      // TRANSPORT_FAILED so the CLI exit-code mapper still sees a stable code.
+      throw new Error(
+        'AdapterRenderContext: more than one of invocationPackageName, invocationHttpEndpoint, invocationLaunchCommand was set; the renderer requires exactly one to determine the launch shape (FR-H002).'
+      );
+    }
+    if (setCount === 0) {
+      throw new Error(
+        'AdapterRenderContext: missing launch info — set one of invocationPackageName, invocationHttpEndpoint, invocationLaunchCommand on SkillRenderOptions when invoking renderSkill with an invocation adapter (FR-H002).'
+      );
+    }
+
+    const skillName = toSkillName(opts.namePrefix || skill.name);
+    let ctx: AdapterRenderContext;
+    if (hasPackage) {
+      ctx = {
+        mode: 'bundle',
+        skillName,
+        maxTokens: opts.maxTokens,
+        canonicalize: true,
+        packageName: opts.invocationPackageName!,
+        ...(opts.invocationBinName !== undefined ? { binName: opts.invocationBinName } : {})
+      };
+    } else if (hasHttp) {
+      ctx = {
+        mode: 'http',
+        skillName,
+        maxTokens: opts.maxTokens,
+        canonicalize: true,
+        httpEndpoint: opts.invocationHttpEndpoint!
+      };
+    } else {
+      // hasStdio
+      ctx = {
+        mode: 'stdio',
+        skillName,
+        maxTokens: opts.maxTokens,
+        canonicalize: true,
+        launchCommand: opts.invocationLaunchCommand!
+      };
+    }
     return Promise.resolve(opts.invocation.render(skill, ctx)).then((rendered) =>
       canonicalize(rendered)
     );

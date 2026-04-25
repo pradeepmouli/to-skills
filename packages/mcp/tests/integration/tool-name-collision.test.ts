@@ -41,13 +41,17 @@ const skillWithConnect: ExtractedSkill = {
   examples: []
 };
 
-function makeCtx(overrides: Partial<AdapterRenderContext> = {}): AdapterRenderContext {
+function makeCtx(_overrides: Partial<AdapterRenderContext> = {}): AdapterRenderContext {
+  // After the AdapterRenderContext DU refactor (002-mcp-hardening US1) the
+  // helper returns the stdio arm directly. Tests in this file only need the
+  // default stdio arm — `_overrides` is accepted for backward compatibility
+  // but currently ignored.
   return {
+    mode: 'stdio',
     skillName: 'collision-server',
     maxTokens: 4000,
     canonicalize: true,
-    launchCommand: { command: 'node', args: ['./server.js'] },
-    ...overrides
+    launchCommand: { command: 'node', args: ['./server.js'] }
   };
 }
 
