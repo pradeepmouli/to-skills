@@ -24,14 +24,25 @@ export type {
   ExtractedProperty,
   ExtractedVariable,
   ExtractedDocument,
+  ExtractedResource,
+  ExtractedPrompt,
+  ExtractedPromptArgument,
+  SkillSetup,
+  AdapterFingerprint,
+  InvocationAdapter,
+  AdapterRenderContext,
   RenderedFile,
   RenderedSkill,
   SkillRenderOptions
 } from './types.js';
 
 export { renderSkills, renderSkill } from './renderer.js';
+export { canonicalize } from './canonical.js';
+export type { CanonicalizeOptions } from './canonical.js';
 export { writeSkills } from './writer.js';
 export { estimateTokens, truncateToTokenBudget } from './tokens.js';
+export { renderResourcesReference, renderPromptsReference } from './references-mcp.js';
+export type { McpReferenceOptions } from './references-mcp.js';
 export { renderLlmsTxt } from './llms-txt.js';
 export type { LlmsTxtOptions, LlmsTxtResult } from './llms-txt.js';
 

@@ -1,4 +1,6 @@
+import YAML from 'yaml';
 import type {
+  AdapterRenderContext,
   ExtractedSkill,
   ExtractedFunction,
   ExtractedClass,
@@ -11,6 +13,8 @@ import type {
 } from './types.js';
 import { estimateTokens, truncateToTokenBudget } from './tokens.js';
 import { renderConfigSurfaceSection, renderConfigReference } from './config-renderer.js';
+import { canonicalize } from './canonical.js';
+import { renderResourcesReference, renderPromptsReference } from './references-mcp.js';
 
 /** agentskills.io spec: max 1024 chars for description */
 const DESCRIPTION_MAX = 1024;
@@ -37,7 +41,7 @@ const DEFAULT_OPTIONS: SkillRenderOptions = {
  */
 export function renderSkills(
   skills: ExtractedSkill[],
-  options?: Partial<SkillRenderOptions>
+  options?: Partial<Omit<SkillRenderOptions, 'invocation'>>
 ): RenderedSkill[] {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const rendered = skills.map((skill) => renderSkill(skill, opts));
@@ -63,8 +67,37 @@ export function renderSkills(
 export function renderSkill(
   skill: ExtractedSkill,
   options?: Partial<SkillRenderOptions>
-): RenderedSkill {
+): RenderedSkill;
+export function renderSkill(
+  skill: ExtractedSkill,
+  options: Partial<SkillRenderOptions> & {
+    invocation: NonNullable<SkillRenderOptions['invocation']>;
+  }
+): Promise<RenderedSkill>;
+export function renderSkill(
+  skill: ExtractedSkill,
+  options?: Partial<SkillRenderOptions>
+): RenderedSkill | Promise<RenderedSkill> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+
+  // --- Invocation adapter path: delegate dialect-specific rendering. ---
+  // The host still canonicalizes the adapter's output so re-runs are content-identical.
+  if (opts.invocation) {
+    const ctx: AdapterRenderContext = {
+      skillName: toSkillName(opts.namePrefix || skill.name),
+      maxTokens: opts.maxTokens,
+      canonicalize: true,
+      packageName: opts.invocationPackageName,
+      binName: opts.invocationBinName,
+      launchCommand: opts.invocationLaunchCommand,
+      httpEndpoint: opts.invocationHttpEndpoint
+    };
+    return Promise.resolve(opts.invocation.render(skill, ctx)).then((rendered) =>
+      canonicalize(rendered)
+    );
+  }
+
+  // --- Default path: preserve today's synchronous output shape exactly. ---
   const skillName = toSkillName(opts.namePrefix || skill.name);
   const basePath = skillName;
 
@@ -77,6 +110,8 @@ export function renderSkill(
   if (skill.variables.length > 0) refCategories.push('variables');
   if (skill.configSurfaces && skill.configSurfaces.length > 0) refCategories.push('config');
   if (skill.documents && skill.documents.length > 0) refCategories.push('docs');
+  if (skill.resources && skill.resources.length > 0) refCategories.push('resources');
+  if (skill.prompts && skill.prompts.length > 0) refCategories.push('prompts');
   if (opts.includeExamples && skill.examples.length > 1) refCategories.push('examples');
 
   // --- SKILL.md: lean discovery document ---
@@ -85,7 +120,7 @@ export function renderSkill(
   // --- references/*.md: detailed API loaded on demand ---
   const references: RenderedFile[] = [];
 
-  if (skill.functions.length > 0) {
+  if (skill.functions.length > 0 && !opts.skipDefaultFunctionsRef) {
     addGroupedReferences(
       skill.functions,
       basePath,
@@ -203,7 +238,21 @@ export function renderSkill(
     }
   }
 
-  return {
+  // MCP resources and prompts — emitted via shared helpers so every code path
+  // (default + invocation adapters that delegate here) gets consistent output.
+  const resourcesRef = renderResourcesReference(skill.resources ?? [], {
+    skillName: basePath,
+    maxTokens: opts.maxTokens
+  });
+  if (resourcesRef) references.push(resourcesRef);
+
+  const promptsRef = renderPromptsReference(skill.prompts ?? [], {
+    skillName: basePath,
+    maxTokens: opts.maxTokens
+  });
+  if (promptsRef) references.push(promptsRef);
+
+  const result: RenderedSkill = {
     skill: {
       filename: `${basePath}/SKILL.md`,
       content: skillContent,
@@ -211,6 +260,11 @@ export function renderSkill(
     },
     references
   };
+  // Default canonicalize unless the caller explicitly opts out — adapters that
+  // mutate references after the inner renderSkill returns (e.g. target-mcpc
+  // appending its own tools.md) pass `canonicalize: false` so canonicalization
+  // runs exactly once at the host's outer wrapper.
+  return opts.canonicalize === false ? result : canonicalize(result);
 }
 
 // ===========================================================================
@@ -404,7 +458,22 @@ function renderSkillMd(
   const sections: string[] = [];
 
   const description = buildDescription(skill);
-  sections.push(renderFrontmatter(skillName, description, opts.license || skill.license || ''));
+  sections.push(
+    renderFrontmatter(
+      skillName,
+      description,
+      opts.license || skill.license || '',
+      opts.additionalFrontmatter
+    )
+  );
+
+  // Body prefix injection — CLI-as-proxy adapters thread Setup instructions
+  // through here so the host install/connect commands appear before the
+  // standard skill body. Empty string is a no-op (sections.join skips it
+  // because it's still added but produces no visible effect when blank).
+  if (opts.bodyPrefix && opts.bodyPrefix.length > 0) {
+    sections.push(opts.bodyPrefix);
+  }
 
   sections.push(`# ${skill.name}`);
 
@@ -940,10 +1009,33 @@ function truncateDescription(desc: string, max: number): string {
   return desc.slice(0, cutpoint > 0 ? cutpoint : max - 3) + '...';
 }
 
-function renderFrontmatter(name: string, description: string, license: string): string {
+function renderFrontmatter(
+  name: string,
+  description: string,
+  license: string,
+  additional?: Readonly<Record<string, unknown>>
+): string {
   const lines = ['---', `name: ${name}`];
   lines.push(`description: ${quoteYaml(description)}`);
   if (license) lines.push(`license: ${license}`);
+
+  if (additional) {
+    // Track existing keys so additional values cannot overwrite them — collisions
+    // silently keep the existing key (e.g. user passing `name` in additional is a no-op).
+    const existing = new Set<string>(['name', 'description']);
+    if (license) existing.add('license');
+
+    for (const [key, value] of Object.entries(additional)) {
+      if (existing.has(key)) continue;
+      // Serialize via yaml so nested objects/arrays produce proper block output.
+      // We trim the trailing newline that yaml.stringify appends so our caller
+      // can join with '\n' cleanly. Indented child lines retain their indent.
+      const serialized = YAML.stringify({ [key]: value }).replace(/\n$/, '');
+      lines.push(serialized);
+      existing.add(key);
+    }
+  }
+
   lines.push('---');
   return lines.join('\n');
 }
@@ -1016,6 +1108,10 @@ function renderLoadingTriggers(categories: string[]): string {
     variables: 'When using exported constants → read `references/variables.md`',
     config: 'When configuring options → read `references/config.md` for all settings and defaults',
     docs: 'When learning concepts or workflows → browse `references/docs/` by category',
+    resources:
+      'When you need to read MCP-exposed resources → read `references/resources.md` for URI templates and MIME types',
+    prompts:
+      'When invoking MCP-exposed prompts → read `references/prompts.md` for arguments and prompt names',
     examples: 'For additional usage patterns → read `references/examples.md`'
   };
 

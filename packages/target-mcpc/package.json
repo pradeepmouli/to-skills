@@ -1,0 +1,52 @@
+{
+  "name": "@to-skills/target-mcpc",
+  "version": "0.1.0",
+  "description": "mcpc CLI-as-proxy invocation-target adapter for @to-skills/mcp — emits shell-command skills consumable by any agent with a shell tool, via Apify's mcpc CLI",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "mcp",
+    "mcpc",
+    "model-context-protocol",
+    "to-skills"
+  ],
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/target-mcpc"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@to-skills/core": "workspace:*",
+    "@to-skills/mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^20.0.0",
+    "vitest": "^2.0.0",
+    "yaml": "^2.0.0"
+  }
+}

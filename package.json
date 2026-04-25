@@ -14,7 +14,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "pnpm -r run build",
+    "build": "pnpm -r --workspace-concurrency=1 run build",
     "dev": "vitest",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

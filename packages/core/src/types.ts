@@ -58,6 +58,69 @@ export interface ExtractedSkill {
   readmeFeatures?: string;
   /** Troubleshooting section from README — rendered inline in SKILL.md */
   readmeTroubleshooting?: string;
+  /** MCP resources (empty/absent for non-MCP extractors). */
+  resources?: ExtractedResource[];
+  /** MCP prompts (empty/absent for non-MCP extractors). */
+  prompts?: ExtractedPrompt[];
+  /** Setup instructions emitted when the invocation target is CLI-based. */
+  setup?: SkillSetup;
+}
+
+/** An MCP-exposed resource (static or templated URI, readable by the agent harness). */
+export interface ExtractedResource {
+  /** Canonical URI. MAY contain URI Template expressions per RFC 6570 for parameterized resources. */
+  uri: string;
+  /** Short human-readable name */
+  name: string;
+  /** Prose description (single paragraph) */
+  description: string;
+  /** MIME type of the resource content. Optional — not all servers advertise it. */
+  mimeType?: string;
+  /** Source module for grouping (rarely meaningful for resources; present for IR parity). */
+  sourceModule?: string;
+}
+
+/** An MCP-exposed prompt (a named, argument-templated prompt the agent may request). */
+export interface ExtractedPrompt {
+  /** Short identifier used by MCP `prompts/get` requests. */
+  name: string;
+  /** Prose description of what the prompt produces. */
+  description: string;
+  /** Typed argument schema (may be empty). */
+  arguments: ExtractedPromptArgument[];
+  /** Present for IR parity with functions/classes; rarely meaningful for prompts. */
+  sourceModule?: string;
+}
+
+export interface ExtractedPromptArgument {
+  name: string;
+  description: string;
+  /**
+   * Whether the argument is mandatory on `prompts/get` invocation.
+   * MCP prompt arguments are strings in the current spec; a typed `type` field
+   * may be added in a future revision without breaking callers.
+   */
+  required: boolean;
+}
+
+/** Setup instructions emitted into SKILL.md body when the invocation target is CLI-based. */
+export interface SkillSetup {
+  /** Human-prose install instructions (markdown-safe). */
+  install: string;
+  /** One-time configuration step the consumer must run (e.g. `mcpc connect @server`). */
+  oneTimeSetup?: string;
+  /** Adapter fingerprint for freshness checks (per FR-IT-012). */
+  generatedBy: AdapterFingerprint;
+}
+
+/** Identifies the adapter that rendered a skill — used for freshness audits. */
+export interface AdapterFingerprint {
+  /** npm package name of the adapter (e.g. "@to-skills/target-mcpc") */
+  adapter: string;
+  /** Adapter package semver version */
+  version: string;
+  /** Semver range of the target CLI the adapter was written against (e.g. "mcpc@^2.1") */
+  targetCliRange?: string;
 }
 
 export interface ExtractedFunction {
@@ -196,4 +259,145 @@ export interface SkillRenderOptions {
   namePrefix: string;
   /** License to include in frontmatter (default: read from package.json) */
   license: string;
+  /** Invocation adapter that selects rendering dialect. Defaults to the mcp-protocol adapter. */
+  invocation?: InvocationAdapter;
+  /**
+   * Forwarded into `AdapterRenderContext.launchCommand` for invocation adapters.
+   * Used in extract mode where the host has determined how to launch a third-party
+   * MCP server (e.g. via stdio transport configuration). Mutually informative with
+   * `invocationPackageName`: when both are set, adapters typically prefer the
+   * package-name-driven launch (npx-by-name) for self-referential bundle output.
+   */
+  invocationLaunchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
+  };
+  /**
+   * Forwarded into `AdapterRenderContext.packageName` for bundle-mode self-reference.
+   * Set by `@to-skills/mcp` bundle commands so the emitted skill instructs MCP-native
+   * harnesses to launch the server via `npx <packageName>`.
+   */
+  invocationPackageName?: string;
+  /**
+   * Forwarded into `AdapterRenderContext.binName` for bundle-mode multi-bin
+   * packages. When the host package's `bin` field is an object with multiple
+   * entries and the bundle config selects one, the adapter emits the npx
+   * `--package=<pkg> <binName>` form so the right bin is invoked at run time
+   * (FR-034). Ignored when `invocationPackageName` is unset.
+   */
+  invocationBinName?: string;
+  /**
+   * Forwarded into `AdapterRenderContext.httpEndpoint` for HTTP-transport extract mode.
+   *
+   * @remarks
+   * When the host extracts a skill from an HTTP-based MCP server (`--url ...`),
+   * there is no shell launch command — adapters should emit a `{ url, headers }`
+   * shape instead of `{ command, args, env }`. Set by `@to-skills/mcp`'s extract
+   * pipeline. Mutually exclusive with `invocationLaunchCommand` in practice; the
+   * MCP adapter prefers `httpEndpoint` when both are present.
+   */
+  invocationHttpEndpoint?: {
+    url: string;
+    headers?: Readonly<Record<string, string>>;
+  };
+  /**
+   * Additional frontmatter keys merged into SKILL.md by the default renderer path.
+   *
+   * @remarks
+   * Used by invocation adapters that delegate body rendering to core's default
+   * path (e.g. `McpProtocolAdapter` injecting `mcp:` frontmatter). Existing keys
+   * (`name`, `description`, `license`) take precedence — collisions silently keep
+   * the existing value. The canonicalization pass alphabetizes keys after merge.
+   */
+  additionalFrontmatter?: Readonly<Record<string, unknown>>;
+  /**
+   * Markdown content injected into the SKILL.md body immediately AFTER the
+   * frontmatter delimiter and BEFORE the first heading.
+   *
+   * @remarks
+   * CLI-as-proxy invocation adapters (`@to-skills/target-mcpc`,
+   * `@to-skills/target-fastmcp`) use this to inject a Setup section that
+   * tells the consumer how to install/connect the underlying CLI. The string
+   * is inserted verbatim — callers are responsible for formatting and
+   * trailing newlines. Defaults to empty (no prefix injected).
+   */
+  bodyPrefix?: string;
+  /**
+   * When `true`, the default renderer path skips emission of
+   * `references/functions.md`. CLI-as-proxy adapters set this so they can
+   * emit their own `references/tools.md` carrying command-shape rows
+   * instead of TypeScript signatures. Defaults to `false`.
+   */
+  skipDefaultFunctionsRef?: boolean;
+  /**
+   * When `false`, the default renderer path returns its `RenderedSkill`
+   * without running the trailing canonicalization pass. Adapters that wrap
+   * `renderSkill` for body rendering and then mutate `references` (e.g.
+   * `@to-skills/target-mcpc` appending its own `tools.md`) pass `false` here
+   * so canonicalization runs exactly once — at the host's outer wrapper —
+   * over the final shape including the appended files. Defaults to `true`.
+   *
+   * Has no effect on the invocation-adapter dispatch path (which always
+   * canonicalizes the adapter's output at the host wrapper).
+   */
+  canonicalize?: boolean;
+}
+
+// NOTE: Forward-declared for backward-compatible extension point.
+// The concrete adapter lives in @to-skills/mcp; core has no runtime dependency on it.
+// Core owns the structural contract; @to-skills/mcp will re-export for ergonomics.
+/**
+ * Pluggable rendering strategy — selects the SKILL.md dialect emitted for an `ExtractedSkill`.
+ *
+ * Built-in implementations (shipped from `@to-skills/mcp`'s target packages) include
+ * `mcp-protocol` (emits `mcp:` frontmatter for MCP-native agent harnesses) and
+ * `cli:*` targets (emit shell-command skills that route through an external MCP CLI).
+ */
+export interface InvocationAdapter {
+  readonly target: string;
+  readonly fingerprint: AdapterFingerprint;
+  render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill>;
+}
+
+export interface AdapterRenderContext {
+  /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`; `undefined` in extract mode where the skill is for a third-party server. */
+  packageName?: string;
+  /**
+   * Bundle-mode multi-bin selector — when set alongside `packageName`, the
+   * adapter should emit the npx `--package=<packageName> <binName>` form
+   * (FR-034). Ignored when `packageName` is undefined.
+   */
+  binName?: string;
+  /** Output directory name chosen by the caller (e.g. "filesystem", "my-server"). */
+  skillName: string;
+  /** Token budget ceiling per reference file — adapters should stay under this but the host will truncate if exceeded. */
+  maxTokens: number;
+  /** When `true` (default), the host runs a canonicalization pass on the adapter's output so re-runs produce content-identical files. */
+  canonicalize: boolean;
+  /**
+   * Launch command threaded through from the host (extract mode); `undefined` in
+   * bundle mode where `packageName` is used. Adapters may treat `packageName` as
+   * higher priority than `launchCommand` when both are present (e.g. preferring
+   * `npx <packageName>` for self-referential bundle output).
+   */
+  launchCommand?: {
+    command: string;
+    args?: readonly string[];
+    env?: Readonly<Record<string, string>>;
+  };
+  /**
+   * HTTP endpoint threaded through from the host (HTTP-extract mode); `undefined`
+   * for stdio-extract or bundle modes.
+   *
+   * @remarks
+   * Adapters that emit MCP-launch frontmatter prefer this over `launchCommand`
+   * (and `packageName` wins over both for bundle self-reference). When set,
+   * the adapter should emit a `{ url, headers }` shape rather than a
+   * `{ command, args, env }` shape, because there is no subprocess to spawn.
+   */
+  httpEndpoint?: {
+    url: string;
+    headers?: Readonly<Record<string, string>>;
+  };
 }

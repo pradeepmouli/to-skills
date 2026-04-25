@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+/**
+ * Executable entry point for `to-skills-mcp`.
+ *
+ * Constructs the commander program and parses `process.argv`. Any thrown
+ * error surfaces here — `McpError` instances map to deterministic exit codes
+ * per the table below, generic `Error`s map to exit code 1, and unknown
+ * throws map to exit code 1.
+ *
+ * Exit-code mapping (intentionally explicit — do not auto-derive from
+ * {@link McpErrorCode} to keep the mapping decoupled from codepoints):
+ *
+ * | Code | Error codes |
+ * | ---- | ----------- |
+ * | 2    | TRANSPORT_FAILED, INITIALIZE_FAILED, PROTOCOL_VERSION_UNSUPPORTED |
+ * | 3    | SCHEMA_REF_CYCLE, SERVER_EXITED_EARLY, AUDIT_FAILED |
+ * | 4    | DUPLICATE_SKILL_NAME |
+ * | 5    | ADAPTER_NOT_FOUND, UNKNOWN_TARGET, MISSING_LAUNCH_COMMAND |
+ * | 130  | SIGINT / SIGTERM |
+ *
+ * @module bin
+ */
+
+import { buildProgram } from './cli.js';
+import { McpError } from './errors.js';
+
+const ERROR_EXIT_CODES: Record<string, number> = {
+  TRANSPORT_FAILED: 2,
+  INITIALIZE_FAILED: 2,
+  PROTOCOL_VERSION_UNSUPPORTED: 2,
+  SCHEMA_REF_CYCLE: 3,
+  SERVER_EXITED_EARLY: 3,
+  // Audit-failure exit code shares the 3 bucket alongside other "output is
+  // structurally well-formed but operationally broken" codes — distinct from
+  // the 2 bucket (transport/init failures, where we never produced output).
+  AUDIT_FAILED: 3,
+  DUPLICATE_SKILL_NAME: 4,
+  // Spec contract (contracts/package-json-config.md): MISSING_LAUNCH_COMMAND
+  // is exit 5 — distinguishes "config exists but is incomplete" (5) from
+  // "two entries collide" (4). The neighboring DUPLICATE_SKILL_NAME stays at 4.
+  MISSING_LAUNCH_COMMAND: 5,
+  ADAPTER_NOT_FOUND: 5,
+  UNKNOWN_TARGET: 5
+};
+
+function reportAndExit(err: unknown): never {
+  if (err instanceof McpError) {
+    process.stderr.write(`Error [${err.code}]: ${err.message}\n`);
+    if (err.cause instanceof Error) {
+      process.stderr.write(`  Caused by: ${err.cause.message}\n`);
+    }
+    process.exit(ERROR_EXIT_CODES[err.code] ?? 1);
+  }
+  if (err instanceof Error) {
+    process.stderr.write(`Error: ${err.message}\n`);
+    process.exit(1);
+  }
+  process.stderr.write(`Unknown error: ${String(err)}\n`);
+  process.exit(1);
+}
+
+const program = buildProgram();
+
+// SIGINT / SIGTERM handler (T046). Exit 130 on Ctrl-C.
+//
+// We don't attempt graceful cleanup of the spawned child here because
+// `finally` blocks do not run across `process.exit()`. Node's default
+// behavior when the parent exits is to send SIGHUP to the child stdio
+// transport, which is sufficient for the MVP. If finer control is needed
+// later, refactor the extractor to use an `AbortController`.
+let interrupted = false;
+const onInterrupt = (): void => {
+  if (interrupted) return; // ignore subsequent signals
+  interrupted = true;
+  process.stderr.write('\n[to-skills-mcp] Interrupted. Cleaning up...\n');
+  process.exit(130);
+};
+process.on('SIGINT', onInterrupt);
+process.on('SIGTERM', onInterrupt);
+
+program.parseAsync(process.argv).catch(reportAndExit);

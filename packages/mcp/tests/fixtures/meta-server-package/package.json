@@ -1,0 +1,17 @@
+{
+  "name": "@fixture/meta-mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "bin": "./dist/server.js",
+  "files": [
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "type": "module",
+  "to-skills": {
+    "mcp": {
+      "skillName": "meta-server"
+    }
+  }
+}

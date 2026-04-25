@@ -1,0 +1,16 @@
+{
+  "name": "@fixture/audit-failing-mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "bin": "./dist/server.js",
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "type": "module",
+  "to-skills": {
+    "mcp": {
+      "skillName": "audit-failing-server"
+    }
+  }
+}

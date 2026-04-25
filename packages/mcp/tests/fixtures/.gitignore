@@ -1,0 +1,6 @@
+# Fixture dist/*.js files are pre-built, hand-written stdio MCP server scripts
+# used by Phase 5 (bundle-mode) integration tests. They are NOT build artifacts
+# of any package — they're committed source the tests spawn directly. Override
+# the root .gitignore which ignores all `dist/` directories.
+!*/dist/
+!*/dist/**

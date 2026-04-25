@@ -1,0 +1,64 @@
+{
+  "name": "@to-skills/mcp",
+  "version": "0.1.0",
+  "description": "Extract and bundle MCP servers as Agent Skills — introspects live MCP servers (stdio or HTTP) and produces SKILL.md consumable by MCP-native agents (via mcp: frontmatter) or non-MCP agents (via CLI-as-proxy adapters)",
+  "keywords": [
+    "agent-skills",
+    "ai",
+    "mcp",
+    "model-context-protocol",
+    "skill-generation",
+    "skill-md",
+    "to-skills",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Pradeep Mouli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeepmouli/to-skills.git",
+    "directory": "packages/mcp"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/pradeepmouli"
+  },
+  "bin": {
+    "to-skills-mcp": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "pretest:integration": "pnpm run build",
+    "test:integration": "RUN_INTEGRATION_TESTS=true vitest run tests/integration"
+  },
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^11.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@to-skills/core": "workspace:*",
+    "@to-skills/target-mcp-protocol": "workspace:*",
+    "commander": "^14.0.3",
+    "yaml": "^2.0.0"
+  },
+  "devDependencies": {
+    "@to-skills/target-fastmcp": "workspace:*",
+    "@to-skills/target-mcpc": "workspace:*",
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^20.0.0",
+    "vitest": "^2.0.0"
+  }
+}

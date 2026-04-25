@@ -46,5 +46,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "type-check": "tsgo --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "yaml": "^2.8.3"
   }
 }
