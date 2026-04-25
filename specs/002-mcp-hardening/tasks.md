@@ -238,13 +238,13 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 10 (SC-H009)
 
-- [ ] T061 [P] [US10] Add a CI check (or one-time grep) script: `grep -E "Phase [0-9]|B[0-9]+ fix|T[0-9]{3}" packages/*/src/**/*.ts packages/*/README.md` returns zero matches. Document the grep in `specs/002-mcp-hardening/quickstart.md` (or a new `verify.md`).
+- [x] T061 [P] [US10] Add a CI check (or one-time grep) script: `grep -E "Phase [0-9]|B[0-9]+ fix|T[0-9]{3}" packages/*/src/**/*.ts packages/*/README.md` returns zero matches. Document the grep in `specs/002-mcp-hardening/quickstart.md` (or a new `verify.md`).
 
 ### Implementation for User Story 10
 
-- [ ] T062 [US10] Run the grep above to enumerate offending lines. Edit each one in-place to remove the phase/task token while preserving the surrounding comment intent. Suggested replacements: "B7 fix: comment about X" → "comment about X"; "Phase 5 introduced …" → drop the prefix.
-- [ ] T063 [US10] Re-run the grep — must return zero matches. If any spec/tasks files were inadvertently touched (they shouldn't be), revert.
-- [ ] T064 [US10] Commit: `chore(mcp): strip phase/task tokens from source comments (US10, FR-H014)`.
+- [x] T062 [US10] Run the grep above to enumerate offending lines. Edit each one in-place to remove the phase/task token while preserving the surrounding comment intent. Suggested replacements: "B7 fix: comment about X" → "comment about X"; "Phase 5 introduced …" → drop the prefix.
+- [x] T063 [US10] Re-run the grep — must return zero matches. If any spec/tasks files were inadvertently touched (they shouldn't be), revert.
+- [x] T064 [US10] Commit: `chore(mcp): strip phase/task tokens from source comments (US10, FR-H014)`.
 
 **Checkpoint**: Source comments are clean of implementation-bookkeeping artifacts. Audit trail in `specs/` is preserved.
 
@@ -275,7 +275,7 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 **Purpose**: Documentation, changelog, spec-deltas update, final verification.
 
-- [ ] T072 [P] Update `CHANGELOG.md` (FR-H019) with a `0.2.0` section documenting:
+- [x] T072 [P] Update `CHANGELOG.md` (FR-H019) with a `0.2.0` section documenting:
   - **Breaking**: `AdapterRenderContext` is now a discriminated union (US1) — see `specs/002-mcp-hardening/quickstart.md` §1.
   - **Breaking**: `ParameterPlan` is now a discriminated union (US7) — see §2.
   - **Fix**: stdio extract no longer hangs indefinitely on stuck servers; `initializeTimeoutMs` defaults to 30 000 ms (US4).
@@ -284,16 +284,16 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
   - **Feature**: `extractMcpSkill` return value now carries `auditIssues` (US3) — gate CI on it.
   - **Feature**: malformed `_meta.toSkills` annotations surface as M3 warnings (US6).
   - **Refactor**: shared CLI helpers live in `@to-skills/mcp/adapter-utils` (US2) — third-party adapter authors can drop ~80 LOC.
-- [ ] T073 [P] Update `specs/001-mcp-extract-bundle/spec-deltas.md` (FR-H020): for each item resolved by this feature, append `**RESOLVED-IN-002**: <commit-sha-or-task-ref>`. Ensure all 5 deltas referenced in the original PR 20 deferral block are accounted for.
-- [ ] T074 [P] Run the full verification matrix per `quickstart.md` §6:
+- [x] T073 [P] Update `specs/001-mcp-extract-bundle/spec-deltas.md` (FR-H020): for each item resolved by this feature, append `**RESOLVED-IN-002**: <commit-sha-or-task-ref>`. Ensure all 5 deltas referenced in the original PR 20 deferral block are accounted for.
+- [x] T074 [P] Run the full verification matrix per `quickstart.md` §6:
   - `pnpm install` clean
   - `pnpm run type-check` — 0 errors
   - `pnpm test` — all 1090+ pass
   - `pnpm run build` — all packages build
   - `RUN_INTEGRATION_TESTS=true pnpm test` — new integration tests pass
   - Coverage thresholds (70/70/65/70) hold or improve
-- [ ] T075 Verify SC-H001 through SC-H010 are all satisfied. Record evidence in PR description: snapshot diff (zero lines), wc -l decrease (≥80), grep zero matches, etc.
-- [ ] T076 Push the branch to origin. Open PR titled `feat(mcp): hardening — discriminated unions, helper consolidation, robustness polish (002-mcp-hardening)`. PR body summarizes the 11 user stories with their FR-H references and SC evidence.
+- [x] T075 Verify SC-H001 through SC-H010 are all satisfied. Record evidence in PR description: snapshot diff (zero lines), wc -l decrease (≥80), grep zero matches, etc.
+- [x] T076 Push the branch to origin. Open PR titled `feat(mcp): hardening — discriminated unions, helper consolidation, robustness polish (002-mcp-hardening)`. PR body summarizes the 11 user stories with their FR-H references and SC evidence.
 
 ---
 
