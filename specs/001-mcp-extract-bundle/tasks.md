@@ -360,7 +360,7 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Spec-delta handling
 
-- [ ] T121 Record a spec-delta note at `specs/001-mcp-extract-bundle/spec-deltas.md` documenting the soften of FR-038 / SC-009 from "byte-identical" to "content-identical after canonicalization" per research.md §2; link this note from the checklist's open-items entry
+- [x] T121 Record spec-deltas at `specs/001-mcp-extract-bundle/spec-deltas.md` — documents FR-038/SC-009 softening (Delta 1), B22's deferred Quick Reference linking (Delta 2), B7's deferred protocol-version runtime check (Delta 3), B20's SDK-strip server-level `_meta` (Delta 4), and B18's args-shape fix (Delta 5). Seeded during B22 to formalize T110's partial deferral.
 - [ ] T122 [P] Run `pnpm -r run type-check && pnpm -r run test && pnpm -r run build` at repo root to verify the full workspace passes; fix any cross-package type issues surfaced by the new exports
 
 ---
