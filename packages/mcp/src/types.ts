@@ -90,11 +90,23 @@ export interface BundleResult {
   /** One entry per (server × target) combination. Keyed by skill directory name. */
   skills: Record<string, WrittenSkill>;
   /**
-   * Per-server extract/render failures keyed by `skillName`. Bundle mode is
-   * batch-semantics: a single server's failure is recorded here and the loop
-   * continues with the remaining entries, so callers can present a partial
-   * success (FR-IT-010-ish). The CLI maps the worst code in this map to an
-   * exit code.
+   * Per-server extract/render failures. Bundle mode is batch-semantics: a
+   * single server's failure is recorded here and the loop continues with the
+   * remaining entries, so callers can present a partial success.
+   *
+   * @remarks
+   * **Key shape — entry-level vs target-level.** Extract failures (server
+   * never came up) are keyed by the entry's `skillName` because the failure
+   * cancels every requested target for that entry; recording it once avoids
+   * fanout of identical messages. Render or write failures (extraction
+   * succeeded but a specific target adapter failed) are keyed by the
+   * disambiguated directory name (`<skillName>-<targetSuffix>` for
+   * multi-target entries, plain `<skillName>` for single-target entries),
+   * matching the corresponding `skills` key shape so consumers can correlate
+   * a target-level write failure to its sibling success across the result.
+   *
+   * The CLI maps the worst code in this map to an exit code; key shape is
+   * informational only for that purpose.
    */
   failures: Record<string, BundleFailure>;
   /** Warnings about package.json `files` field — not errors. */

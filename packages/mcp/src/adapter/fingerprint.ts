@@ -120,9 +120,12 @@ export function assertFingerprintConsistency(
 
   // Body trace: "via <adapter> <version>". Adapter names contain `/` and `@`
   // and `-` so build a literal-prefix regex from the expected adapter to keep
-  // the search precise.
+  // the search precise. The version capture uses [\w.\-+]+ rather than \S+
+  // so trailing punctuation attached by surrounding prose ("…via @org/x 0.1.0.")
+  // doesn't get folded into the captured value and trigger a false-positive
+  // mismatch against the frontmatter version.
   const body = skillContent.slice(fmMatch[0].length);
-  const traceRegex = new RegExp(`via\\s+${escapeRegExp(fmAdapter)}\\s+(\\S+)`);
+  const traceRegex = new RegExp(`via\\s+${escapeRegExp(fmAdapter)}\\s+([\\w.\\-+]+)`);
   const traceMatch = body.match(traceRegex);
   if (!traceMatch) {
     throw new McpError(
