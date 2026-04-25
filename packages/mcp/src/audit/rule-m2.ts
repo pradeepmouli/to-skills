@@ -32,15 +32,16 @@ export function runM2(skill: ExtractedSkill): AuditIssue[] {
   const issues: AuditIssue[] = [];
   for (const fn of skill.functions) {
     if (fn.tags['schemaError'] !== 'true') continue;
-    // The introspector currently only tags `$ref` cycles. Future-proof: if a
-    // different reason gets surfaced via `tags.schemaError`, we still emit a
-    // generic message rather than mis-classifying.
-    const reason =
-      fn.tags['schemaErrorTool'] !== undefined ? 'cycle in $ref' : 'missing or non-object';
+    // The introspector (`packages/mcp/src/introspect/tools.ts`) tags only
+    // `$ref` cycle failures today and always sets `schemaErrorTool` alongside
+    // `schemaError`. The reason is therefore deterministic. If a future
+    // introspector adds non-cycle schemaError causes, switch this to a
+    // discriminator on a new `tags.schemaErrorReason` field rather than
+    // overloading the meaning of `schemaErrorTool`.
     issues.push({
       code: 'M2',
       severity: 'error',
-      message: `Tool "${fn.name}" has invalid inputSchema (${reason}).`,
+      message: `Tool "${fn.name}" has invalid inputSchema (cycle in $ref).`,
       location: { tool: fn.name }
     });
   }

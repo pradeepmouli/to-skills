@@ -9,6 +9,14 @@ export interface AuditOptions {
   skip?: boolean;
   /** Exit non-zero on fatal/error severity when true (default: false at extract, true at bundle). */
   failOnError?: boolean;
+  /**
+   * When `true`, audit-rule findings of severity `'alert'` (Rule M4 — generic
+   * tool names) are also emitted to stderr at extract time. Default `false`
+   * keeps the stderr terse for healthy servers; opt in when investigating
+   * naming hygiene. Has no effect at bundle time, where alerts are always
+   * recorded on `WrittenSkill.audit` regardless of this flag.
+   */
+  includeAlerts?: boolean;
 }
 
 export interface McpExtractOptions {
@@ -16,16 +24,36 @@ export interface McpExtractOptions {
   transport: McpTransport;
   /** Skill name override — defaults to server's serverInfo.name. */
   skillName?: string;
-  /** One or more invocation targets. Default: ['mcp-protocol']. */
-  invocation?: InvocationTarget | InvocationTarget[];
   /** Maximum tokens per reference file (default 4000). */
   maxTokens?: number;
-  /** Emit llms.txt alongside the skill directory. */
-  llmsTxt?: boolean;
-  /** Emit canonicalized content-identical output (default true). */
-  canonicalize?: boolean;
   /** Audit behavior (see AuditOptions). */
   audit?: AuditOptions;
+  /**
+   * Invocation target(s).
+   *
+   * @internal Reserved for a future programmatic API. **Currently unused** by
+   *   `extractMcpSkill` — pass invocation adapter(s) to `renderSkill` instead
+   *   (the CLI does this in its multi-target loop). The field is retained on
+   *   the option type for forward compatibility.
+   */
+  invocation?: InvocationTarget | InvocationTarget[];
+  /**
+   * Emit llms.txt alongside the skill directory.
+   *
+   * @internal Reserved for a future programmatic API. **Currently unused** by
+   *   `extractMcpSkill` — the CLI emits llms.txt at write time via the
+   *   `--llms-txt` flag, after rendering. Library consumers should call
+   *   `renderLlmsTxt(rendered, skill)` themselves.
+   */
+  llmsTxt?: boolean;
+  /**
+   * Emit canonicalized content-identical output (default true).
+   *
+   * @internal Reserved for a future programmatic API. **Currently unused** by
+   *   `extractMcpSkill` — canonicalization runs unconditionally inside
+   *   `renderSkill` and is controlled there via `SkillRenderOptions.canonicalize`.
+   */
+  canonicalize?: boolean;
 }
 
 export interface McpBundleOptions {

@@ -2,26 +2,23 @@
  * Commander-based CLI wiring for `@to-skills/mcp`.
  *
  * Exposes `buildProgram()`, which constructs a `Command` tree with:
- * - `extract` — connects to a running MCP server, renders a SKILL.md, and
- *   writes it (plus `references/*.md`) under the configured output directory.
- * - `bundle` — stubbed; lands in Phase 5.
+ * - `extract` — connects to a running MCP server (stdio via `--command`,
+ *   HTTP via `--url`, or batch via `--config`), renders a SKILL.md per
+ *   `--invocation` target, and writes it under the configured output dir.
+ * - `bundle` — reads `to-skills.mcp` from the host package's `package.json`,
+ *   runs extract per declared server, and writes self-referential skills
+ *   into `<packageRoot>/skills/` for dual-consumption packages.
  *
  * The action bodies throw `McpError` on failure; `bin.ts` catches and maps
- * to exit codes. Flag parsing uses commander's built-in `InvalidArgumentError`
- * for shape-level validation (non-integer `--max-tokens`, malformed
- * `KEY=VALUE` pairs) so usage output stays consistent with commander's style.
+ * to exit codes (1–5, plus 130 for SIGINT). Flag parsing uses commander's
+ * built-in `InvalidArgumentError` for shape-level validation (non-integer
+ * `--max-tokens`, malformed `KEY=VALUE` pairs) so usage output stays
+ * consistent with commander's style.
  *
- * HTTP (`--url`) is wired to `extractMcpSkill`'s HTTP transport (Phase 4).
- * Config-file (`--config`) batches over `mcpServers` from a Claude-Desktop
- * shaped config file, with per-entry error containment and worst-code exit
- * mapping (Phase 7 / US3).
- *
- * Header parser format decision (Phase 4): `--header` uses the same
- * `KEY=VALUE` syntax as `--env`, NOT the `KEY: VALUE` colon notation that
- * raw HTTP uses. Rationale: keeps the parser uniform with `--env`, avoids
- * bifurcating the `collectKv` helper, and works with shell quoting:
- * `--header "Authorization=Bearer mytoken"`. Document this when onboarding
- * users who expect colon-form.
+ * Header parser format: `--header` uses the same `KEY=VALUE` syntax as
+ * `--env`, NOT the `KEY: VALUE` colon notation that raw HTTP uses. Rationale:
+ * keeps the parser uniform with `--env`, avoids bifurcating the `collectKv`
+ * helper, and works with shell quoting: `--header "Authorization=Bearer X"`.
  *
  * @module cli
  */
@@ -90,6 +87,10 @@ export function buildProgram(): Command {
     .option('--llms-txt', 'Emit llms.txt alongside SKILL.md')
     .option('--force', 'Overwrite existing skill directory')
     .option('--skip-audit', 'Skip audit rules')
+    .option(
+      '--audit-alerts',
+      'Include severity:alert audit findings (e.g. M4 generic tool names) in stderr'
+    )
     .option('--canonicalize', 'Run canonicalization pass on output (default true)', true)
     .option('--no-canonicalize', 'Disable canonicalization pass')
     .option('--skill-name <name>', 'Override skill directory name (default: derived from server)')
@@ -110,6 +111,10 @@ export function buildProgram(): Command {
     .option('--llms-txt', 'Emit llms.txt alongside SKILL.md')
     .option('--force', 'Overwrite existing skill directories')
     .option('--skip-audit', 'Skip audit rules')
+    .option(
+      '--audit-alerts',
+      'Include severity:alert audit findings (e.g. M4 generic tool names) in stderr'
+    )
     .option('--canonicalize', 'Run canonicalization pass on output (default true)', true)
     .option('--no-canonicalize', 'Disable canonicalization pass')
     .option(
@@ -174,6 +179,7 @@ interface ExtractOpts {
   llmsTxt?: boolean;
   force?: boolean;
   skipAudit?: boolean;
+  auditAlerts?: boolean;
   canonicalize: boolean;
   skillName?: string;
   invocation: string[];
@@ -252,7 +258,12 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
 
   // Extract once — the IR is target-agnostic, so the loop below renders
   // (and writes) one skill directory per requested target from the same IR.
-  const auditOpts = opts.skipAudit === true ? { audit: { skip: true } } : {};
+  const auditOpts =
+    opts.skipAudit === true
+      ? { audit: { skip: true } }
+      : opts.auditAlerts === true
+        ? { audit: { includeAlerts: true } }
+        : {};
   const skill =
     opts.url !== undefined
       ? await extractMcpSkill({
@@ -373,15 +384,23 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
     try {
       await runConfigEntry(entryName, entry, opts, adapters);
     } catch (err) {
-      // Per-entry containment — only McpError is contained; anything else
-      // (programming errors, unexpected throws) propagates so we don't mask
-      // bugs as "transport failures".
+      // Per-entry containment — match `bundle.ts::recordFailure`'s shape so
+      // the partial-success contract documented at the top of this function
+      // actually holds for non-McpError throws too (renderer bugs, fs errors
+      // like ENOSPC/EACCES). Without this, a single ENOSPC during one entry's
+      // write would abort the whole batch — exactly the opposite of what the
+      // docstring promises. The McpError branch is preferred so structured
+      // errors keep their codes; everything else is recorded as
+      // TRANSPORT_FAILED, the conservative default already used by
+      // `recordFailure`.
       if (err instanceof McpError) {
         failures[entryName] = { code: err.code, message: err.message };
         process.stderr.write(`Failed [${err.code}] ${entryName}: ${err.message}\n`);
         continue;
       }
-      throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      failures[entryName] = { code: 'TRANSPORT_FAILED', message };
+      process.stderr.write(`Failed [TRANSPORT_FAILED] ${entryName}: ${message}\n`);
     }
   }
 
@@ -413,7 +432,12 @@ async function runConfigEntry(
 ): Promise<void> {
   // Build the McpExtractOptions from the entry. Stdio if `command` set,
   // HTTP if `url` set. The reader has already enforced one-or-the-other.
-  const auditOpts = opts.skipAudit === true ? { audit: { skip: true } } : {};
+  const auditOpts =
+    opts.skipAudit === true
+      ? { audit: { skip: true } }
+      : opts.auditAlerts === true
+        ? { audit: { includeAlerts: true } }
+        : {};
   let extractOpts: McpExtractOptions;
   if (entry.command !== undefined) {
     extractOpts = {
@@ -560,10 +584,27 @@ function dirNameForTarget(
  * adapters so the user can fix `--invocation` typos and missing-package
  * issues without consulting the docs.
  */
+/**
+ * Pattern that valid invocation-target strings must match. Matches the same
+ * regex used by `bundle/config.ts::INVOCATION_TARGET_PATTERN` so the CLI
+ * `--invocation` path rejects the same shapes as the bundle-config path.
+ *
+ * Accepted: `mcp-protocol`, `cli:mcpc`, `cli:my-tool`. Rejected: `cli:`,
+ * `CLI:upper`, `cli:has spaces`, bare names without the `cli:` prefix.
+ */
+const INVOCATION_TARGET_PATTERN = /^(mcp-protocol|cli:[a-z0-9][a-z0-9-]*)$/;
+
 async function validateTargets(targets: readonly InvocationTarget[]): Promise<InvocationAdapter[]> {
   const adapters: InvocationAdapter[] = [];
   let installedHint: string | undefined;
   for (const t of targets) {
+    if (!INVOCATION_TARGET_PATTERN.test(t)) {
+      installedHint ??= await formatInstalledAdaptersHint();
+      throw new McpError(
+        `Invalid invocation target "${t}" — expected "mcp-protocol" or "cli:<kebab-name>".\n\n${installedHint}`,
+        'UNKNOWN_TARGET'
+      );
+    }
     try {
       adapters.push(await loadAdapterAsync(t));
     } catch (err) {
@@ -594,16 +635,34 @@ async function validateTargets(targets: readonly InvocationTarget[]): Promise<In
 async function formatInstalledAdaptersHint(): Promise<string> {
   const known: InvocationTarget[] = ['mcp-protocol', 'cli:mcpc', 'cli:fastmcp'];
   const installed: string[] = [];
+  const corrupted: string[] = [];
   for (const t of known) {
     try {
       await loadAdapterAsync(t);
       installed.push(t);
-    } catch {
-      // Not installed — silently skip; the hint only enumerates resolvable adapters.
+    } catch (err) {
+      // Distinguish "not installed" (ADAPTER_NOT_FOUND) from "installed but
+      // broken" (any other McpError or thrown error from the package itself).
+      // Lumping them together produced misleading "(none)" hints when the
+      // adapter was actually present but had a syntax error or missing default
+      // export — exactly the moment the user is trying to debug.
+      const code = err instanceof McpError ? err.code : undefined;
+      if (code === 'ADAPTER_NOT_FOUND' || code === 'UNKNOWN_TARGET') continue;
+      corrupted.push(t);
+      // Surface the underlying message under DEBUG so the user has a breadcrumb.
+      if (process.env['DEBUG']) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[to-skills-mcp DEBUG] adapter ${t} probe failed: ${msg}\n`);
+      }
     }
   }
+  const installedLine = `Installed adapters: ${installed.length > 0 ? installed.join(', ') : '(none)'}`;
+  const corruptedLine =
+    corrupted.length > 0
+      ? `\nAdapters present but failed to load (set DEBUG=1 for detail): ${corrupted.join(', ')}`
+      : '';
   return (
-    `Installed adapters: ${installed.length > 0 ? installed.join(', ') : '(none)'}\n` +
+    `${installedLine}${corruptedLine}\n` +
     `To install a missing adapter: npm install @to-skills/target-<name>`
   );
 }

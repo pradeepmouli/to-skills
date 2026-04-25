@@ -65,7 +65,7 @@ The body of the SKILL.md (Quick Reference, References section, tool/resource/pro
 | `fingerprint.version`        | This package's `version` from `package.json`. |
 | `fingerprint.targetCliRange` | _absent_ (this target invokes no CLI).        |
 
-The fingerprint is embedded in `SKILL.md` frontmatter under `generated-by:` so consumers can detect drift between the rendered file and the adapter that produced it.
+Unlike the CLI-as-proxy adapters (`@to-skills/target-mcpc`, `@to-skills/target-fastmcp`), this adapter does **not** emit a `generated-by:` frontmatter block. The freshness audit (M5) tracks adapter-version drift only for CLI adapters — the `mcp-protocol` adapter has no upstream CLI shape to compare against, so the `fingerprint` is exposed only via the programmatic API (`McpProtocolAdapter.fingerprint`) for consumers that want to record it themselves.
 
 ---
 

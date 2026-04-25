@@ -108,6 +108,7 @@ Multi-server packages declare an array of entries (one per `bin`):
 ```ts
 import { extractMcpSkill, bundleMcpSkill } from '@to-skills/mcp';
 import { renderSkill, writeSkills } from '@to-skills/core';
+import McpProtocolAdapter from '@to-skills/target-mcp-protocol';
 
 // Extract → render → write yourself, e.g. inside a custom build pipeline:
 const skill = await extractMcpSkill({
@@ -117,7 +118,16 @@ const skill = await extractMcpSkill({
     args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp']
   }
 });
-const rendered = await renderSkill(skill, { invocation: undefined /* default mcp-protocol */ });
+// Pass an invocation adapter explicitly — `renderSkill` does NOT auto-load
+// `mcp-protocol`. Use `loadAdapterAsync('mcp-protocol')` if you'd rather
+// resolve via the loader (matches the CLI behavior).
+const rendered = await renderSkill(skill, {
+  invocation: McpProtocolAdapter,
+  invocationLaunchCommand: {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp']
+  }
+});
 writeSkills([rendered], { outDir: './skills' });
 
 // Or run the full bundle pipeline (reads `to-skills.mcp` from package.json):

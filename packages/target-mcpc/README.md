@@ -49,7 +49,7 @@ mcpc collision-server tools-call connect host=<value> port:=<value>
 | port     | port:=<value> | number | yes      | Peer TCP port |
 ````
 
-Plus a Setup section with one-time install + `mcpc connect` registration commands, and a `generated-by:` frontmatter block carrying the adapter fingerprint (T119).
+Plus a Setup section with one-time install + `mcpc connect` registration commands, and a `generated-by:` frontmatter block carrying the adapter fingerprint (per FR-IT-012 — used by the M5 freshness audit to detect drift between rendered output and the installed adapter version).
 
 ---
 

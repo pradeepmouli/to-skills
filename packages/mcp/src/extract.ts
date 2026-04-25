@@ -334,14 +334,17 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // missing description or generic name shows up immediately, before the user
   // pipes the IR into a renderer that won't know to flag the same problems.
   //
-  // Severity-gated logging — anything `warning` or worse goes to stderr;
-  // alerts stay quiet to avoid stderr spam on otherwise-fine servers. We
-  // don't change exit codes here because extract is informational at the IR
-  // layer; bundle mode owns the failure-on-fatal/error policy.
+  // Severity-gated logging — `warning` and worse go to stderr unconditionally.
+  // `alert` issues (currently produced only by Rule M4 — generic tool names)
+  // are emitted only when `options.audit.includeAlerts` is set, so a clean
+  // server's stderr stays uncluttered while authors investigating naming can
+  // opt in. We don't change exit codes here because extract is informational
+  // at the IR layer; bundle mode owns the failure-on-fatal/error policy.
   if (options.audit?.skip !== true) {
     const issues = runMcpAudit(skill);
+    const includeAlerts = options.audit?.includeAlerts === true;
     for (const issue of issues) {
-      if (issue.severity === 'alert') continue;
+      if (issue.severity === 'alert' && !includeAlerts) continue;
       const tool = issue.location?.tool;
       const where = tool ? ` [${tool}]` : '';
       process.stderr.write(`[audit ${issue.code} ${issue.severity}]${where} ${issue.message}\n`);

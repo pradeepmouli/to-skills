@@ -64,7 +64,8 @@ export function generatedByFrontmatter(fingerprint: AdapterFingerprint): Record<
  * @param skillContent the rendered SKILL.md body (frontmatter + body)
  * @param fingerprint  the adapter's expected fingerprint — both placements
  *   are validated against this reference shape
- * @throws McpError with code `INITIALIZE_FAILED` when:
+ * @throws McpError with code `AUDIT_FAILED` (exit 3 — render-output assertion)
+ *   when:
  *   - the frontmatter cannot be parsed,
  *   - `generated-by.adapter` / `generated-by.version` are missing, or
  *   - the body's `via &lt;adapter&gt; &lt;version&gt;` trace disagrees with the frontmatter.
@@ -77,7 +78,7 @@ export function assertFingerprintConsistency(
 ): void {
   const fmMatch = skillContent.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!fmMatch) {
-    throw new McpError('Fingerprint check: no YAML frontmatter found', 'INITIALIZE_FAILED');
+    throw new McpError('Fingerprint check: no YAML frontmatter found', 'AUDIT_FAILED');
   }
   let parsed: unknown;
   try {
@@ -85,19 +86,19 @@ export function assertFingerprintConsistency(
   } catch (err) {
     throw new McpError(
       `Fingerprint check: frontmatter is not valid YAML: ${(err as Error).message}`,
-      'INITIALIZE_FAILED',
+      'AUDIT_FAILED',
       err
     );
   }
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new McpError('Fingerprint check: frontmatter is not a YAML mapping', 'INITIALIZE_FAILED');
+    throw new McpError('Fingerprint check: frontmatter is not a YAML mapping', 'AUDIT_FAILED');
   }
   const fm = parsed as Record<string, unknown>;
   const generatedBy = fm['generated-by'];
   if (typeof generatedBy !== 'object' || generatedBy === null) {
     throw new McpError(
       'Fingerprint check: frontmatter is missing `generated-by` block',
-      'INITIALIZE_FAILED'
+      'AUDIT_FAILED'
     );
   }
   const gb = generatedBy as Record<string, unknown>;
@@ -106,7 +107,7 @@ export function assertFingerprintConsistency(
   if (typeof fmAdapter !== 'string' || typeof fmVersion !== 'string') {
     throw new McpError(
       'Fingerprint check: frontmatter `generated-by` is missing `adapter`/`version`',
-      'INITIALIZE_FAILED'
+      'AUDIT_FAILED'
     );
   }
 
@@ -114,7 +115,7 @@ export function assertFingerprintConsistency(
     throw new McpError(
       `Fingerprint check: frontmatter \`generated-by\` (${fmAdapter} ${fmVersion}) ` +
         `disagrees with expected adapter (${fingerprint.adapter} ${fingerprint.version})`,
-      'INITIALIZE_FAILED'
+      'AUDIT_FAILED'
     );
   }
 
@@ -130,7 +131,7 @@ export function assertFingerprintConsistency(
   if (!traceMatch) {
     throw new McpError(
       `Fingerprint check: Setup section trace line "via ${fmAdapter} <version>" not found in body`,
-      'INITIALIZE_FAILED'
+      'AUDIT_FAILED'
     );
   }
   const traceVersion = traceMatch[1]!;
@@ -138,7 +139,7 @@ export function assertFingerprintConsistency(
     throw new McpError(
       `Fingerprint check: Setup-section version (${traceVersion}) disagrees with ` +
         `frontmatter \`generated-by.version\` (${fmVersion})`,
-      'INITIALIZE_FAILED'
+      'AUDIT_FAILED'
     );
   }
 }

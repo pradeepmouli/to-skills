@@ -12,12 +12,14 @@ If you ship a different MCP CLI (or a wholly different target — say, a Lua REP
 
 ## 1. Package naming
 
-The loader resolves `--invocation <target>` to an npm package name. Two conventions are recognized:
+The loader resolves `--invocation <target>` to an npm package name. Two target shapes are accepted:
 
-| Target syntax             | Resolves to (in order)                                     |
-| ------------------------- | ---------------------------------------------------------- |
-| `--invocation cli:<name>` | `@to-skills/target-<name>`, then `to-skills-target-<name>` |
-| `--invocation <name>`     | `@to-skills/target-<name>`, then `to-skills-target-<name>` |
+| Target syntax               | Resolves to (in order)                                     |
+| --------------------------- | ---------------------------------------------------------- |
+| `--invocation mcp-protocol` | `@to-skills/target-mcp-protocol` (single canonical name)   |
+| `--invocation cli:<name>`   | `@to-skills/target-<name>`, then `to-skills-target-<name>` |
+
+Bare names without the `cli:` prefix (other than the literal `mcp-protocol`) are **rejected** with `UNKNOWN_TARGET` — the loader does not auto-prefix arbitrary `--invocation foo` to `cli:foo`. Always pass `cli:<name>` for third-party adapters.
 
 So a third-party adapter for, say, the hypothetical `mcp-runner` CLI would be published as either:
 
@@ -102,7 +104,7 @@ export class MyAdapter implements InvocationAdapter {
 
 ## 4. Fingerprinting
 
-Every rendered SKILL.md should carry a `generated-by:` frontmatter block so the M5 freshness audit can detect drift:
+CLI-as-proxy adapters (`cli:<name>`) **should** carry a `generated-by:` frontmatter block so the M5 freshness audit can detect drift between rendered output and the installed adapter version. The MCP-protocol adapter does **not** emit this block — there is no upstream CLI shape to track for drift, so the fingerprint is exposed only programmatically. The convention applies to CLI adapters:
 
 ```yaml
 generated-by:

@@ -40,7 +40,7 @@ A `SKILL.md` body whose Tools section pairs each MCP tool with its concrete shel
 Search the index.
 
 ```sh
-fastmcp call my-server search query=<value>
+pyfastmcp call my-server search query=<value>
 ```
 
 ### Parameters
