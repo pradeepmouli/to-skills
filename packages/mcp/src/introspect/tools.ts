@@ -130,30 +130,74 @@ async function mapTool(tool: McpToolListEntry): Promise<ExtractedFunction> {
  * so each array is joined with newlines. Adapters / aggregators that need the
  * structured form can re-split on newlines.
  *
- * Malformed metadata (wrong type, non-string array entries, empty arrays) is
- * silently rejected — this is an additive feature and a healthy extract must
- * never crash because of bad annotation data. We also surface a marker tag
- * `hasMetaToSkills='true'` whenever ANY recognized field was populated, so
- * downstream auditors can flag tools that emit `_meta.toSkills` for verbose
- * reporting.
+ * **Malformed handling (US6, FR-H010).** When a recognized field has the
+ * wrong shape (non-array, contains non-string entries, contains empty
+ * strings), or when `_meta.toSkills` itself is non-object, we write a
+ * sentinel tag `metaToSkillsMalformed = <reason>` instead of (or in
+ * addition to) the field. The audit rule M3 detects this sentinel and
+ * surfaces a warning so authors get a diagnostic — silently dropping
+ * malformed annotations is the historical behavior we are replacing.
+ *
+ * We do NOT throw — this is an additive feature and a healthy extract must
+ * never crash because of bad annotation data.
+ *
+ * `hasMetaToSkills='true'` is set when at least one valid field was
+ * populated AND no malformed reason was recorded. Mixed cases (one valid
+ * field, one malformed) keep the malformed sentinel and skip the marker;
+ * the audit warning is the canonical signal in that case.
  */
 function readToolMetaTags(tool: McpToolListEntry): Record<string, string> {
   const tags: Record<string, string> = {};
   const meta = tool._meta?.['toSkills'];
-  if (!isPlainObject(meta)) return tags;
-
-  for (const key of ['useWhen', 'avoidWhen', 'pitfalls'] as const) {
-    const raw = (meta as Record<string, unknown>)[key];
-    if (!Array.isArray(raw)) continue;
-    const filtered = raw.filter((v): v is string => typeof v === 'string' && v.length > 0);
-    if (filtered.length === 0) continue;
-    tags[key] = filtered.join('\n');
+  if (meta === undefined) return tags; // absence is fine
+  if (!isPlainObject(meta)) {
+    tags['metaToSkillsMalformed'] = `toSkills must be object, got ${typeOfValue(meta)}`;
+    return tags;
   }
 
-  if (Object.keys(tags).length > 0) {
+  const malformedReasons: string[] = [];
+  for (const key of ['useWhen', 'avoidWhen', 'pitfalls'] as const) {
+    const raw = (meta as Record<string, unknown>)[key];
+    if (raw === undefined) continue; // absence is fine
+    if (!Array.isArray(raw)) {
+      malformedReasons.push(`${key} must be string[], got ${typeOfValue(raw)}`);
+      continue;
+    }
+    const allStrings = raw.every((v) => typeof v === 'string');
+    if (!allStrings) {
+      malformedReasons.push(`${key} contains non-string entries`);
+      continue;
+    }
+    const allNonEmpty = raw.every((v) => typeof v === 'string' && v.length > 0);
+    if (!allNonEmpty) {
+      malformedReasons.push(`${key} contains empty strings`);
+      continue;
+    }
+    if (raw.length === 0) continue; // empty array is OK (treated as absent)
+    tags[key] = (raw as string[]).join('\n');
+  }
+
+  if (malformedReasons.length > 0) {
+    tags['metaToSkillsMalformed'] = malformedReasons.join('; ');
+  }
+  // Marker only fires for clean populated metadata. Mixed (some valid, some
+  // malformed) cases prefer the explicit malformed sentinel.
+  if (
+    !tags['metaToSkillsMalformed'] &&
+    (tags['useWhen'] !== undefined ||
+      tags['avoidWhen'] !== undefined ||
+      tags['pitfalls'] !== undefined)
+  ) {
     tags['hasMetaToSkills'] = 'true';
   }
   return tags;
+}
+
+/** Return a human-friendly type label for diagnostic messages. */
+function typeOfValue(v: unknown): string {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return 'array';
+  return typeof v;
 }
 
 /**

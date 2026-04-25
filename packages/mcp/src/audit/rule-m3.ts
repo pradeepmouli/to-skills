@@ -1,5 +1,6 @@
 /**
- * Audit rule M3 — missing `useWhen` annotation (FR-040).
+ * Audit rule M3 — missing `useWhen` annotation (FR-040) + malformed
+ * `_meta.toSkills` annotation (FR-H010, US6).
  *
  * @remarks
  * `useWhen` is the trigger phrase that tells an agent when to load a skill.
@@ -8,16 +9,24 @@
  * This rule fires `warning` severity: the output is valid, but the operator
  * almost certainly intended to ship triggers and forgot.
  *
- * **Two paths, two messages.**
- *  - **Tool-level**: each function whose `tags.useWhen` is missing gets one
- *    warning. The location names the tool so the operator can fix it
- *    directly. Capped at 5 to avoid drowning the audit on a 50-tool server;
- *    a single "+ N more tools missing useWhen" summary closes the gap.
+ * **Three paths.**
+ *  - **Tool-level missing useWhen**: each function whose `tags.useWhen` is
+ *    missing gets one warning. The location names the tool so the operator
+ *    can fix it directly. Capped at 5 to avoid drowning the audit on a
+ *    50-tool server; a single "+ N more tools missing useWhen" summary
+ *    closes the gap.
  *  - **Server-level**: when BOTH `skill.useWhen` is empty AND no tool
  *    contributed a `tags.useWhen`, one additional issue (no `location`)
  *    fires telling the operator there is no global trigger either. This
  *    avoids the false-positive case where a server-level `useWhen` covers
  *    every tool and the per-tool warnings would be noise.
+ *  - **Malformed `_meta.toSkills`**: each function whose
+ *    `tags.metaToSkillsMalformed` sentinel is set (planted by the
+ *    introspector when it detected a wrong-shape annotation) emits one
+ *    warning naming the tool and the validation reason. Reuses M3 (not a
+ *    new code) per Clarifications: user-facing impact is identical to
+ *    "annotation didn't take effect", and the existing severity-filtering
+ *    knobs continue to work as-is.
  *
  * Decision: per-tool warnings always emit when missing — the server-level
  * issue is *additive*, not a replacement. Operators routinely supply both
@@ -83,6 +92,23 @@ export function runM3(skill: ExtractedSkill): AuditIssue[] {
       message:
         'Server has no useWhen annotation at any level (server-wide or per-tool). Agents have no trigger to discover this skill.'
     });
+  }
+
+  // Malformed `_meta.toSkills` sentinel (FR-H010, US6). The introspector
+  // plants `tags.metaToSkillsMalformed = <reason>` whenever it detects an
+  // annotation it could not honor. Surface one warning per offending tool
+  // — no cap because malformed metadata is rare in practice and
+  // suppressing detail would defeat the diagnostic.
+  for (const fn of skill.functions) {
+    const reason = fn.tags['metaToSkillsMalformed'];
+    if (reason !== undefined && reason.length > 0) {
+      issues.push({
+        code: 'M3',
+        severity: 'warning',
+        message: `Tool "${fn.name}" has malformed _meta.toSkills annotation: ${reason}. Annotation was not honored.`,
+        location: { tool: fn.name }
+      });
+    }
   }
 
   return issues;

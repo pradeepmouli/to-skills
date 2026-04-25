@@ -181,14 +181,14 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 6 (FR-H017)
 
-- [ ] T046 [P] [US6] Create `packages/mcp/tests/unit/audit-malformed-meta.test.ts`: construct `ExtractedSkill` with one tool whose `tags.metaToSkillsMalformed = 'useWhen must be string[], got string'`; call `runMcpAudit(skill)`; assert the issues list contains `{ code: 'M3', severity: 'warning', tool: <name>, message: /malformed _meta.toSkills/ }`.
+- [x] T046 [P] [US6] Create `packages/mcp/tests/unit/audit-malformed-meta.test.ts`: construct `ExtractedSkill` with one tool whose `tags.metaToSkillsMalformed = 'useWhen must be string[], got string'`; call `runMcpAudit(skill)`; assert the issues list contains `{ code: 'M3', severity: 'warning', tool: <name>, message: /malformed _meta.toSkills/ }`.
 
 ### Implementation for User Story 6
 
-- [ ] T047 [US6] Add a `validateMetaToSkills(meta: unknown)` helper to the introspector at `packages/mcp/src/extract.ts` (or wherever `_meta` is read) per `contracts/audit-rules.md`. On validation failure, set `fn.tags.metaToSkillsMalformed = result.reason` on the `ExtractedFunction`.
-- [ ] T048 [US6] In `packages/mcp/src/audit.ts::runMcpAudit`, add the M3 sub-rule per `data-model.md` §8: detect `fn.tags?.metaToSkillsMalformed` and push a warning issue. Place alongside the existing M3 (missing `useWhen`) rule.
-- [ ] T049 [US6] Verify the new audit test passes; verify the existing audit tests continue to pass.
-- [ ] T050 [US6] Commit: `feat(mcp): warn on malformed _meta.toSkills (US6, FR-H010)`.
+- [x] T047 [US6] Add a `validateMetaToSkills(meta: unknown)` helper to the introspector at `packages/mcp/src/extract.ts` (or wherever `_meta` is read) per `contracts/audit-rules.md`. On validation failure, set `fn.tags.metaToSkillsMalformed = result.reason` on the `ExtractedFunction`.
+- [x] T048 [US6] In `packages/mcp/src/audit.ts::runMcpAudit`, add the M3 sub-rule per `data-model.md` §8: detect `fn.tags?.metaToSkillsMalformed` and push a warning issue. Place alongside the existing M3 (missing `useWhen`) rule.
+- [x] T049 [US6] Verify the new audit test passes; verify the existing audit tests continue to pass.
+- [x] T050 [US6] Commit: `feat(mcp): warn on malformed _meta.toSkills (US6, FR-H010)`.
 
 **Checkpoint**: Authors get a diagnostic warning when `_meta.toSkills` shape is wrong. No silent drops.
 

@@ -80,13 +80,14 @@ describe('listTools — _meta.toSkills (per-tool)', () => {
     expect(fns[0]!.tags).toEqual({});
   });
 
-  it('silently ignores wrong-typed _meta.toSkills.useWhen (e.g. number)', async () => {
+  it('flags wrong-typed _meta.toSkills.useWhen (e.g. number) as malformed (US6)', async () => {
     const client = makeClient([
       {
         name: 'bad-shape',
         description: '',
         inputSchema: { type: 'object' },
-        // useWhen should be string[] — number is rejected without throwing.
+        // useWhen should be string[] — number gets the malformed sentinel
+        // (US6, FR-H010); see audit-malformed-meta.test.ts for full coverage.
         _meta: { toSkills: { useWhen: 42 as unknown as string[] } }
       }
     ]);
@@ -94,9 +95,12 @@ describe('listTools — _meta.toSkills (per-tool)', () => {
     const fns = await listTools(client);
     expect(fns[0]!.tags.useWhen).toBeUndefined();
     expect(fns[0]!.tags.hasMetaToSkills).toBeUndefined();
+    expect(fns[0]!.tags.metaToSkillsMalformed).toBe('useWhen must be string[], got number');
   });
 
-  it('drops non-string entries from a useWhen array but keeps the rest', async () => {
+  it('flags non-string entries in a useWhen array as malformed (US6)', async () => {
+    // Pre-US6 this case partially salvaged the valid entries; per FR-H010 the
+    // shape mismatch now surfaces a warning instead of silently filtering.
     const client = makeClient([
       {
         name: 'mixed',
@@ -107,7 +111,8 @@ describe('listTools — _meta.toSkills (per-tool)', () => {
     ]);
 
     const fns = await listTools(client);
-    expect(fns[0]!.tags.useWhen).toBe('valid\nalso valid');
+    expect(fns[0]!.tags.useWhen).toBeUndefined();
+    expect(fns[0]!.tags.metaToSkillsMalformed).toBe('useWhen contains non-string entries');
   });
 
   it('treats empty _meta.toSkills as no-op (no IR fields, no marker)', async () => {
