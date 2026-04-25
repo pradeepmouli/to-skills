@@ -24,13 +24,13 @@
  *
  * Gated via `RUN_INTEGRATION_TESTS=true`.
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { renderSkill, writeSkills } from '@to-skills/core';
 import type { ExtractedSkill, RenderedSkill } from '@to-skills/core';
 import YAML from 'yaml';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extractMcpSkill, loadAdapterAsync } from '../../src/index.js';
 
 const RUN = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -39,12 +39,12 @@ describe.skipIf(!RUN)('programmatic render twice — SC-011', () => {
   let outMcp: string;
   let outCli: string;
 
-  beforeAll(() => {
+  beforeEach(() => {
     outMcp = mkdtempSync(join(tmpdir(), 'to-skills-render-twice-mcp-'));
     outCli = mkdtempSync(join(tmpdir(), 'to-skills-render-twice-cli-'));
   });
 
-  afterAll(() => {
+  afterEach(() => {
     rmSync(outMcp, { recursive: true, force: true });
     rmSync(outCli, { recursive: true, force: true });
   });
@@ -81,15 +81,23 @@ describe.skipIf(!RUN)('programmatic render twice — SC-011', () => {
     expect(existsSync(mcpSkillPath)).toBe(true);
     expect(existsSync(cliSkillPath)).toBe(true);
 
-    // 4. Reference files exist with adapter-specific names.
-    const mcpFunctionsPath = join(outMcp, 'filesystem', 'references', 'functions.md');
-    const cliToolsPath = join(outCli, 'filesystem', 'references', 'tools.md');
-    expect(existsSync(mcpFunctionsPath)).toBe(true);
-    expect(existsSync(cliToolsPath)).toBe(true);
+    // 4. Reference files exist (adapter-specific filenames). We enumerate the
+    //    references/ directory rather than hardcoding `functions.md` /
+    //    `tools.md` so a future filename refactor produces a clear assertion
+    //    failure rather than a misleading ENOENT from readFileSync.
+    const mcpRefsDir = join(outMcp, 'filesystem', 'references');
+    const cliRefsDir = join(outCli, 'filesystem', 'references');
+    const mcpRefFiles = readdirSync(mcpRefsDir);
+    const cliRefFiles = readdirSync(cliRefsDir);
+    expect(mcpRefFiles.length).toBeGreaterThan(0);
+    expect(cliRefFiles.length).toBeGreaterThan(0);
 
-    // 5. Same tool names in both reference files (target-agnostic IR).
-    const mcpRef = readFileSync(mcpFunctionsPath, 'utf-8');
-    const cliRef = readFileSync(cliToolsPath, 'utf-8');
+    // 5. Same tool names appear in EACH adapter's primary tool-listing file
+    //    (target-agnostic IR drives both renders). Concatenate all reference
+    //    files per adapter so the tool-name assertion doesn't depend on
+    //    knowing which file the adapter chose.
+    const mcpRef = mcpRefFiles.map((f) => readFileSync(join(mcpRefsDir, f), 'utf-8')).join('\n');
+    const cliRef = cliRefFiles.map((f) => readFileSync(join(cliRefsDir, f), 'utf-8')).join('\n');
     for (const tool of ['list_directory', 'read_file']) {
       expect(mcpRef).toContain(tool);
       expect(cliRef).toContain(tool);
