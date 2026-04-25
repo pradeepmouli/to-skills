@@ -29,13 +29,25 @@ The host-side `@to-skills/mcp` is not the natural place for these helpers from t
 ```ts
 export function renderToolsBody(
   functions: readonly ExtractedFunction[],
-  skillName: string,
+  skillName: string, // currently reserved; the shared body composes the
+  // command line via cliVerb + encodeArgv, but per-tool
+  // future variations may need it
   encodeOne: (plan: ParameterPlan) => string,
-  cliVerb: string // e.g. 'mcpc {skillName} tools-call' or 'pyfastmcp call'
+  encodeArgv: (
+    plans: ReadonlyMap<string, ParameterPlan>,
+    encodeOne: (p: ParameterPlan) => string
+  ) => string,
+  cliVerb: string // already-interpolated, e.g. 'mcpc my-skill tools-call' or 'pyfastmcp call'
 ): string;
 ```
 
-Each adapter passes its own `encodeOne` (the only piece of per-CLI argument-syntax variation) and `cliVerb` (the per-CLI command prefix). Everything else — function header, description block, command line, parameters table — comes from the shared body.
+Each adapter passes:
+
+- `encodeOne` — per-arg encoder (mcpc uses `:=` typed marker for non-string scalars; fastmcp uses `=` always).
+- `encodeArgv` — per-CLI argv builder; differs because mcpc emits Tier-3 fallback as a single trailing `--json '...'` token while fastmcp emits `--input-json '...'`.
+- `cliVerb` — fully-interpolated command prefix (callsite formats `${skillName}` into the right slot).
+
+Everything else — function header, description block, command line wrapping, parameters table — comes from the shared body.
 
 **Behavioral guarantee**: byte-identical to the inline implementations in PR 20. Existing inline-snapshot tests in `target-mcpc` and `target-fastmcp` MUST continue to pass without snapshot updates.
 
