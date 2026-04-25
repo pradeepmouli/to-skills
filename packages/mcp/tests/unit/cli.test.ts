@@ -131,13 +131,19 @@ describe('buildProgram', () => {
       );
     });
 
-    it('stubs --config as Phase 7 not-yet-implemented', async () => {
+    it('--config dispatches to the config-file batch path (Phase 7 / US3)', async () => {
+      // The runConfigExtract path now exercises readMcpConfigFile, which
+      // surfaces ENOENT as a TRANSPORT_FAILED with a clear "Config file not
+      // found" message. That's the post-Phase-7 contract — the old "Phase 7
+      // stub" assertion was intentionally replaced when batch mode activated.
       const program = makeProgram();
       await expect(
-        program.parseAsync(['node', 'bin', 'extract', '--config', 'mcp.json'])
+        program.parseAsync(['node', 'bin', 'extract', '--config', 'does-not-exist.json'])
       ).rejects.toSatisfy(
         (err) =>
-          err instanceof McpError && err.code === 'TRANSPORT_FAILED' && /Phase 7/.test(err.message)
+          err instanceof McpError &&
+          err.code === 'TRANSPORT_FAILED' &&
+          /Config file not found/.test(err.message)
       );
     });
 

@@ -31,6 +31,9 @@ export { extractMcpSkill } from './extract.js';
 export { bundleMcpSkill } from './bundle.js';
 export type { NormalizedBundleEntry } from './bundle/config.js';
 
+// Config-file batch reader (Phase 7 / US3)
+export { readMcpConfigFile } from './config/file-reader.js';
+
 // CLI program builder — exposed so consumers can embed the commander program
 // into a parent CLI. The `bin.ts` executable entry point is not exported.
 export { buildProgram } from './cli.js';

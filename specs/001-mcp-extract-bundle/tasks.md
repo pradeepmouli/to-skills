@@ -276,11 +276,11 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 **Independent Test**: Write a 3-server `mcp.json` (one stdio local, one HTTP, one with `disabled: true`). Run `extract --config mcp.json`. Verify 2 skill directories (skipping disabled). Then kill one of the servers before running; verify the other still extracts and exit code is non-zero with a clear diagnostic about which failed.
 
-- [ ] T091 [US3] Create `packages/mcp/src/config/file-reader.ts` exporting `readMcpConfigFile(path: string): Promise<McpConfigFile>` — reads JSON, validates shape (`mcpServers` key with `Record<string, McpServerConfig>`), surfaces clear errors on malformed input
-- [ ] T092 [US3] Add `--config <path>` handling to `extract` subcommand in `packages/mcp/src/cli.ts`: reads via T091, iterates over entries, skips `disabled: true`, runs extraction per entry
-- [ ] T093 [US3] Add per-entry error containment in `packages/mcp/src/cli.ts` batch path: catch `McpError` from each server's extraction, log to stderr, continue with remaining servers; at end, exit 0 only if ALL succeeded (exit 1 with summary otherwise)
-- [ ] T094 [P] [US3] Add integration test `packages/mcp/tests/integration/config-batch.test.ts` with a 3-server config file (2 live via stdio, 1 with `disabled: true`); assert 2 skill directories produced, disabled server skipped without error
-- [ ] T095 [P] [US3] Add integration test `packages/mcp/tests/integration/config-partial-failure.test.ts` with a 2-server config where one points at a nonexistent command; assert the other still extracts, exit code non-zero, stderr names the failing server
+- [x] T091 [US3] Create `packages/mcp/src/config/file-reader.ts` exporting `readMcpConfigFile(path: string): Promise<McpConfigFile>` — reads JSON, validates shape (`mcpServers` key with `Record<string, McpServerConfig>`), surfaces clear errors on malformed input
+- [x] T092 [US3] Add `--config <path>` handling to `extract` subcommand in `packages/mcp/src/cli.ts`: reads via T091, iterates over entries, skips `disabled: true`, runs extraction per entry
+- [x] T093 [US3] Add per-entry error containment in `packages/mcp/src/cli.ts` batch path: catch `McpError` from each server's extraction, log to stderr, continue with remaining servers; at end, exit 0 only if ALL succeeded (exit 1 with summary otherwise)
+- [x] T094 [P] [US3] Add integration test `packages/mcp/tests/integration/config-batch.test.ts` with a 3-server config file (2 live via stdio, 1 with `disabled: true`); assert 2 skill directories produced, disabled server skipped without error
+- [x] T095 [P] [US3] Add integration test `packages/mcp/tests/integration/config-partial-failure.test.ts` with a 2-server config where one points at a nonexistent command; assert the other still extracts, exit code non-zero, stderr names the failing server
 
 ---
 

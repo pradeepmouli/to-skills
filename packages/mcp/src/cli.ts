@@ -12,7 +12,9 @@
  * `KEY=VALUE` pairs) so usage output stays consistent with commander's style.
  *
  * HTTP (`--url`) is wired to `extractMcpSkill`'s HTTP transport (Phase 4).
- * Config-file (`--config`) remains a Phase 7 stub.
+ * Config-file (`--config`) batches over `mcpServers` from a Claude-Desktop
+ * shaped config file, with per-entry error containment and worst-code exit
+ * mapping (Phase 7 / US3).
  *
  * Header parser format decision (Phase 4): `--header` uses the same
  * `KEY=VALUE` syntax as `--env`, NOT the `KEY: VALUE` colon notation that
@@ -38,9 +40,15 @@ import { bundleMcpSkill } from './bundle.js';
 // to short-circuit on collision without re-implementing config parsing. This
 // is an internal-only import; readBundleConfig stays out of the public API.
 import { readBundleConfig } from './bundle/config.js';
-import type { McpBundleOptions } from './types.js';
+import { readMcpConfigFile } from './config/file-reader.js';
+import type {
+  BundleFailure,
+  McpBundleOptions,
+  McpExtractOptions,
+  McpServerConfig
+} from './types.js';
 import type { InvocationTarget } from './adapter/types.js';
-import { McpError } from './errors.js';
+import { McpError, type McpErrorCode } from './errors.js';
 import { extractMcpSkill } from './extract.js';
 import { PACKAGE_VERSION } from './version.js';
 
@@ -72,7 +80,10 @@ export function buildProgram(): Command {
       collectKv,
       {}
     )
-    .option('--config <path>', '[Phase 7] Path to mcp.json or claude_desktop_config.json')
+    .option(
+      '--config <path>',
+      'Path to mcp.json / claude_desktop_config.json (batch extract over mcpServers)'
+    )
     .option('-o, --out <dir>', 'Output directory', 'skills')
     .option('--max-tokens <n>', 'Per reference-file token budget', parsePositiveInt, 4000)
     .option('--llms-txt', 'Emit llms.txt alongside SKILL.md')
@@ -190,9 +201,13 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     );
   }
 
-  // Phase 7 stub — config-file batch mode lands later.
+  // Config-file batch mode (Phase 7 / US3). Delegates to runConfigExtract,
+  // which handles per-entry containment + worst-code aggregation. We dispatch
+  // BEFORE the single-entry --canonicalize / --skip-audit notices because
+  // those notices fire inside runConfigExtract once per batch instead.
   if (opts.config !== undefined) {
-    throw new McpError('Config-file batch mode not yet implemented (Phase 7).', 'TRANSPORT_FAILED');
+    await runConfigExtract(opts);
+    return;
   }
 
   // Notices for accepted-but-unwired flags (Phase 10 / T111 / audit rules).
@@ -305,6 +320,197 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
+}
+
+/**
+ * `extract --config <path>` action body (Phase 7 / US3).
+ *
+ * Reads the Claude-Desktop-shaped config file, then runs the full
+ * extract → render → write pipeline once per enabled entry. Failures are
+ * contained per-entry: a single server's crash records a {@link BundleFailure}
+ * and the loop continues so partially-successful runs still produce the
+ * remaining skills. After the loop, if any entry failed, throws an
+ * {@link McpError} carrying the worst code in the failure set so `bin.ts`
+ * maps to a non-zero exit (the worst-code hierarchy mirrors `runBundle`).
+ *
+ * `--invocation` is supported in batch mode: the same multi-target render
+ * loop used by stdio/http extract runs per-entry, producing disambiguated
+ * `<skillName>-<targetSuffix>` directories when multiple targets are
+ * requested. This keeps the CLI surface consistent across modes.
+ *
+ * Disabled entries (`disabled: true`) are skipped silently — the spec
+ * defines them as "configured but turned off", not failure conditions.
+ *
+ * @internal
+ */
+async function runConfigExtract(opts: ExtractOpts): Promise<void> {
+  // Notices for not-yet-wired flags — emitted ONCE per CLI invocation, not
+  // per-entry, to mirror the bundle-mode pattern and avoid stderr spam on
+  // many-server configs.
+  if (!opts.canonicalize) {
+    process.stderr.write(
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+    );
+  }
+  if (opts.skipAudit) {
+    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
+  }
+  if (opts.llmsTxt) {
+    process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
+  }
+
+  const configFile = await readMcpConfigFile(opts.config!);
+
+  // Resolve invocation targets eagerly — same approach as runExtract so a
+  // typo on `--invocation` exits 5 BEFORE we spawn anything for any entry.
+  const targets: InvocationTarget[] =
+    opts.invocation.length > 0
+      ? (opts.invocation as InvocationTarget[])
+      : (['mcp-protocol'] as InvocationTarget[]);
+  const adapters = await validateTargets(targets);
+
+  const failures: Record<string, BundleFailure> = {};
+
+  for (const [entryName, entry] of Object.entries(configFile.mcpServers)) {
+    if (entry.disabled === true) {
+      continue;
+    }
+
+    try {
+      await runConfigEntry(entryName, entry, opts, adapters);
+    } catch (err) {
+      // Per-entry containment — only McpError is contained; anything else
+      // (programming errors, unexpected throws) propagates so we don't mask
+      // bugs as "transport failures".
+      if (err instanceof McpError) {
+        failures[entryName] = { code: err.code, message: err.message };
+        process.stderr.write(`Failed [${err.code}] ${entryName}: ${err.message}\n`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  // Exit-code policy: ≥1 entries failed → throw with the worst code so
+  // bin.ts maps to a non-zero exit. Hierarchy matches runBundle so multi-mode
+  // runs converge on a deterministic code.
+  const codes = Object.values(failures).map((f) => f.code);
+  if (codes.length > 0) {
+    const worst = pickWorstCode(codes);
+    throw new McpError(
+      `extract --config: ${codes.length} ${codes.length === 1 ? 'entry' : 'entries'} failed. See stderr above.`,
+      worst
+    );
+  }
+}
+
+/**
+ * Run extract → render → write for a single config entry. Mirrors the
+ * single-entry path in `runExtract`; factored out so the batch loop can
+ * catch each iteration independently.
+ *
+ * @internal
+ */
+async function runConfigEntry(
+  entryName: string,
+  entry: McpServerConfig,
+  opts: ExtractOpts,
+  adapters: InvocationAdapter[]
+): Promise<void> {
+  // Build the McpExtractOptions from the entry. Stdio if `command` set,
+  // HTTP if `url` set. The reader has already enforced one-or-the-other.
+  let extractOpts: McpExtractOptions;
+  if (entry.command !== undefined) {
+    extractOpts = {
+      transport: {
+        type: 'stdio',
+        command: entry.command,
+        ...(entry.args !== undefined ? { args: entry.args } : {}),
+        ...(entry.env !== undefined ? { env: entry.env } : {})
+      },
+      skillName: entryName,
+      maxTokens: opts.maxTokens
+    };
+  } else if (entry.url !== undefined) {
+    extractOpts = {
+      transport: {
+        type: 'http',
+        url: entry.url,
+        ...(entry.headers !== undefined ? { headers: entry.headers } : {})
+      },
+      skillName: entryName,
+      maxTokens: opts.maxTokens
+    };
+  } else {
+    // Defensive — readMcpConfigFile guarantees one of the two is set, but
+    // narrowing requires us to handle the case explicitly.
+    throw new McpError(`Entry "${entryName}" has neither command nor url.`, 'TRANSPORT_FAILED');
+  }
+
+  // Pre-flight collision check, per target. Mirrors runExtract so --force
+  // semantics fire before writeSkills rmSyncs anything.
+  for (const adapter of adapters) {
+    const dirName = dirNameForTarget(entryName, adapter, adapters.length);
+    const skillDir = join(opts.out, dirName);
+    if (existsSync(skillDir) && !opts.force) {
+      throw new McpError(
+        `Output directory already exists: ${skillDir}. Pass --force to overwrite.`,
+        'DUPLICATE_SKILL_NAME'
+      );
+    }
+  }
+
+  const skill = await extractMcpSkill(extractOpts);
+
+  for (const adapter of adapters) {
+    const dirName = dirNameForTarget(skill.name, adapter, adapters.length);
+    const skillDir = join(opts.out, dirName);
+
+    const renderOptions: Parameters<typeof renderSkill>[1] = {
+      invocation: adapter,
+      maxTokens: opts.maxTokens,
+      ...(adapters.length > 1 ? { namePrefix: dirName } : {})
+    };
+    if (entry.url !== undefined) {
+      renderOptions.invocationHttpEndpoint = {
+        url: entry.url,
+        ...(entry.headers !== undefined ? { headers: entry.headers } : {})
+      };
+    } else {
+      renderOptions.invocationLaunchCommand = {
+        command: entry.command!,
+        ...(entry.args !== undefined ? { args: entry.args } : { args: [] }),
+        ...(entry.env !== undefined ? { env: entry.env } : {})
+      };
+    }
+
+    const rendered = await renderSkill(skill, renderOptions);
+    writeSkills([rendered], { outDir: opts.out });
+
+    process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
+  }
+}
+
+/**
+ * Pick the most-actionable McpErrorCode from a multi-failure set. Hierarchy
+ * mirrors `runBundle` so config-mode and bundle-mode partial failures map to
+ * the same exit code when failure sets overlap.
+ *
+ * @internal
+ */
+function pickWorstCode(codes: readonly McpErrorCode[]): McpErrorCode {
+  const ordered: McpErrorCode[] = [
+    'DUPLICATE_SKILL_NAME',
+    'MISSING_LAUNCH_COMMAND',
+    'UNKNOWN_TARGET',
+    'ADAPTER_NOT_FOUND',
+    'SCHEMA_REF_CYCLE',
+    'SERVER_EXITED_EARLY',
+    'PROTOCOL_VERSION_UNSUPPORTED',
+    'INITIALIZE_FAILED',
+    'TRANSPORT_FAILED'
+  ];
+  return ordered.find((c) => codes.includes(c)) ?? codes[0]!;
 }
 
 /**
@@ -494,21 +700,10 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   // most-actionable one first (config issues over transport blips).
   const codes = Object.values(result.failures).map((f) => f.code);
   if (codes.length > 0) {
-    // Ordered by descending exit-code severity, with config issues most
-    // actionable first. Covers every McpErrorCode so the find() always hits
-    // and the result is deterministic across multi-failure runs.
-    const ordered: McpError['code'][] = [
-      'DUPLICATE_SKILL_NAME',
-      'MISSING_LAUNCH_COMMAND',
-      'UNKNOWN_TARGET',
-      'ADAPTER_NOT_FOUND',
-      'SCHEMA_REF_CYCLE',
-      'SERVER_EXITED_EARLY',
-      'PROTOCOL_VERSION_UNSUPPORTED',
-      'INITIALIZE_FAILED',
-      'TRANSPORT_FAILED'
-    ];
-    const worst = ordered.find((c) => codes.includes(c)) ?? codes[0]!;
+    // Worst-code hierarchy lives in `pickWorstCode` so config-mode and
+    // bundle-mode converge on the same exit code for overlapping failure
+    // sets — see the helper's JSDoc for the ordering rationale.
+    const worst = pickWorstCode(codes);
     throw new McpError(
       `bundle: ${codes.length} ${codes.length === 1 ? 'entry' : 'entries'} failed. See stderr above.`,
       worst
