@@ -231,6 +231,14 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
   } finally {
     if (timeoutHandle) clearTimeout(timeoutHandle);
+    // US5 (FR-H009): detach the named stderr listener so bundle mode can't
+    // accumulate listeners across iterations and trip Node's
+    // MaxListenersExceeded warning. EventEmitter.removeListener finds the
+    // listener by reference identity — that's why `onStderr` was hoisted to
+    // a named const above (an anonymous arrow would be unrecoverable here).
+    if (stderrEmitter && 'removeListener' in stderrEmitter) {
+      stderrEmitter.removeListener('data', onStderr);
+    }
     transport.onclose = undefined;
     try {
       await client.close();
