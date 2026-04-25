@@ -194,47 +194,51 @@ async function extractHttp(options: McpExtractOptions): Promise<ExtractedSkill> 
   // speak it. SSE-only servers will respond 404 or 405 to the initial POST,
   // signaling we should retry over SSE.
   const httpTransport = new StreamableHTTPClientTransport(url, { requestInit });
-  let client = new Client(
+  const client = new Client(
     { name: '@to-skills/mcp', version: PACKAGE_VERSION },
     { capabilities: {} }
   );
 
+  // Cleanup discipline: each branch closes its own client exactly once.
+  // - Happy path: close after introspect succeeds, then return.
+  // - Primary-error path (no fallback): catch closes the failed client.
+  // - SSE fallback path: inner try/finally owns the retry client's lifecycle.
+  // No outer `finally` — that would double-close on the happy path and obscure
+  // a future SDK regression where close() stops being idempotent.
   try {
     await client.connect(httpTransport);
-    return await introspect(client, options);
+    const skill = await introspect(client, options);
+    await safeClose(client);
+    return skill;
   } catch (err) {
+    // The primary client is no longer usable regardless of which branch we
+    // take below; close it once here.
+    await safeClose(client);
+
     // Re-thrown McpError instances (e.g. SCHEMA_REF_CYCLE from inner helpers)
     // pass through unchanged.
-    if (err instanceof McpError) {
-      await safeClose(client);
-      throw err;
-    }
+    if (err instanceof McpError) throw err;
+
     if (shouldFallbackToSSE(err)) {
-      // Best-effort cleanup of the failed transport+client before retry.
-      await safeClose(client);
       // Fresh client for the retry — the first one's transport is terminated.
-      client = new Client(
+      const sseClient = new Client(
         { name: '@to-skills/mcp', version: PACKAGE_VERSION },
         { capabilities: {} }
       );
       const sseTransport = new SSEClientTransport(url, { requestInit });
       try {
-        await client.connect(sseTransport);
-        return await introspect(client, options);
+        await sseClient.connect(sseTransport);
+        return await introspect(sseClient, options);
       } catch (sseErr) {
         if (sseErr instanceof McpError) throw sseErr;
         throw new McpError(messageOf(sseErr), 'INITIALIZE_FAILED', sseErr);
       } finally {
-        await safeClose(client);
+        await safeClose(sseClient);
       }
     }
     // Non-fallbackable error: classify and propagate. Auth failures (401/403)
     // land here without protocol fallback — see JSDoc on extractMcpSkill.
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
-  } finally {
-    // If the SSE fallback path took over it has its own finally; calling
-    // close() again on an already-closed client is a no-op in the SDK.
-    await safeClose(client);
   }
 }
 
