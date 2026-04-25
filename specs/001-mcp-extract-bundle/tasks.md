@@ -292,11 +292,11 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 **Note**: most of the surface is already built in Phases 3-6. This phase adds exhaustive programmatic tests and the specific "monorepo multi-package" and "same extraction, two renders" guarantees.
 
-- [ ] T096 [P] [US6] Add integration test `packages/mcp/tests/integration/programmatic-extract.test.ts` — imports `extractMcpSkill`, asserts returned IR has `functions`, `resources`, `prompts`, `configSurfaces` populated correctly per US6 AC1
-- [ ] T097 [P] [US6] Add integration test `packages/mcp/tests/integration/programmatic-render-twice.test.ts` — calls extract once, calls renderSkill twice with different adapters, asserts SC-011 (same underlying IR, distinct outputs)
-- [ ] T098 [P] [US6] Add integration test `packages/mcp/tests/integration/monorepo-bundle.test.ts` using two fixture packages each with its own `to-skills.mcp` and `skills/` directory; run `bundleMcpSkill` from each package root in sequence; assert no collision, each package gets its own `skills/` dir per US6 AC4
-- [ ] T098a [P] [US6] Snapshot-equivalence test `packages/mcp/tests/integration/programmatic-vs-bundle.test.ts` — run extract+renderSkill pipeline against a fixture server, then run `bundleMcpSkill` against the same server via a fixture package wrapping it; assert the resulting `SKILL.md` and every `references/*.md` are byte-identical after canonicalization. Exercises SC-007
-- [ ] T099 [US6] Add TypeScript API surface test `packages/mcp/tests/contract/api-surface.test.ts` that imports every public export from `@to-skills/mcp/dist/index.d.ts` and asserts each is defined (prevents accidental export removal across refactors)
+- [x] T096 [P] [US6] Add integration test `packages/mcp/tests/integration/programmatic-extract.test.ts` — imports `extractMcpSkill`, asserts returned IR has `functions`, `resources`, `prompts`, `configSurfaces` populated correctly per US6 AC1
+- [x] T097 [P] [US6] Add integration test `packages/mcp/tests/integration/programmatic-render-twice.test.ts` — calls extract once, calls renderSkill twice with different adapters, asserts SC-011 (same underlying IR, distinct outputs)
+- [x] T098 [P] [US6] Add integration test `packages/mcp/tests/integration/monorepo-bundle.test.ts` using two fixture packages each with its own `to-skills.mcp` and `skills/` directory; run `bundleMcpSkill` from each package root in sequence; assert no collision, each package gets its own `skills/` dir per US6 AC4
+- [x] T098a [P] [US6] Snapshot-equivalence test `packages/mcp/tests/integration/programmatic-vs-bundle.test.ts` — run extract+renderSkill pipeline against a fixture server, then run `bundleMcpSkill` against the same server via a fixture package wrapping it; assert the resulting `SKILL.md` and every `references/*.md` are byte-identical after canonicalization. Exercises SC-007
+- [x] T099 [US6] Add TypeScript API surface test `packages/mcp/tests/contract/api-surface.test.ts` that imports every public export from `@to-skills/mcp/dist/index.d.ts` and asserts each is defined (prevents accidental export removal across refactors)
 
 ---
 
