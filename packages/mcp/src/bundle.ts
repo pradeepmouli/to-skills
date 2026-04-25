@@ -51,7 +51,14 @@ export async function bundleMcpSkill(options: McpBundleOptions = {}): Promise<Bu
   const packageRoot = path.resolve(options.packageRoot ?? process.cwd());
   const outDir = path.resolve(packageRoot, options.outDir ?? 'skills');
 
-  const entries = await readBundleConfig(packageRoot);
+  const rawEntries = await readBundleConfig(packageRoot);
+
+  // `options.invocation` overrides the per-entry `invocation` declared in
+  // package.json. Normalize string-or-array → readonly array, then apply.
+  const override = normalizeInvocationOverride(options.invocation);
+  const entries: NormalizedBundleEntry[] = override
+    ? rawEntries.map((e) => ({ ...e, invocation: override }))
+    : rawEntries;
 
   // Read package.json once more for the package-name self-reference and the
   // files-field warning. readBundleConfig() already validated this file is
@@ -167,16 +174,34 @@ async function processEntry(
   }
 
   const skillDir = path.join(outDir, entry.skillName);
+  // The renderer emits filenames relative to outDir, so the absolute path of
+  // each rendered file is `path.join(outDir, file.filename)`. Relativize against
+  // skillDir so `WrittenSkill.files` is always relative to its `dir`, regardless
+  // of whether the adapter prefixes with skillName or emits at the root.
+  const toRelative = (filename: string): string =>
+    path.relative(skillDir, path.join(outDir, filename));
   const written: WrittenSkill = {
     dir: skillDir,
     files: [
-      path.basename(rendered.skill.filename),
-      ...rendered.references.map((r) => path.relative(entry.skillName, r.filename))
+      toRelative(rendered.skill.filename),
+      ...rendered.references.map((r) => toRelative(r.filename))
     ],
     target,
     audit: { issues: [], worstSeverity: 'none' }
   };
   result.skills[entry.skillName] = written;
+}
+
+/**
+ * Normalize the public `McpBundleOptions.invocation` override (string-or-array)
+ * into a readonly array. Returns undefined when no override was supplied — the
+ * caller then preserves each entry's per-package `invocation`.
+ */
+function normalizeInvocationOverride(
+  invocation: McpBundleOptions['invocation']
+): readonly InvocationTarget[] | undefined {
+  if (invocation === undefined) return undefined;
+  return Array.isArray(invocation) ? invocation : [invocation];
 }
 
 /**

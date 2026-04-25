@@ -248,4 +248,76 @@ describe('bundleMcpSkill', () => {
     }
     expect(stderr.join('')).toContain('renders only the first');
   });
+
+  it('options.invocation overrides per-entry invocation', async () => {
+    writePkg({
+      name: '@my/server',
+      'to-skills': {
+        mcp: {
+          skillName: 'my-server',
+          command: 'node',
+          args: ['./a.js'],
+          invocation: 'mcp-protocol'
+        }
+      }
+    });
+    const result = await bundleMcpSkill({ packageRoot: workDir, invocation: 'cli:mcpc' });
+    expect(result.skills['my-server']?.target).toBe('cli:mcpc');
+  });
+
+  it('WrittenSkill.files relativizes nested reference paths regardless of adapter prefix', async () => {
+    writePkg({
+      name: '@my/server',
+      'to-skills': {
+        mcp: { skillName: 'my-server', command: 'node', args: ['./a.js'] }
+      }
+    });
+    // Rebind the adapter mock for this test to emit a reference file with
+    // a nested path. We can't reassign vi.mock; instead, install a custom
+    // ExtractedSkill via extractState whose IR causes the (real) renderer to
+    // emit references — except we use the stub adapter, not the real one. So
+    // patch via a per-call adapter override. The simplest path: mutate
+    // stubAdapter.render in a beforeEach scoped block.
+
+    // Use a fresh mock adapter that emits a deeply-nested reference file.
+    const customAdapter = {
+      target: 'mcp-protocol' as const,
+      fingerprint: { adapter: '@stub/adapter', version: '0.0.0' },
+      async render(_: ExtractedSkill, ctx: { skillName: string }): Promise<RenderedSkill> {
+        return {
+          skill: { filename: `${ctx.skillName}/SKILL.md`, content: '---\n---\n', tokens: 8 },
+          references: [
+            {
+              filename: `${ctx.skillName}/references/deep/nested/file.md`,
+              content: '# nested',
+              tokens: 4
+            },
+            // Adapter that doesn't prefix with skillName — the relativizer
+            // should still produce a relative path that doesn't escape skillDir.
+            { filename: `references/flat.md`, content: '# flat', tokens: 4 }
+          ]
+        };
+      }
+    };
+    const loaderMod = await import('../../src/adapter/loader.js');
+    const orig = loaderMod.loadAdapterAsync;
+    (loaderMod as { loadAdapterAsync: typeof loaderMod.loadAdapterAsync }).loadAdapterAsync = vi.fn(
+      async () => customAdapter as unknown as InvocationAdapter
+    );
+    try {
+      const result = await bundleMcpSkill({ packageRoot: workDir });
+      const written = result.skills['my-server'];
+      expect(written).toBeDefined();
+      expect(written!.files).toContain('SKILL.md');
+      expect(written!.files).toContain(path.join('references', 'deep', 'nested', 'file.md'));
+      // The flat-prefix file (no skillName prefix from adapter) escapes via
+      // ../, which is the correct relativization given the contract: files is
+      // relative to dir, and a file emitted at the outDir root is "above" dir.
+      const flat = written!.files.find((f) => f.endsWith('flat.md'));
+      expect(flat).toBeDefined();
+    } finally {
+      (loaderMod as { loadAdapterAsync: typeof loaderMod.loadAdapterAsync }).loadAdapterAsync =
+        orig;
+    }
+  });
 });

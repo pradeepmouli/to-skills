@@ -33,7 +33,11 @@ export interface McpBundleOptions {
   packageRoot?: string;
   /** Output directory override — defaults to <packageRoot>/skills. */
   outDir?: string;
-  /** Invocation target(s) — defaults to package.json's to-skills.mcp.invocation, then 'mcp-protocol'. */
+  /**
+   * Invocation target(s). When set, overrides the per-entry `invocation` field
+   * in `to-skills.mcp`. When omitted, each entry's declared invocation applies
+   * (defaulting to `'mcp-protocol'` if the entry omits it as well).
+   */
   invocation?: InvocationTarget | InvocationTarget[];
   /** Skip audit (CI bypass). */
   skipAudit?: boolean;

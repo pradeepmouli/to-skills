@@ -96,8 +96,17 @@ export async function readBundleConfig(packageRoot: string): Promise<NormalizedB
     );
   }
 
-  const mcpField = pkg['to-skills']?.mcp;
-  if (mcpField === undefined) {
+  // Distinguish "no to-skills section at all" from "to-skills exists but mcp is
+  // missing/null" so the error message tells the user exactly what to add.
+  const toSkills = pkg['to-skills'];
+  if (toSkills === undefined || toSkills === null) {
+    throw new McpError(
+      'to-skills section is missing from package.json. Add { "to-skills": { "mcp": { "skillName": "..." } } }. See contracts/package-json-config.md',
+      'TRANSPORT_FAILED'
+    );
+  }
+  const mcpField = toSkills.mcp;
+  if (mcpField === undefined || mcpField === null) {
     throw new McpError(
       'to-skills.mcp field is required in package.json. See contracts/package-json-config.md',
       'TRANSPORT_FAILED'

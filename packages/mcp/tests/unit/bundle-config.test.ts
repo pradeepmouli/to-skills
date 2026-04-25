@@ -196,13 +196,36 @@ describe('readBundleConfig', () => {
     await expect(readBundleConfig(workDir)).rejects.toThrow(/package\.json not found/);
   });
 
-  it('throws when to-skills.mcp field is absent', async () => {
+  it('throws when to-skills section is absent (distinct from missing mcp field)', async () => {
     writePkg({ name: '@my/server' });
     await expect(readBundleConfig(workDir)).rejects.toMatchObject({
       name: 'McpError',
       code: 'TRANSPORT_FAILED'
     });
-    await expect(readBundleConfig(workDir)).rejects.toThrow(/to-skills\.mcp/);
+    // Specific message: "to-skills section is missing" — distinguishes the
+    // case from a present-but-empty to-skills object.
+    await expect(readBundleConfig(workDir)).rejects.toThrow(/to-skills section is missing/);
+  });
+
+  it('throws when to-skills.mcp field is absent (with to-skills wrapper present)', async () => {
+    writePkg({ name: '@my/server', 'to-skills': {} });
+    await expect(readBundleConfig(workDir)).rejects.toMatchObject({
+      code: 'TRANSPORT_FAILED'
+    });
+    await expect(readBundleConfig(workDir)).rejects.toThrow(/to-skills\.mcp field is required/);
+  });
+
+  it('treats explicit null for to-skills.mcp as absent (not an empty entry)', async () => {
+    writePkg({ name: '@my/server', 'to-skills': { mcp: null } });
+    await expect(readBundleConfig(workDir)).rejects.toMatchObject({
+      code: 'TRANSPORT_FAILED'
+    });
+    await expect(readBundleConfig(workDir)).rejects.toThrow(/to-skills\.mcp field is required/);
+  });
+
+  it('treats explicit null for to-skills wrapper as absent', async () => {
+    writePkg({ name: '@my/server', 'to-skills': null });
+    await expect(readBundleConfig(workDir)).rejects.toThrow(/to-skills section is missing/);
   });
 
   it('preserves user-provided env on the entry', async () => {
