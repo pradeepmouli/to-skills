@@ -347,15 +347,15 @@ describe('extractMcpSkill — error mapping (T035)', () => {
   });
 });
 
-describe('extractMcpSkill — HTTP transport not yet supported', () => {
-  it('throws TRANSPORT_FAILED for http transport', async () => {
+describe('extractMcpSkill — HTTP transport URL validation', () => {
+  it('rejects malformed URL with TRANSPORT_FAILED', async () => {
     await expect(
       extractMcpSkill({
-        transport: { type: 'http', url: 'http://localhost:3000' }
+        transport: { type: 'http', url: 'not-a-valid-url' }
       })
     ).rejects.toMatchObject({
       code: 'TRANSPORT_FAILED',
-      message: expect.stringMatching(/not yet implemented/i)
+      message: expect.stringMatching(/Invalid URL/i)
     });
   });
 });

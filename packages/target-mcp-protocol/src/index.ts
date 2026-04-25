@@ -10,7 +10,11 @@
 
 export { McpProtocolAdapter } from './render.js';
 export { emitMcpFrontmatter } from './frontmatter.js';
-export type { McpLaunchCommand } from './frontmatter.js';
+export type {
+  McpLaunchCommand,
+  McpStdioLaunchCommand,
+  McpHttpLaunchCommand
+} from './frontmatter.js';
 export { PACKAGE_VERSION } from './version.js';
 
 import { McpProtocolAdapter } from './render.js';

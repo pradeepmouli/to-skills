@@ -1,4 +1,4 @@
-// Top-level MCP extraction orchestrator (T034–T037).
+// Top-level MCP extraction orchestrator (T034–T037, T049–T050).
 //
 // `extractMcpSkill(options)` connects to a live MCP server, runs the
 // initialize handshake, enumerates tools/resources/prompts (with capability
@@ -12,10 +12,13 @@
 //    success and failure so the spawned child process can't leak.
 //  - Error classification distinguishes spawn failures (ENOENT, EACCES, …)
 //    from initialize handshake failures from process-early-exit. See T035.
-//  - HTTP transport is stubbed for Phase 4.
+//  - HTTP transport (Phase 4): StreamableHTTPClientTransport with content-
+//    negotiation fallback to SSEClientTransport on 404/405 (T049–T050).
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ExtractedSkill } from '@to-skills/core';
 import { McpError, type McpErrorCode } from './errors.js';
 import type { McpClient } from './introspect/client-types.js';
@@ -50,12 +53,22 @@ const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', '
  *   5. Always call `client.close()` in `finally` so the child process is not
  *      leaked.
  *
- * For `transport.type === 'http'`: throws `TRANSPORT_FAILED` with a
- * "not yet implemented" message. HTTP is Phase 4.
+ * For `transport.type === 'http'`:
+ *   1. Construct `StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } })`.
+ *   2. `client.connect()` performs the initialize handshake.
+ *   3. If the server responds 404 or 405 to the initial POST, fall back to
+ *      `SSEClientTransport` (SDK content-negotiation pattern). A fresh `Client`
+ *      is constructed for the retry because the first transport is terminated.
+ *   4. Auth failures (401/403) propagate as `INITIALIZE_FAILED` *without*
+ *      protocol fallback — the user supplied creds for a specific protocol
+ *      path, and switching protocols would silently change the request shape.
+ *   5. Capability-gated introspection runs identically to the stdio path.
+ *   6. Always `client.close()` in finally.
  *
  * Error mapping (T035):
- * - Process exits before connect resolves → `SERVER_EXITED_EARLY`
+ * - Stdio process exits before connect resolves → `SERVER_EXITED_EARLY`
  * - Spawn failure (ENOENT/EACCES/EPERM/ENOTDIR/EBUSY) → `TRANSPORT_FAILED`
+ * - Invalid HTTP URL → `TRANSPORT_FAILED`
  * - Any other error from `connect()` → `INITIALIZE_FAILED`
  * - Errors from inner introspection helpers that are already `McpError`
  *   instances (e.g. `SCHEMA_REF_CYCLE`) are re-thrown unchanged.
@@ -63,11 +76,8 @@ const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', '
  * Protocol-version compatibility (T037):
  * The `checkProtocolVersion` helper is implemented and unit-tested but not
  * yet wired here, because SDK 1.29.0 does not expose a public getter for the
- * negotiated protocol version (only `getServerVersion()` which returns the
- * server's `Implementation`, not the protocol version). The SDK already
- * validates min/max protocol version internally during `connect()`, so this
- * gap is acceptable. TODO: once the SDK exposes (e.g.)
- * `getNegotiatedProtocolVersion()`, call `checkProtocolVersion(...)` here.
+ * negotiated protocol version. The SDK already validates min/max protocol
+ * version internally during `connect()`, so this gap is acceptable.
  *
  * @param options extraction options (transport + skill-name override)
  * @returns ExtractedSkill ready for the renderer
@@ -77,9 +87,20 @@ const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', '
  */
 export async function extractMcpSkill(options: McpExtractOptions): Promise<ExtractedSkill> {
   if (options.transport.type === 'http') {
-    throw new McpError('HTTP transport not yet implemented (Phase 4)', 'TRANSPORT_FAILED');
+    return extractHttp(options);
   }
+  return extractStdio(options);
+}
 
+// ===========================================================================
+// Stdio path — spawns a child process, races connect() vs onclose
+// ===========================================================================
+
+async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill> {
+  // Narrow the discriminated union; type guard guaranteed by extractMcpSkill.
+  if (options.transport.type !== 'stdio') {
+    throw new McpError('expected stdio transport', 'TRANSPORT_FAILED');
+  }
   const { command, args, env } = options.transport;
 
   // Pipe stderr so a pre-initialize crash can be surfaced. The transport
@@ -128,81 +149,18 @@ export async function extractMcpSkill(options: McpExtractOptions): Promise<Extra
 
   try {
     // Race connect() against the early-exit signal so a process-death
-    // beats a generic INITIALIZE_FAILED. If connect() succeeds normally,
-    // exitPromise stays pending and is garbage-collected; we clear the
-    // onclose handler in finally so any later process exit is silent
-    // (the SDK closes itself when client.close() runs).
+    // beats a generic INITIALIZE_FAILED.
     await Promise.race([client.connect(transport), exitPromise]);
-
-    // Cast: the SDK Client's listTools/listResources/listPrompts return
-    // supersets of our McpClient structural types — assignable at the
-    // method-call site, not at the binding site (TS is stricter about
-    // `Client` because of its `[x: string]: unknown` index signatures).
-    const introspectClient = client as unknown as McpClient;
-
-    // serverInfo is populated after successful connect. Use it to default
-    // the skill's name and description.
-    const serverInfo = client.getServerVersion();
-    const capabilities = client.getServerCapabilities() ?? {};
-
-    // skillName fallback: when the user doesn't supply an explicit override,
-    // we kebab-case the server-reported name so a name like
-    // "Filesystem MCP Server" becomes "filesystem-mcp-server" (a safe skill
-    // identifier). The user's explicit `options.skillName` is authoritative
-    // and passes through unchanged.
-    const transformed = serverInfo?.name ? toKebabSkillName(serverInfo.name) : '';
-    const skillName = options.skillName ?? (transformed || 'mcp-server');
-    const description =
-      // serverInfo.title is the human-readable variant per MCP spec.
-      (serverInfo as { title?: string } | undefined)?.title ?? serverInfo?.name ?? skillName;
-
-    // tools/list is always called — even when the server doesn't advertise
-    // a `tools` capability, the introspection helper handles an empty list
-    // gracefully and the renderer copes with `functions: []`.
-    const functions = await listTools(introspectClient);
-
-    // FR-007: only call listResources / listPrompts when the corresponding
-    // capability is advertised.
-    const resources = capabilities.resources ? await listResources(introspectClient) : undefined;
-    const prompts = capabilities.prompts ? await listPrompts(introspectClient) : undefined;
-
-    const skill: ExtractedSkill = {
-      name: skillName,
-      description,
-      functions,
-      classes: [],
-      types: [],
-      enums: [],
-      variables: [],
-      examples: []
-    };
-    if (resources !== undefined) skill.resources = resources;
-    if (prompts !== undefined) skill.prompts = prompts;
-    return skill;
+    return await introspect(client, options);
   } catch (err) {
-    // Already-classified McpError → re-throw unchanged.
     if (err instanceof McpError) throw err;
-
-    // Spawn-level system errors (ENOENT etc.) → TRANSPORT_FAILED.
-    const code = classifyError(err);
+    const code = classifyStdioError(err);
     if (code === 'TRANSPORT_FAILED') {
       throw new McpError(messageOf(err), 'TRANSPORT_FAILED', err);
     }
-
-    // Process-early-exit is handled exclusively by the Promise.race against
-    // `exitPromise` above (which rejects with an already-classified McpError
-    // and is short-circuited by the `instanceof McpError` branch). We do not
-    // re-classify a generic Error here as SERVER_EXITED_EARLY, because a
-    // legitimate INITIALIZE_FAILED followed by a delayed onclose would then
-    // be mis-labelled.
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
   } finally {
-    // Clear the onclose handler so a late close (after we've decided to
-    // tear down) doesn't reject anything.
     transport.onclose = undefined;
-    // Best-effort cleanup. close() cascades from client to transport, so
-    // we prefer client.close() and let any errors during teardown go to
-    // the void — we already have a more meaningful error to report.
     try {
       await client.close();
     } catch {
@@ -211,14 +169,160 @@ export async function extractMcpSkill(options: McpExtractOptions): Promise<Extra
   }
 }
 
+// ===========================================================================
+// HTTP path — StreamableHTTP first, falls back to SSE on 404/405
+// ===========================================================================
+
+async function extractHttp(options: McpExtractOptions): Promise<ExtractedSkill> {
+  if (options.transport.type !== 'http') {
+    throw new McpError('expected http transport', 'TRANSPORT_FAILED');
+  }
+  const { url: urlStr, headers } = options.transport;
+
+  // Validate URL syntax up front. `new URL()` throws TypeError on bad input;
+  // wrap as TRANSPORT_FAILED so callers see a stable error code.
+  let url: URL;
+  try {
+    url = new URL(urlStr);
+  } catch (err) {
+    throw new McpError(`Invalid URL: ${urlStr}`, 'TRANSPORT_FAILED', err);
+  }
+
+  const requestInit: RequestInit = headers ? { headers } : {};
+
+  // First attempt: StreamableHTTP. This is the modern protocol; most servers
+  // speak it. SSE-only servers will respond 404 or 405 to the initial POST,
+  // signaling we should retry over SSE.
+  const httpTransport = new StreamableHTTPClientTransport(url, { requestInit });
+  let client = new Client(
+    { name: '@to-skills/mcp', version: PACKAGE_VERSION },
+    { capabilities: {} }
+  );
+
+  try {
+    await client.connect(httpTransport);
+    return await introspect(client, options);
+  } catch (err) {
+    // Re-thrown McpError instances (e.g. SCHEMA_REF_CYCLE from inner helpers)
+    // pass through unchanged.
+    if (err instanceof McpError) {
+      await safeClose(client);
+      throw err;
+    }
+    if (shouldFallbackToSSE(err)) {
+      // Best-effort cleanup of the failed transport+client before retry.
+      await safeClose(client);
+      // Fresh client for the retry — the first one's transport is terminated.
+      client = new Client(
+        { name: '@to-skills/mcp', version: PACKAGE_VERSION },
+        { capabilities: {} }
+      );
+      const sseTransport = new SSEClientTransport(url, { requestInit });
+      try {
+        await client.connect(sseTransport);
+        return await introspect(client, options);
+      } catch (sseErr) {
+        if (sseErr instanceof McpError) throw sseErr;
+        throw new McpError(messageOf(sseErr), 'INITIALIZE_FAILED', sseErr);
+      } finally {
+        await safeClose(client);
+      }
+    }
+    // Non-fallbackable error: classify and propagate. Auth failures (401/403)
+    // land here without protocol fallback — see JSDoc on extractMcpSkill.
+    throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
+  } finally {
+    // If the SSE fallback path took over it has its own finally; calling
+    // close() again on an already-closed client is a no-op in the SDK.
+    await safeClose(client);
+  }
+}
+
 /**
- * Decide whether an unknown error from `connect()` is a spawn-level
- * transport failure or an initialize handshake failure.
+ * Heuristic: should this connect-time error trigger an SSE fallback?
+ *
+ * The SDK's `StreamableHTTPError` carries the HTTP status as `.code`. A 404
+ * or 405 on the initial POST means the server doesn't speak StreamableHTTP at
+ * that path — retry over SSE. Other codes (network failures, 401/403 auth,
+ * 5xx) propagate without fallback because:
+ *  - 401/403: user supplied creds for a specific protocol; switching protocols
+ *    would silently change the request shape.
+ *  - 5xx: server error not specific to protocol negotiation.
+ *  - network: address/DNS issues affect both protocols equally.
+ */
+function shouldFallbackToSSE(err: unknown): boolean {
+  if (err instanceof Error && 'code' in err) {
+    const code = (err as { code?: unknown }).code;
+    if (typeof code === 'number' && (code === 404 || code === 405)) return true;
+  }
+  return false;
+}
+
+async function safeClose(c: { close: () => Promise<void> }): Promise<void> {
+  try {
+    await c.close();
+  } catch {
+    // Ignore.
+  }
+}
+
+// ===========================================================================
+// Shared post-connect introspection
+// ===========================================================================
+
+/**
+ * After a successful `client.connect()`, enumerate the server's surface and
+ * assemble an ExtractedSkill. Shared between stdio and http paths.
+ */
+async function introspect(client: Client, options: McpExtractOptions): Promise<ExtractedSkill> {
+  // Cast: the SDK Client's listTools/listResources/listPrompts return supersets
+  // of our McpClient structural types — assignable at the method-call site,
+  // not at the binding site (TS is stricter about `Client` because of its
+  // `[x: string]: unknown` index signatures).
+  const introspectClient = client as unknown as McpClient;
+
+  const serverInfo = client.getServerVersion();
+  const capabilities = client.getServerCapabilities() ?? {};
+
+  // skillName fallback: when the user doesn't supply an explicit override,
+  // we kebab-case the server-reported name so a name like
+  // "Filesystem MCP Server" becomes "filesystem-mcp-server".
+  const transformed = serverInfo?.name ? toKebabSkillName(serverInfo.name) : '';
+  const skillName = options.skillName ?? (transformed || 'mcp-server');
+  const description =
+    (serverInfo as { title?: string } | undefined)?.title ?? serverInfo?.name ?? skillName;
+
+  // tools/list is always called.
+  const functions = await listTools(introspectClient);
+
+  // FR-007: only call listResources / listPrompts when the corresponding
+  // capability is advertised.
+  const resources = capabilities.resources ? await listResources(introspectClient) : undefined;
+  const prompts = capabilities.prompts ? await listPrompts(introspectClient) : undefined;
+
+  const skill: ExtractedSkill = {
+    name: skillName,
+    description,
+    functions,
+    classes: [],
+    types: [],
+    enums: [],
+    variables: [],
+    examples: []
+  };
+  if (resources !== undefined) skill.resources = resources;
+  if (prompts !== undefined) skill.prompts = prompts;
+  return skill;
+}
+
+/**
+ * Decide whether an unknown error from `connect()` (stdio path) is a spawn-
+ * level transport failure or an initialize handshake failure.
  *
  * Heuristic: Node `SystemError.code` is in `TRANSPORT_ERROR_CODES` →
  * TRANSPORT_FAILED. Otherwise → INITIALIZE_FAILED.
  */
-function classifyError(err: unknown): McpErrorCode {
+function classifyStdioError(err: unknown): McpErrorCode {
   if (typeof err === 'object' && err !== null && 'code' in err) {
     const code = (err as { code?: unknown }).code;
     if (typeof code === 'string' && TRANSPORT_ERROR_CODES.has(code)) {

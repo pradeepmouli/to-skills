@@ -22,18 +22,21 @@ import { PACKAGE_VERSION } from './version.js';
 
 /**
  * Default invocation adapter: emits SKILL.md with `mcp:` frontmatter that
- * MCP-native agent harnesses parse to launch the server over stdio.
+ * MCP-native agent harnesses parse to launch the server over stdio or
+ * connect to it over HTTP.
  *
- * Launch-command resolution (per research.md §7):
+ * Launch-shape resolution (per research.md §7):
  *
  * 1. **Bundle mode** — if `ctx.packageName` is set (the host's bundle command
  *    flagged this skill as self-referential), the adapter emits
- *    `command: npx` + `args: [-y, <packageName>]`. This wins over any
- *    explicit `launchCommand`.
- * 2. **Extract mode** — otherwise, `ctx.launchCommand` is used verbatim. The
+ *    `command: npx` + `args: [-y, <packageName>]`. This wins over both
+ *    `httpEndpoint` and `launchCommand`.
+ * 2. **HTTP-extract mode** — else if `ctx.httpEndpoint` is set, emits a
+ *    `{ url, headers }` shape (no shell launch).
+ * 3. **Stdio-extract mode** — else `ctx.launchCommand` is used verbatim. The
  *    host extract pipeline derives this from the user-supplied stdio config.
- * 3. **Neither set** — `render()` throws a `TypeError`. The host always
- *    populates one or the other.
+ * 4. **None set** — `render()` throws `McpError(MISSING_LAUNCH_COMMAND)`. The
+ *    host always populates exactly one of the three.
  *
  * @remarks
  * The adapter does NOT render its own body content — it calls `renderSkill`
@@ -57,8 +60,8 @@ export class McpProtocolAdapter implements InvocationAdapter {
   /**
    * Render an `ExtractedSkill` into a `RenderedSkill` carrying `mcp:` frontmatter.
    *
-   * @throws `McpError` with code `MISSING_LAUNCH_COMMAND` when neither
-   *   `ctx.packageName` nor `ctx.launchCommand` is set.
+   * @throws `McpError` with code `MISSING_LAUNCH_COMMAND` when none of
+   *   `ctx.packageName`, `ctx.httpEndpoint`, or `ctx.launchCommand` is set.
    */
   async render(skill: ExtractedSkill, ctx: AdapterRenderContext): Promise<RenderedSkill> {
     let launchCommand: McpLaunchCommand;
@@ -66,11 +69,16 @@ export class McpProtocolAdapter implements InvocationAdapter {
       // Bundle mode: emit npx-by-name self-reference. Wins over any explicit
       // launchCommand because the package is the canonical self-launch entry point.
       launchCommand = { command: 'npx', args: ['-y', ctx.packageName] };
+    } else if (ctx.httpEndpoint) {
+      // HTTP-extract mode: emit {url, headers} shape. No shell launch.
+      launchCommand = ctx.httpEndpoint.headers
+        ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
+        : { url: ctx.httpEndpoint.url };
     } else if (ctx.launchCommand) {
       launchCommand = ctx.launchCommand;
     } else {
       throw new McpError(
-        'McpProtocolAdapter.render: neither ctx.packageName nor ctx.launchCommand provided',
+        'McpProtocolAdapter.render: none of ctx.packageName, ctx.httpEndpoint, or ctx.launchCommand provided',
         'MISSING_LAUNCH_COMMAND'
       );
     }

@@ -88,7 +88,8 @@ export function renderSkill(
       maxTokens: opts.maxTokens,
       canonicalize: true,
       packageName: opts.invocationPackageName,
-      launchCommand: opts.invocationLaunchCommand
+      launchCommand: opts.invocationLaunchCommand,
+      httpEndpoint: opts.invocationHttpEndpoint
     };
     return Promise.resolve(opts.invocation.render(skill, ctx)).then((rendered) =>
       canonicalize(rendered)

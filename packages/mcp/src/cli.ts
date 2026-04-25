@@ -11,10 +11,15 @@
  * for shape-level validation (non-integer `--max-tokens`, malformed
  * `KEY=VALUE` pairs) so usage output stays consistent with commander's style.
  *
- * HTTP (`--url`) and config-file (`--config`) branches validate early and
- * reject with a "not yet implemented" message; these flags are accepted on
- * the parser so the option-spec documents the planned surface, but the
- * runtime path intentionally stops before any transport work happens.
+ * HTTP (`--url`) is wired to `extractMcpSkill`'s HTTP transport (Phase 4).
+ * Config-file (`--config`) remains a Phase 7 stub.
+ *
+ * Header parser format decision (Phase 4): `--header` uses the same
+ * `KEY=VALUE` syntax as `--env`, NOT the `KEY: VALUE` colon notation that
+ * raw HTTP uses. Rationale: keeps the parser uniform with `--env`, avoids
+ * bifurcating the `collectKv` helper, and works with shell quoting:
+ * `--header "Authorization=Bearer mytoken"`. Document this when onboarding
+ * users who expect colon-form.
  *
  * @module cli
  */
@@ -49,11 +54,13 @@ export function buildProgram(): Command {
     .option('--command <cmd>', 'Stdio launch command (mutually exclusive with --url, --config)')
     .option('--arg <a>', 'Arg to pass to the server command (repeatable)', collect, [])
     .option('--env <KEY=VALUE>', 'Environment variable for the server (repeatable)', collectKv, {})
+    .option('--url <url>', 'HTTP/SSE endpoint (mutually exclusive with --command, --config)')
     .option(
-      '--url <url>',
-      '[Phase 4] HTTP/SSE endpoint (mutually exclusive with --command, --config)'
+      '--header <K=V>',
+      'HTTP header in KEY=VALUE form (repeatable; e.g. --header "Authorization=Bearer X")',
+      collectKv,
+      {}
     )
-    .option('--header <K=V>', '[Phase 4] HTTP header (repeatable)', collectKv, {})
     .option('--config <path>', '[Phase 7] Path to mcp.json or claude_desktop_config.json')
     .option('-o, --out <dir>', 'Output directory', 'skills')
     .option('--max-tokens <n>', 'Per reference-file token budget', parsePositiveInt, 4000)
@@ -153,10 +160,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     );
   }
 
-  // Stubs for Phase 4 / Phase 7
-  if (opts.url !== undefined) {
-    throw new McpError('HTTP transport not yet implemented (Phase 4).', 'TRANSPORT_FAILED');
-  }
+  // Phase 7 stub — config-file batch mode lands later.
   if (opts.config !== undefined) {
     throw new McpError('Config-file batch mode not yet implemented (Phase 7).', 'TRANSPORT_FAILED');
   }
@@ -186,7 +190,15 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     }
   }
 
-  // Stdio path
+  if (opts.url !== undefined) {
+    await runHttpExtract(opts);
+  } else {
+    await runStdioExtract(opts);
+  }
+}
+
+/** Stdio-extract pipeline: spawn → introspect → render → write. */
+async function runStdioExtract(opts: ExtractOpts): Promise<void> {
   const envEntries = Object.keys(opts.env);
   const skill = await extractMcpSkill({
     transport: {
@@ -199,19 +211,6 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     maxTokens: opts.maxTokens
   });
 
-  // Collision detection (post-extract) — covers the case where the skill name
-  // came from server introspection rather than --skill-name.
-  const skillDir = join(opts.out, skill.name);
-  if (existsSync(skillDir) && !opts.force) {
-    throw new McpError(
-      `Output directory already exists: ${skillDir}. Pass --force to overwrite.`,
-      'DUPLICATE_SKILL_NAME'
-    );
-  }
-
-  // Render via the mcp-protocol adapter. `loadAdapterAsync` supports both
-  // CJS and ESM-only adapter packages (required for the published
-  // `@to-skills/target-mcp-protocol`, which ships pure ESM).
   const adapter = await loadAdapterAsync('mcp-protocol');
   const rendered = await renderSkill(skill, {
     invocation: adapter,
@@ -223,9 +222,58 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     maxTokens: opts.maxTokens
   });
 
+  finalizeWrite(opts, skill.name, rendered);
+}
+
+/** HTTP-extract pipeline: connect → introspect → render → write. */
+async function runHttpExtract(opts: ExtractOpts): Promise<void> {
+  const headerEntries = Object.keys(opts.header);
+  const skill = await extractMcpSkill({
+    transport: {
+      type: 'http',
+      url: opts.url!,
+      headers: headerEntries.length > 0 ? opts.header : undefined
+    },
+    skillName: opts.skillName,
+    maxTokens: opts.maxTokens
+  });
+
+  const adapter = await loadAdapterAsync('mcp-protocol');
+  const rendered = await renderSkill(skill, {
+    invocation: adapter,
+    invocationHttpEndpoint: {
+      url: opts.url!,
+      ...(headerEntries.length > 0 ? { headers: opts.header } : {})
+    },
+    maxTokens: opts.maxTokens
+  });
+
+  finalizeWrite(opts, skill.name, rendered);
+}
+
+/**
+ * Shared tail: post-extract collision check, write the rendered files, emit
+ * the success line on stdout. Extracted so the stdio and http branches share
+ * exactly the same write/notice semantics.
+ */
+function finalizeWrite(
+  opts: ExtractOpts,
+  skillName: string,
+  rendered: import('@to-skills/core').RenderedSkill
+): void {
+  // Collision detection (post-extract) — covers the case where the skill name
+  // came from server introspection rather than --skill-name.
+  const skillDir = join(opts.out, skillName);
+  if (existsSync(skillDir) && !opts.force) {
+    throw new McpError(
+      `Output directory already exists: ${skillDir}. Pass --force to overwrite.`,
+      'DUPLICATE_SKILL_NAME'
+    );
+  }
+
   writeSkills([rendered], { outDir: opts.out });
 
-  // Optional llms.txt emission — stubbed for Phase 10 (T111). For now, log if requested.
+  // Optional llms.txt emission — stubbed for Phase 10 (T111).
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }

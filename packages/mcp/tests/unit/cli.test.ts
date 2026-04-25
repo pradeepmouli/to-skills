@@ -99,13 +99,20 @@ describe('buildProgram', () => {
       );
     });
 
-    it('stubs --url as Phase 4 not-yet-implemented', async () => {
+    it('--url is wired (Phase 4) — surfaces extract-time errors, not stub messages', async () => {
       const program = makeProgram();
+      // Use a port-1 URL guaranteed to be unreachable. The test asserts the
+      // CLI does NOT throw a "Phase 4 not implemented" stub anymore — it
+      // forwards to extractMcpSkill, which surfaces an INITIALIZE_FAILED
+      // (or TRANSPORT_FAILED) once the HTTP transport actually tries to
+      // connect.
       await expect(
-        program.parseAsync(['node', 'bin', 'extract', '--url', 'http://example.com'])
+        program.parseAsync(['node', 'bin', 'extract', '--url', 'http://127.0.0.1:1/'])
       ).rejects.toSatisfy(
         (err) =>
-          err instanceof McpError && err.code === 'TRANSPORT_FAILED' && /Phase 4/.test(err.message)
+          err instanceof McpError &&
+          (err.code === 'INITIALIZE_FAILED' || err.code === 'TRANSPORT_FAILED') &&
+          !/not yet implemented/i.test(err.message)
       );
     });
 

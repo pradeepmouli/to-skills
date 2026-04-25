@@ -280,6 +280,20 @@ export interface SkillRenderOptions {
    */
   invocationPackageName?: string;
   /**
+   * Forwarded into `AdapterRenderContext.httpEndpoint` for HTTP-transport extract mode.
+   *
+   * @remarks
+   * When the host extracts a skill from an HTTP-based MCP server (`--url ...`),
+   * there is no shell launch command — adapters should emit a `{ url, headers }`
+   * shape instead of `{ command, args, env }`. Set by `@to-skills/mcp`'s extract
+   * pipeline. Mutually exclusive with `invocationLaunchCommand` in practice; the
+   * MCP adapter prefers `httpEndpoint` when both are present.
+   */
+  invocationHttpEndpoint?: {
+    url: string;
+    headers?: Readonly<Record<string, string>>;
+  };
+  /**
    * Additional frontmatter keys merged into SKILL.md by the default renderer path.
    *
    * @remarks
@@ -326,5 +340,19 @@ export interface AdapterRenderContext {
     command: string;
     args?: readonly string[];
     env?: Readonly<Record<string, string>>;
+  };
+  /**
+   * HTTP endpoint threaded through from the host (HTTP-extract mode); `undefined`
+   * for stdio-extract or bundle modes.
+   *
+   * @remarks
+   * Adapters that emit MCP-launch frontmatter prefer this over `launchCommand`
+   * (and `packageName` wins over both for bundle self-reference). When set,
+   * the adapter should emit a `{ url, headers }` shape rather than a
+   * `{ command, args, env }` shape, because there is no subprocess to spawn.
+   */
+  httpEndpoint?: {
+    url: string;
+    headers?: Readonly<Record<string, string>>;
   };
 }

@@ -102,4 +102,40 @@ describe('emitMcpFrontmatter', () => {
     });
     expect(obj).toEqual({ mcp: { plain: { command: 'node' } } });
   });
+
+  describe('HTTP shape (Phase 4)', () => {
+    it('emits { url } when no headers', () => {
+      const obj = emitMcpFrontmatter('remote', {
+        url: 'https://example.com/mcp'
+      });
+      expect(obj).toEqual({ mcp: { remote: { url: 'https://example.com/mcp' } } });
+      expect(asYaml(obj)).toMatchInlineSnapshot(`
+        "mcp:
+          remote:
+            url: https://example.com/mcp"
+      `);
+    });
+
+    it('emits { url, headers } with auth header', () => {
+      const obj = emitMcpFrontmatter('remote', {
+        url: 'https://example.com/mcp',
+        headers: { Authorization: 'Bearer test-token' }
+      });
+      expect(asYaml(obj)).toMatchInlineSnapshot(`
+        "mcp:
+          remote:
+            url: https://example.com/mcp
+            headers:
+              Authorization: Bearer test-token"
+      `);
+    });
+
+    it('omits empty headers object', () => {
+      const obj = emitMcpFrontmatter('remote', {
+        url: 'https://example.com/mcp',
+        headers: {}
+      });
+      expect(obj).toEqual({ mcp: { remote: { url: 'https://example.com/mcp' } } });
+    });
+  });
 });

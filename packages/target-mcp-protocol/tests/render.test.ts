@@ -146,6 +146,65 @@ describe('McpProtocolAdapter', () => {
     const promise = adapter.render(baseSkill, makeCtx());
     await expect(promise).rejects.toBeInstanceOf(McpError);
     await expect(promise).rejects.toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
-    await expect(promise).rejects.toThrow(/neither/);
+    await expect(promise).rejects.toThrow(/none of/);
+  });
+
+  it('http-extract mode — ctx.httpEndpoint emits {url, headers} shape', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({
+        httpEndpoint: { url: 'https://example.com/mcp', headers: { Authorization: 'Bearer x' } }
+      })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    expect((fm.mcp as Record<string, unknown>)['my-server']).toEqual({
+      url: 'https://example.com/mcp',
+      headers: { Authorization: 'Bearer x' }
+    });
+  });
+
+  it('http-extract mode without headers omits the headers key', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({ httpEndpoint: { url: 'https://example.com/mcp' } })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    expect((fm.mcp as Record<string, unknown>)['my-server']).toEqual({
+      url: 'https://example.com/mcp'
+    });
+  });
+
+  it('packageName wins over httpEndpoint (bundle mode precedence)', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({
+        packageName: '@org/my-server',
+        httpEndpoint: { url: 'https://example.com/mcp' }
+      })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
+      command?: string;
+      url?: string;
+    };
+    expect(inner.command).toBe('npx');
+    expect(inner.url).toBeUndefined();
+  });
+
+  it('httpEndpoint wins over launchCommand (HTTP > stdio)', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({
+        httpEndpoint: { url: 'https://example.com/mcp' },
+        launchCommand: { command: 'node', args: ['./local.js'] }
+      })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
+      command?: string;
+      url?: string;
+    };
+    expect(inner.url).toBe('https://example.com/mcp');
+    expect(inner.command).toBeUndefined();
   });
 });
