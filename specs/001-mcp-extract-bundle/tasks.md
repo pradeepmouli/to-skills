@@ -331,10 +331,10 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Token budgeting + namespace splitting
 
-- [ ] T108 Integrate core's `truncateToTokenBudget` into `packages/target-mcp-protocol/src/render.ts`, `packages/target-mcpc/src/render.ts`, `packages/target-fastmcp/src/render.ts` for `references/*.md`; default 4000 tokens (FR-021)
-- [ ] T108a [P] Token-budget integration test `packages/mcp/tests/integration/token-budget.test.ts` using a 20-tool synthetic server (per SC-002 threshold). Assert rendered `SKILL.md` < 500 tokens via core's token counter; assert `references/tools.md` < 4000 tokens with no split triggered
-- [ ] T109 Add namespace-splitting to `packages/mcp/src/introspect/tools.ts` or as a post-process in each adapter: when `references/tools.md` would exceed budget, split by namespace prefix (detect `.` in tool names; group `github.issues.*` separately from `github.pulls.*`) per FR-022
-- [ ] T110 [P] Add unit test `packages/mcp/tests/unit/namespace-split.test.ts` with a 150-tool fixture that triggers a split; assert the output contains `references/tools-<ns>.md` files and SKILL.md Quick Reference links all of them
+- [x] T108 Integrate core's `truncateToTokenBudget` into `packages/target-mcp-protocol/src/render.ts`, `packages/target-mcpc/src/render.ts`, `packages/target-fastmcp/src/render.ts` for `references/*.md`; default 4000 tokens (FR-021)
+- [x] T108a [P] Token-budget integration test `packages/mcp/tests/integration/token-budget.test.ts` using a 20-tool synthetic server (per SC-002 threshold). Assert rendered `SKILL.md` < 500 tokens via core's token counter; assert `references/tools.md` < 4000 tokens with no split triggered
+- [x] T109 Add namespace-splitting to `packages/mcp/src/introspect/tools.ts` or as a post-process in each adapter: when `references/tools.md` would exceed budget, split by namespace prefix (detect `.` in tool names; group `github.issues.*` separately from `github.pulls.*`) per FR-022
+- [x] T110 [P] Add unit test `packages/mcp/tests/unit/namespace-split.test.ts` with a 150-tool fixture that triggers a split; assert the output contains `references/tools-<ns>.md` files and SKILL.md Quick Reference links all of them
 
 ### llms.txt emission
 

@@ -43,6 +43,10 @@ export { readMcpConfigFile } from './config/file-reader.js';
 // into a parent CLI. The `bin.ts` executable entry point is not exported.
 export { buildProgram } from './cli.js';
 
+// Render helpers (token-aware splitting for adapter `tools.md` emission)
+export { splitToolsByNamespace } from './render/split-by-namespace.js';
+export type { NamespaceGroup } from './render/split-by-namespace.js';
+
 // Introspection helpers
 export { resolveSchema } from './introspect/schema.js';
 export { listTools } from './introspect/tools.js';

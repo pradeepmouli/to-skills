@@ -35,13 +35,14 @@ import type {
   RenderedFile,
   RenderedSkill
 } from '@to-skills/core';
-import { renderSkill } from '@to-skills/core';
+import { estimateTokens, renderSkill, truncateToTokenBudget } from '@to-skills/core';
 import type { InvocationAdapter, ParameterPlan } from '@to-skills/mcp';
 import {
   McpError,
   classifyParameters,
   generatedByFrontmatter,
-  renderCliParamTable
+  renderCliParamTable,
+  splitToolsByNamespace
 } from '@to-skills/mcp';
 import type { JSONSchema7 } from 'json-schema';
 import { encodeFastMcpArgs } from './args.js';
@@ -98,12 +99,13 @@ export class FastMcpAdapter implements InvocationAdapter {
       namePrefix: ctx.skillName
     });
 
-    // Append our own tools.md if there are any tools. The host's outer
-    // canonicalize wrapper (in renderSkill's invocation-adapter dispatch) runs
-    // exactly once over this final shape, including tools.md.
-    const toolsRef = renderToolsReference(skill.functions, ctx.skillName);
-    if (toolsRef) {
-      baseRendered.references.push(toolsRef);
+    // Append our own tools.md (or per-namespace tools-<ns>.md split) if
+    // there are any tools. The host's outer canonicalize wrapper (in
+    // renderSkill's invocation-adapter dispatch) runs exactly once over
+    // this final shape, including the tools file(s).
+    const toolsRefs = renderToolsReference(skill.functions, ctx.skillName, ctx.maxTokens);
+    for (const ref of toolsRefs) {
+      baseRendered.references.push(ref);
     }
 
     return baseRendered;
@@ -147,16 +149,53 @@ function resolveLaunchCommand(ctx: AdapterRenderContext): StdioLaunchCommand | H
 }
 
 /**
- * Build the `references/tools.md` file with fastmcp command-shape rows.
- * Returns `null` when the IR has no tools (so the adapter doesn't emit an
- * empty file).
+ * Build the `references/tools.md` file(s) with fastmcp command-shape rows.
+ *
+ * Returns an empty array when the IR has no tools (so the adapter doesn't
+ * emit an empty file). When the rendered body fits inside `maxTokens`, a
+ * single `references/tools.md` is returned. Otherwise the helper splits
+ * the surface by first-segment namespace (FR-022) and returns one
+ * `references/tools-<ns>.md` per namespace. Each emitted file has its
+ * content passed through `truncateToTokenBudget` so even a single
+ * oversized namespace cannot blow past the budget; the `tokens` field
+ * reports the pre-truncation estimate, matching the convention used by
+ * core's renderer.
  */
 function renderToolsReference(
   functions: readonly ExtractedFunction[],
-  skillName: string
-): RenderedFile | null {
-  if (functions.length === 0) return null;
+  skillName: string,
+  maxTokens: number
+): RenderedFile[] {
+  if (functions.length === 0) return [];
 
+  const groups = splitToolsByNamespace(
+    functions,
+    (subset) => estimateTokens(renderToolsBody(subset, skillName)),
+    maxTokens
+  );
+
+  const files: RenderedFile[] = [];
+  for (const group of groups) {
+    const content = renderToolsBody(group.tools, skillName);
+    const filename =
+      group.name === 'tools'
+        ? `${skillName}/references/tools.md`
+        : `${skillName}/references/tools-${group.name}.md`;
+    files.push({
+      filename,
+      content: truncateToTokenBudget(content, maxTokens),
+      tokens: estimateTokens(content)
+    });
+  }
+  return files;
+}
+
+/**
+ * Render the textual body for a (possibly partial) tool list. Extracted
+ * from `renderToolsReference` so the namespace-splitter's cost estimator
+ * can call it on candidate subsets without duplicating layout code.
+ */
+function renderToolsBody(functions: readonly ExtractedFunction[], skillName: string): string {
   const lines: string[] = ['# Tools', ''];
   for (const fn of functions) {
     lines.push(`## ${fn.name}`);
@@ -189,12 +228,7 @@ function renderToolsReference(
     }
   }
 
-  const content = lines.join('\n').replace(/\n+$/, '\n');
-  return {
-    filename: `${skillName}/references/tools.md`,
-    content,
-    tokens: estimateTokens(content)
-  };
+  return lines.join('\n').replace(/\n+$/, '\n');
 }
 
 /**
@@ -259,9 +293,4 @@ function parameterToSchema(param: ExtractedParameter): JSONSchema7 {
   // Everything else is too ambiguous to classify Tier 1 — give the
   // classifier an empty schema so it falls through to Tier 3.
   return {};
-}
-
-/** Cheap token estimate matching core's tokens.ts heuristic (chars/4). */
-function estimateTokens(content: string): number {
-  return Math.ceil(content.length / 4);
 }
