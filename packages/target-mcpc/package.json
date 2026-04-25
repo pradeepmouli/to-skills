@@ -36,14 +36,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@to-skills/core": "workspace:*"
   },
   "devDependencies": {
     "@to-skills/mcp": "workspace:*",
-    "@types/node": "^20.0.0"
+    "@types/json-schema": "^7.0.15",
+    "@types/node": "^20.0.0",
+    "vitest": "^2.0.0",
+    "yaml": "^2.0.0"
   },
   "peerDependencies": {
     "@to-skills/mcp": "workspace:*"

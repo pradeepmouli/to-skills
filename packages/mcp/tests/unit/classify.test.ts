@@ -15,7 +15,8 @@ describe('classifyParameters', () => {
       path: ['name'],
       tier: 1,
       type: 'scalar',
-      required: true
+      required: true,
+      scalarType: 'string'
     });
   });
 
@@ -72,13 +73,15 @@ describe('classifyParameters', () => {
       path: ['user', 'name'],
       tier: 2,
       type: 'scalar',
-      required: true
+      required: true,
+      scalarType: 'string'
     });
     expect(plans.get('user.age')).toEqual({
       path: ['user', 'age'],
       tier: 2,
       type: 'scalar',
-      required: true
+      required: true,
+      scalarType: 'number'
     });
   });
 

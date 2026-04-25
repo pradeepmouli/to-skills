@@ -35,13 +35,23 @@ export interface ParameterPlan {
   required: boolean;
   /** Optional enum values (only when type === 'enum') */
   enum?: string[];
+  /**
+   * Underlying JSON Schema scalar type — populated only when `type === 'scalar'`
+   * (Tier 1 or Tier 2 leaves). Lets CLI adapters distinguish typed encodings
+   * (`key:=value` for number/integer/boolean) from string encodings
+   * (`key=value` for string). Backward-compatible additive field.
+   */
+  scalarType?: 'string' | 'number' | 'integer' | 'boolean';
 }
 
 type Tier1Kind = 'scalar' | 'enum' | 'string-array';
 
 interface Tier1Classification {
   kind: Tier1Kind;
+  /** Present when `kind === 'enum'`. */
   enum?: string[];
+  /** Present when `kind === 'scalar'`. */
+  scalarType?: 'string' | 'number' | 'integer' | 'boolean';
 }
 
 const SCALAR_TYPES = new Set<JSONSchema7TypeName>(['string', 'number', 'integer', 'boolean']);
@@ -122,6 +132,7 @@ export function classifyParameters(inputSchema: JSONSchema7): Map<string, Parame
         required: isRequired
       };
       if (tier1.enum) plan.enum = tier1.enum;
+      if (tier1.scalarType) plan.scalarType = tier1.scalarType;
       plans.set(name, plan);
       continue;
     }
@@ -143,6 +154,7 @@ export function classifyParameters(inputSchema: JSONSchema7): Map<string, Parame
           required: isRequired
         };
         if (leaf.enum) plan.enum = leaf.enum;
+        if (leaf.scalarType) plan.scalarType = leaf.scalarType;
         plans.set(key, plan);
       }
       continue;
@@ -220,7 +232,16 @@ function tryClassifyTier1(schema: JSONSchema7): Tier1Classification | null {
 
   // Scalar: every non-null type must be a scalar primitive.
   if (types.every((t) => SCALAR_TYPES.has(t))) {
-    return { kind: 'scalar' };
+    // Pick the first non-null type as the canonical scalarType. When the
+    // schema declares e.g. `["string","null"]` we already filtered nulls out
+    // in normalizeTypes; if multiple primitives are declared (rare), the
+    // first wins. The encoder only inspects `scalarType` to decide between
+    // typed (`key:=`) and string (`key=`) shapes.
+    const first = types[0]!;
+    return {
+      kind: 'scalar',
+      scalarType: first as 'string' | 'number' | 'integer' | 'boolean'
+    };
   }
 
   return null;
@@ -230,6 +251,7 @@ interface Tier2Leaf {
   name: string;
   kind: Tier1Kind;
   enum?: string[];
+  scalarType?: 'string' | 'number' | 'integer' | 'boolean';
 }
 
 /**
@@ -260,6 +282,7 @@ function tryClassifyTier2(schema: JSONSchema7): Tier2Leaf[] | null {
 
     const leaf: Tier2Leaf = { name, kind: tier1.kind };
     if (tier1.enum) leaf.enum = tier1.enum;
+    if (tier1.scalarType) leaf.scalarType = tier1.scalarType;
     leaves.push(leaf);
   }
   return leaves;

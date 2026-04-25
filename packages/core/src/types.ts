@@ -311,6 +311,25 @@ export interface SkillRenderOptions {
    * the existing value. The canonicalization pass alphabetizes keys after merge.
    */
   additionalFrontmatter?: Readonly<Record<string, unknown>>;
+  /**
+   * Markdown content injected into the SKILL.md body immediately AFTER the
+   * frontmatter delimiter and BEFORE the first heading.
+   *
+   * @remarks
+   * CLI-as-proxy invocation adapters (`@to-skills/target-mcpc`,
+   * `@to-skills/target-fastmcp`) use this to inject a Setup section that
+   * tells the consumer how to install/connect the underlying CLI. The string
+   * is inserted verbatim — callers are responsible for formatting and
+   * trailing newlines. Defaults to empty (no prefix injected).
+   */
+  bodyPrefix?: string;
+  /**
+   * When `true`, the default renderer path skips emission of
+   * `references/functions.md`. CLI-as-proxy adapters set this so they can
+   * emit their own `references/tools.md` carrying command-shape rows
+   * instead of TypeScript signatures. Defaults to `false`.
+   */
+  skipDefaultFunctionsRef?: boolean;
 }
 
 // NOTE: Forward-declared for backward-compatible extension point.

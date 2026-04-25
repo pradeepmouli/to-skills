@@ -120,7 +120,7 @@ export function renderSkill(
   // --- references/*.md: detailed API loaded on demand ---
   const references: RenderedFile[] = [];
 
-  if (skill.functions.length > 0) {
+  if (skill.functions.length > 0 && !opts.skipDefaultFunctionsRef) {
     addGroupedReferences(
       skill.functions,
       basePath,
@@ -461,6 +461,14 @@ function renderSkillMd(
       opts.additionalFrontmatter
     )
   );
+
+  // Body prefix injection — CLI-as-proxy adapters thread Setup instructions
+  // through here so the host install/connect commands appear before the
+  // standard skill body. Empty string is a no-op (sections.join skips it
+  // because it's still added but produces no visible effect when blank).
+  if (opts.bodyPrefix && opts.bodyPrefix.length > 0) {
+    sections.push(opts.bodyPrefix);
+  }
 
   sections.push(`# ${skill.name}`);
 

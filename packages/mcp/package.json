@@ -55,6 +55,7 @@
     "yaml": "^2.0.0"
   },
   "devDependencies": {
+    "@to-skills/target-mcpc": "workspace:*",
     "@types/json-schema": "^7.0.15",
     "@types/node": "^20.0.0",
     "vitest": "^2.0.0"

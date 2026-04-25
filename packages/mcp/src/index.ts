@@ -14,6 +14,8 @@ export type {
 } from './adapter/types.js';
 export { loadAdapter, loadAdapterAsync } from './adapter/loader.js';
 export { classifyParameters } from './adapter/classify.js';
+export { generatedByFrontmatter } from './adapter/fingerprint.js';
+export { renderCliParamTable } from './adapter/param-table.js';
 
 // Errors
 export { McpError } from './errors.js';
