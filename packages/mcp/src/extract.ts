@@ -331,14 +331,22 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
 /**
  * Project `_meta.toSkills` (server-level + per-tool aggregate) onto the skill.
  *
- * Server-level fields read off `serverInfo._meta.toSkills` (the SDK's
- * Implementation schema is `passthrough`, so unknown fields including `_meta`
- * survive validation):
+ * Server-level fields read off `serverInfo._meta.toSkills`:
  *  - `remarks: string`             → `skill.remarks`
  *  - `packageDescription: string`  → `skill.packageDescription`
  *  - `useWhen: string[]`           → seed for `skill.useWhen`
  *  - `avoidWhen: string[]`         → seed for `skill.avoidWhen`
  *  - `pitfalls: string[]`          → seed for `skill.pitfalls`
+ *
+ * @remarks
+ * **SDK 1.29.0 strips server-level `_meta`.** The SDK's `ImplementationSchema`
+ * uses Zod `$strip`, so unknown keys (including `_meta`) are dropped during
+ * initialize-response validation on the client side — `serverInfo._meta` is
+ * NOT observable today even when the server emits it. This reader is forward-
+ * compat: when the SDK relaxes the schema (or a non-SDK MCP client passes a
+ * raw `Implementation`), server-level meta will work with no further changes.
+ * Per-tool meta uses the looser `Tool` schema and is unaffected — works today.
+ * The unit tests bypass the SDK via vi.mock, so they exercise both layers.
  *
  * Per-tool meta is then aggregated on top: each function's
  * `tags.useWhen|avoidWhen|pitfalls` (joined with `\n` per `readToolMetaTags`
