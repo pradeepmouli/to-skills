@@ -122,16 +122,16 @@ export type AuditIssue = McpAuditIssue;
 
 export interface AuditResult {
   /** Issues found, sorted by severity descending. */
-  issues: AuditIssue[];
+  readonly issues: readonly AuditIssue[];
   /** Highest severity present, or 'none' if no issues. */
-  worstSeverity: AuditSeverity | 'none';
+  readonly worstSeverity: AuditSeverity | 'none';
 }
 
 export interface WrittenSkill {
   /** Absolute path to the skill directory. */
   dir: string;
   /** Files written, relative to dir. */
-  files: string[];
+  readonly files: readonly string[];
   /** Invocation target used. */
   target: InvocationTarget;
   /** Audit result. */

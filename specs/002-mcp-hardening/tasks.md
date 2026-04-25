@@ -256,16 +256,16 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 11 (FR-H015, FR-H016)
 
-- [ ] T065 [P] [US11] No new test required — the TS compiler is the test. Existing tests must continue to pass after the readonly tightening.
+- [x] T065 [P] [US11] No new test required — the TS compiler is the test. Existing tests must continue to pass after the readonly tightening.
 
 ### Implementation for User Story 11
 
-- [ ] T066 [US11] Mark `WrittenSkill.files` as `readonly readonly WrittenFile[]` in `packages/core/src/types.ts` per `data-model.md` §6.
-- [ ] T067 [US11] Mark `AuditResult.issues` as `readonly readonly AuditIssue[]` in `packages/mcp/src/types.ts`.
-- [ ] T068 [US11] Confirm `ParameterPlan.path` is already `readonly readonly string[]` after T013 (US7); if not, fix.
-- [ ] T069 [US11] Run `pnpm run type-check`. If any internal mutation site fails, refactor it to build a local `const arr: T[] = []` and return it — the TS widening at function boundary will narrow to readonly without further changes.
-- [ ] T070 [US11] Run `pnpm test`. All 1090+ existing tests pass.
-- [ ] T071 [US11] Commit: `refactor: mark output DTO arrays as readonly (US11, FR-H015)`.
+- [x] T066 [US11] Mark `WrittenSkill.files` as `readonly readonly WrittenFile[]` in `packages/core/src/types.ts` per `data-model.md` §6.
+- [x] T067 [US11] Mark `AuditResult.issues` as `readonly readonly AuditIssue[]` in `packages/mcp/src/types.ts`.
+- [x] T068 [US11] Confirm `ParameterPlan.path` is already `readonly readonly string[]` after T013 (US7); if not, fix.
+- [x] T069 [US11] Run `pnpm run type-check`. If any internal mutation site fails, refactor it to build a local `const arr: T[] = []` and return it — the TS widening at function boundary will narrow to readonly without further changes.
+- [x] T070 [US11] Run `pnpm test`. All 1090+ existing tests pass.
+- [x] T071 [US11] Commit: `refactor: mark output DTO arrays as readonly (US11, FR-H015)`.
 
 **Checkpoint**: Consumer-facing array fields are immutable at the type level.
 
