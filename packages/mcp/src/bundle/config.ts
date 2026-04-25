@@ -1,5 +1,5 @@
 /**
- * Bundle-mode `package.json` config reader (T057, T058).
+ * Bundle-mode `package.json` config reader.
  *
  * Reads the host package's `package.json` and parses the `to-skills.mcp` field
  * into a normalized array of {@link NormalizedBundleEntry} ready for the bundle
@@ -32,7 +32,7 @@ import type { InvocationTarget } from '../adapter/types.js';
  * in `contracts/package-json-config.md`.
  *
  * - `command`/`args` are populated either from the user's explicit fields or
- *   derived from `package.json.bin` (single-bin only — see T058).
+ *   derived from `package.json.bin` (single-bin only).
  * - `invocation` is always an array post-normalization (per FR-IT-009).
  *
  * @public
@@ -145,7 +145,7 @@ export async function readBundleConfig(packageRoot: string): Promise<NormalizedB
 /**
  * Validate a single raw entry from `to-skills.mcp` and produce a
  * {@link NormalizedBundleEntry}. Pulls `command`/`args` from the entry first
- * and falls back to `package.json.bin` derivation per T058.
+ * and falls back to `package.json.bin` derivation.
  */
 function validateAndNormalize(
   raw: unknown,
@@ -251,8 +251,8 @@ function validateAndNormalize(
 
 /**
  * Derive `command`/`args` from `package.json.bin` for an entry that did NOT
- * supply its own `command` field. Implements T058's two-shape rule plus
- * T062's multi-bin selector.
+ * supply its own `command` field. Implements the two-shape rule plus
+ * the multi-bin selector.
  *
  * - String bin → `node <binPath>` (no binName surfaced).
  * - Object bin with exactly one key → same as string bin; binName surfaces the

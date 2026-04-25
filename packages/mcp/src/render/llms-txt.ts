@@ -1,5 +1,5 @@
 /**
- * Per-skill `llms.txt` renderer (T111).
+ * Per-skill `llms.txt` renderer.
  *
  * Emits an llms.txt-spec compliant index file alongside `SKILL.md`, listing
  * each reference file with a one-line description. Format follows

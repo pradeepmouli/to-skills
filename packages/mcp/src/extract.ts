@@ -1,4 +1,4 @@
-// Top-level MCP extraction orchestrator (T034–T037, T049–T050).
+// Top-level MCP extraction orchestrator.
 //
 // `extractMcpSkill(options)` connects to a live MCP server, runs the
 // initialize handshake, enumerates tools/resources/prompts (with capability
@@ -11,9 +11,9 @@
 //  - Cleanup is enforced via try/finally: `client.close()` runs on both
 //    success and failure so the spawned child process can't leak.
 //  - Error classification distinguishes spawn failures (ENOENT, EACCES, …)
-//    from initialize handshake failures from process-early-exit. See T035.
-//  - HTTP transport (Phase 4): StreamableHTTPClientTransport with content-
-//    negotiation fallback to SSEClientTransport on 404/405 (T049–T050).
+//    from initialize handshake failures from process-early-exit.
+//  - HTTP transport: StreamableHTTPClientTransport with content-
+//    negotiation fallback to SSEClientTransport on 404/405.
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
@@ -84,7 +84,7 @@ const DEFAULT_INITIALIZE_TIMEOUT_MS = 30_000;
  *   5. Capability-gated introspection runs identically to the stdio path.
  *   6. Always `client.close()` in finally.
  *
- * Error mapping (T035):
+ * Error mapping:
  * - Stdio process exits before connect resolves → `SERVER_EXITED_EARLY`
  * - Spawn failure (ENOENT/EACCES/EPERM/ENOTDIR/EBUSY) → `TRANSPORT_FAILED`
  * - Invalid HTTP URL → `TRANSPORT_FAILED`
@@ -92,7 +92,7 @@ const DEFAULT_INITIALIZE_TIMEOUT_MS = 30_000;
  * - Errors from inner introspection helpers that are already `McpError`
  *   instances (e.g. `SCHEMA_REF_CYCLE`) are re-thrown unchanged.
  *
- * Protocol-version compatibility (T037):
+ * Protocol-version compatibility:
  * The `checkProtocolVersion` helper is implemented and unit-tested but not
  * yet wired here, because SDK 1.29.0 does not expose a public getter for the
  * negotiated protocol version. The SDK already validates min/max protocol
@@ -396,7 +396,7 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   if (resources !== undefined) skill.resources = resources;
   if (prompts !== undefined) skill.prompts = prompts;
 
-  // US7 (Phase 9): annotation enrichment via `_meta.toSkills`. Server- and
+  // Annotation enrichment via `_meta.toSkills`. Server- and
   // tool-level metadata produced by `_meta.toSkills.{useWhen, avoidWhen,
   // pitfalls, remarks, packageDescription}` is read here and projected onto
   // the skill so the core renderer's existing "When to Use" / "NEVER" /
@@ -404,7 +404,7 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // absent metadata leaves the skill unchanged.
   applyMetaEnrichment(skill, serverInfo, functions);
 
-  // Phase 10 / T106: surface audit findings to stderr at extract time.
+  // Surface audit findings to stderr at extract time.
   //
   // Extract returns a single ExtractedSkill — there is no AuditResult slot to
   // populate, and we don't have an embedded fingerprint or installed adapter

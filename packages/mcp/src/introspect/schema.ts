@@ -1,6 +1,5 @@
 // JSON Schema $ref resolver for MCP tool inputSchemas.
 //
-// Phase 2 Batch 5 (T026) of specs/001-mcp-extract-bundle.
 // Research.md §3 selected @apidevtools/json-schema-ref-parser as the library.
 // FR-010: all in-document $ref pointers must be resolved before rendering.
 // FR-011: cycle detection produces an audit-worthy warning rather than a crash.

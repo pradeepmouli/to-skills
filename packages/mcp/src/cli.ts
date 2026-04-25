@@ -203,7 +203,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     );
   }
 
-  // Config-file batch mode (Phase 7 / US3). Delegates to runConfigExtract,
+  // Config-file batch mode. Delegates to runConfigExtract,
   // which handles per-entry containment + worst-code aggregation. We dispatch
   // BEFORE the single-entry --canonicalize / --skip-audit notices because
   // those notices fire inside runConfigExtract once per batch instead.
@@ -212,12 +212,12 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     return;
   }
 
-  // Notices for accepted-but-unwired flags (Phase 10 / T111 / audit rules).
+  // Notices for accepted-but-unwired flags.
   // Mirrors the --llms-txt pattern below so users get explicit feedback
   // rather than silent acceptance.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
 
@@ -229,7 +229,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
       ? (opts.invocation as InvocationTarget[])
       : (['mcp-protocol'] as InvocationTarget[]);
 
-  // Eager target validation (T081) — load every adapter BEFORE we spawn the
+  // Eager target validation — load every adapter BEFORE we spawn the
   // server, so a typo on `--invocation` exits 5 without paying the spawn
   // cost. The loader's per-process cache makes the subsequent
   // loadAdapterAsync() calls in the render loop free.
@@ -330,7 +330,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
 }
 
 /**
- * `extract --config <path>` action body (Phase 7 / US3).
+ * `extract --config <path>` action body.
  *
  * Reads the Claude-Desktop-shaped config file, then runs the full
  * extract → render → write pipeline once per enabled entry. Failures are
@@ -356,7 +356,7 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
   // many-server configs.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
   const entries = await readMcpConfigFile(opts.config!);
@@ -551,7 +551,7 @@ function dirNameForTarget(
 }
 
 /**
- * Eagerly resolve every requested target before any extract spawn (T081).
+ * Eagerly resolve every requested target before any extract spawn.
  * Wraps `loadAdapterAsync` errors with a hint enumerating the installed
  * adapters so the user can fix `--invocation` typos and missing-package
  * issues without consulting the docs.
@@ -672,7 +672,7 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   // users get explicit feedback rather than silent acceptance.
   if (!opts.canonicalize) {
     process.stderr.write(
-      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
+      '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs.\n'
     );
   }
   // --max-tokens is parsed for forward-compatibility but not yet threaded into
@@ -684,7 +684,7 @@ async function runBundle(opts: BundleOpts): Promise<void> {
     );
   }
 
-  // Eager target validation (T081) — when the user supplied global
+  // Eager target validation — when the user supplied global
   // `--invocation` overrides, resolve every adapter NOW so a typo exits 5
   // before we read package.json or spawn anything. Per-entry targets (in the
   // package.json invocation field) get validated by bundle.ts inside the

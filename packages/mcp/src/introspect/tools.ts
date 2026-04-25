@@ -20,14 +20,14 @@ import { resolveSchema } from './schema.js';
  * `ExtractedParameter` entries. Tools whose schema fails to resolve due to a
  * cycle, broken `$ref`, or external `$ref` are surfaced with empty
  * `parameters` and a `tags.schemaError === 'true'` marker so the M2 audit rule
- * (Phase 9) can flag them. All other resolver errors are propagated.
+ * can flag them. All other resolver errors are propagated.
  *
  * Tools whose `inputSchema` is missing (`undefined`/`null`) produce empty
  * `parameters` without an error — the absence of a schema is a valid signal
  * that the tool takes no input.
  *
- * Tag-driven metadata: `_meta.toSkills.{useWhen, avoidWhen, pitfalls}` (US7,
- * Phase 9) is read from each tool's `_meta` envelope and projected onto
+ * Tag-driven metadata: `_meta.toSkills.{useWhen, avoidWhen, pitfalls}`
+ * is read from each tool's `_meta` envelope and projected onto
  * `ExtractedFunction.tags` as newline-joined strings, plus a `hasMetaToSkills`
  * marker. Skill-level aggregation (`ExtractedSkill.useWhen` etc.) happens in
  * `extract.ts`, which also reads server-level `_meta.toSkills`.

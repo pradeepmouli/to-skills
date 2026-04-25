@@ -10,7 +10,7 @@
  * downstream consumer should refuse to publish it.
  *
  * Per-tool granularity: one issue is emitted per offending function so that
- * users see exactly which tool needs the fix. The aggregator (T104e) sorts
+ * users see exactly which tool needs the fix. The aggregator sorts
  * results by severity then code, keeping output deterministic.
  *
  * @module audit/rule-m1

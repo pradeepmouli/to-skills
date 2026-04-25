@@ -1,5 +1,5 @@
 /**
- * Reader/validator for the Claude-Desktop-shaped MCP config file (T091).
+ * Reader/validator for the Claude-Desktop-shaped MCP config file.
  *
  * Accepts files matching the `claude_desktop_config.json` / `mcp.json` schema
  * with a single top-level `mcpServers` key. Cursor and a few other clients
