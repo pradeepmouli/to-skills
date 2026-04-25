@@ -15,10 +15,11 @@
  * entries. The CLI (T065, deferred to B13) maps the worst code in the
  * failures map to an exit code.
  *
- * Multi-target rendering (one server → multiple `invocation` entries → multiple
- * skill directories with disambiguated names) is wired in Phase 6 (T083). This
- * batch supports single-target only — when `invocation.length > 1`, we render
- * the first target and surface a stderr warning.
+ * Multi-target rendering — one server → multiple `invocation` entries →
+ * multiple skill directories with disambiguated names — is wired in Phase 6
+ * (T083). Each (entry, target) tuple produces its own `WrittenSkill` keyed by
+ * `<skillName>` (single-target) or `<skillName>-<targetSuffix>` (multi-target,
+ * matching the FR-IT-009 disambiguation rule the CLI uses for extract mode).
  *
  * @module bundle
  */
@@ -111,20 +112,8 @@ async function processEntry(
 ): Promise<void> {
   const { outDir, packageName, result } = ctx;
 
-  // T060c, single-target only: this batch renders the first target. Multi-
-  // target disambiguation (separate skill directories per target) lands in
-  // Phase 6 (T083). When the user declared multiple targets, surface a notice
-  // so the missing skills are at least discoverable from CLI output.
-  if (entry.invocation.length > 1) {
-    process.stderr.write(
-      `[to-skills-mcp] entry "${entry.skillName}" declares ${entry.invocation.length} invocation targets; ` +
-        `bundle mode currently renders only the first ("${entry.invocation[0]}"). Multi-target ` +
-        `support lands in Phase 6.\n`
-    );
-  }
-  const target: InvocationTarget = entry.invocation[0]!;
-
-  // 1. Extract via stdio transport.
+  // 1. Extract via stdio transport. The IR is target-agnostic, so a single
+  //    extract feeds the whole multi-target render loop below.
   let skill: import('@to-skills/core').ExtractedSkill;
   try {
     const env = entry.env ? Object.fromEntries(Object.entries(entry.env)) : undefined;
@@ -148,53 +137,61 @@ async function processEntry(
     return;
   }
 
-  // 2. Render with the target's adapter; bundle mode passes packageName so the
-  //    emitted skill instructs MCP harnesses to launch via `npx -y <packageName>`
-  //    rather than embedding the local launch command (FR-033). When the entry
-  //    has a binName (multi-bin packages), thread it so the adapter can emit
-  //    `--package=<pkg> <binName>` (FR-034).
-  let rendered: RenderedSkill;
-  try {
-    const adapter = await loadAdapterAsync(target);
-    const renderOptions: Parameters<typeof renderSkill>[1] = {
-      invocation: adapter,
-      ...(packageName !== undefined ? { invocationPackageName: packageName } : {}),
-      ...(packageName !== undefined && entry.binName !== undefined
-        ? { invocationBinName: entry.binName }
-        : {})
+  // 2. Per-target render+write loop. Each tuple gets its own WrittenSkill in
+  //    `result.skills`, keyed by the disambiguated directory name (so
+  //    multi-target entries don't collide). Failures during a single target's
+  //    render/write are recorded against the entry's skillName and the loop
+  //    continues with the next target — partial-success semantics match the
+  //    per-entry policy already used by the surrounding bundleMcpSkill loop.
+  const targets = entry.invocation;
+  const multi = targets.length > 1;
+  for (const target of targets) {
+    const dirName = multi ? `${entry.skillName}-${target.replace(/:/g, '-')}` : entry.skillName;
+
+    let rendered: RenderedSkill;
+    try {
+      const adapter = await loadAdapterAsync(target);
+      const renderOptions: Parameters<typeof renderSkill>[1] = {
+        invocation: adapter,
+        // Multi-target runs disambiguate the output directory by passing
+        // namePrefix; single-target keeps today's <outDir>/<skillName>/ shape.
+        ...(multi ? { namePrefix: dirName } : {}),
+        ...(packageName !== undefined ? { invocationPackageName: packageName } : {}),
+        ...(packageName !== undefined && entry.binName !== undefined
+          ? { invocationBinName: entry.binName }
+          : {})
+      };
+      rendered = await renderSkill(skill, renderOptions);
+    } catch (err) {
+      recordFailure(result, dirName, err);
+      continue;
+    }
+
+    try {
+      writeSkills([rendered], { outDir });
+    } catch (err) {
+      recordFailure(result, dirName, err);
+      continue;
+    }
+
+    const skillDir = path.join(outDir, dirName);
+    // The renderer emits filenames relative to outDir, so the absolute path of
+    // each rendered file is `path.join(outDir, file.filename)`. Relativize against
+    // skillDir so `WrittenSkill.files` is always relative to its `dir`, regardless
+    // of whether the adapter prefixes with skillName or emits at the root.
+    const toRelative = (filename: string): string =>
+      path.relative(skillDir, path.join(outDir, filename));
+    const written: WrittenSkill = {
+      dir: skillDir,
+      files: [
+        toRelative(rendered.skill.filename),
+        ...rendered.references.map((r) => toRelative(r.filename))
+      ],
+      target,
+      audit: { issues: [], worstSeverity: 'none' }
     };
-    rendered = await renderSkill(skill, renderOptions);
-  } catch (err) {
-    recordFailure(result, entry.skillName, err);
-    return;
+    result.skills[dirName] = written;
   }
-
-  // 3. Write under <packageRoot>/skills/<skillName>/. The renderer emits
-  //    filenames relative to outDir already (e.g. "<skillName>/SKILL.md").
-  try {
-    writeSkills([rendered], { outDir });
-  } catch (err) {
-    recordFailure(result, entry.skillName, err);
-    return;
-  }
-
-  const skillDir = path.join(outDir, entry.skillName);
-  // The renderer emits filenames relative to outDir, so the absolute path of
-  // each rendered file is `path.join(outDir, file.filename)`. Relativize against
-  // skillDir so `WrittenSkill.files` is always relative to its `dir`, regardless
-  // of whether the adapter prefixes with skillName or emits at the root.
-  const toRelative = (filename: string): string =>
-    path.relative(skillDir, path.join(outDir, filename));
-  const written: WrittenSkill = {
-    dir: skillDir,
-    files: [
-      toRelative(rendered.skill.filename),
-      ...rendered.references.map((r) => toRelative(r.filename))
-    ],
-    target,
-    audit: { issues: [], worstSeverity: 'none' }
-  };
-  result.skills[entry.skillName] = written;
 }
 
 /**

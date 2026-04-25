@@ -4,7 +4,11 @@ export default defineConfig({
   test: {
     // Unit tests run by default; integration tests are discoverable but gate
     // themselves on RUN_INTEGRATION_TESTS=true via describe.skipIf(...).
-    include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    include: [
+      'tests/unit/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/contract/**/*.test.ts'
+    ],
     environment: 'node',
     coverage: {
       provider: 'v8',

@@ -238,6 +238,67 @@ describe('bundle subcommand', () => {
     expect(stderrLines.join('')).not.toMatch(/--max-tokens/);
   });
 
+  it('multi-target stdout: one line per (entry × target) WrittenSkill', async () => {
+    // The bundle mock surfaces two skills keyed by their disambiguated
+    // directory names (matches the new bundle.ts shape from T083).
+    configEntries.push({ skillName: 'my-server' });
+    bundleResults.push({
+      skills: {
+        'my-server-mcp-protocol': {
+          dir: path.join(workDir, 'skills', 'my-server-mcp-protocol'),
+          files: ['SKILL.md'],
+          target: 'mcp-protocol',
+          audit: { issues: [], worstSeverity: 'none' }
+        },
+        'my-server-cli-mcpc': {
+          dir: path.join(workDir, 'skills', 'my-server-cli-mcpc'),
+          files: ['SKILL.md', 'references/tools.md'],
+          target: 'cli:mcpc',
+          audit: { issues: [], worstSeverity: 'none' }
+        }
+      },
+      failures: {},
+      packageJsonWarnings: []
+    });
+    const program = makeProgram();
+    await program.parseAsync([
+      'node',
+      'bin',
+      'bundle',
+      '--package-root',
+      workDir,
+      '--invocation',
+      'mcp-protocol',
+      '--invocation',
+      'cli:mcpc'
+    ]);
+    const out = stdoutLines.join('');
+    expect(out).toMatch(/Wrote .*my-server-mcp-protocol\/SKILL\.md \(0 references\)/);
+    expect(out).toMatch(/Wrote .*my-server-cli-mcpc\/SKILL\.md \(1 references\)/);
+  });
+
+  it('rejects unknown invocation target eagerly with installed-adapter hint', async () => {
+    // No need to push configEntries — validation runs BEFORE readBundleConfig.
+    const program = makeProgram();
+    await expect(
+      program.parseAsync([
+        'node',
+        'bin',
+        'bundle',
+        '--package-root',
+        workDir,
+        '--invocation',
+        'cli:nonexistent-adapter'
+      ])
+    ).rejects.toSatisfy(
+      (err) =>
+        err instanceof McpError &&
+        (err.code === 'ADAPTER_NOT_FOUND' || err.code === 'UNKNOWN_TARGET') &&
+        /Installed adapters:/.test(err.message)
+    );
+    expect(bundleCalls).toHaveLength(0);
+  });
+
   it('worst-failure-code hierarchy covers SCHEMA_REF_CYCLE and SERVER_EXITED_EARLY (deterministic across multi-failure runs)', async () => {
     // Two failures: SCHEMA_REF_CYCLE (more actionable) + INITIALIZE_FAILED.
     // Ordered hierarchy says SCHEMA_REF_CYCLE wins.

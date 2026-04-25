@@ -223,7 +223,7 @@ describe('bundleMcpSkill', () => {
     expect(result.packageJsonWarnings).toEqual([]);
   });
 
-  it('emits a notice when entry declares multiple invocation targets', async () => {
+  it('multi-target entry renders one skill dir per target with disambiguation suffix', async () => {
     writePkg({
       name: '@my/server',
       'to-skills': {
@@ -235,18 +235,21 @@ describe('bundleMcpSkill', () => {
         }
       }
     });
-    const stderr: string[] = [];
-    const orig = process.stderr.write.bind(process.stderr);
-    process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-      stderr.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
-      return true;
-    }) as typeof process.stderr.write;
-    try {
-      await bundleMcpSkill({ packageRoot: workDir });
-    } finally {
-      process.stderr.write = orig;
-    }
-    expect(stderr.join('')).toContain('renders only the first');
+    const result = await bundleMcpSkill({ packageRoot: workDir });
+    // Each target gets its own skill, keyed by the disambiguated directory name.
+    expect(Object.keys(result.skills).sort()).toEqual([
+      'my-server-cli-mcpc',
+      'my-server-mcp-protocol'
+    ]);
+    expect(result.skills['my-server-mcp-protocol']?.target).toBe('mcp-protocol');
+    expect(result.skills['my-server-cli-mcpc']?.target).toBe('cli:mcpc');
+    // Both directories exist on disk under <outDir>.
+    expect(existsSync(path.join(workDir, 'skills', 'my-server-mcp-protocol', 'SKILL.md'))).toBe(
+      true
+    );
+    expect(existsSync(path.join(workDir, 'skills', 'my-server-cli-mcpc', 'SKILL.md'))).toBe(true);
+    // The "renders only the first" notice must be gone.
+    expect(result.failures).toEqual({});
   });
 
   it('options.invocation overrides per-entry invocation', async () => {

@@ -240,16 +240,16 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### CLI wiring: `--invocation` flag + multi-target dispatch
 
-- [ ] T080 [US5] Add `--invocation <target>` flag to both `extract` and `bundle` subcommands in `packages/mcp/src/cli.ts`, using `.collect` to accept repeated values; default `['mcp-protocol']` if none provided
-- [ ] T081 [US5] Add target-validation in `packages/mcp/src/cli.ts`: for each `--invocation` value, call `loadAdapter()` eagerly before launching any server; exit 2 with `UNKNOWN_TARGET`/`ADAPTER_NOT_FOUND` listing installed adapters if any fail
-- [ ] T082 [US5] Update `packages/mcp/src/cli.ts` extract-mode execution: after `extractMcpSkill` returns, loop over requested adapters, call `renderSkill` for each, write each to its own output dir; if more than one target, disambiguate via `<skillName>-<target>` suffix (FR-IT-009)
-- [ ] T083 [US5] Update `packages/mcp/src/bundle.ts` multi-target support: read `invocation` field from normalized config (string or array), combine with CLI `--invocation` override, loop as in T082
+- [x] T080 [US5] Add `--invocation <target>` flag to both `extract` and `bundle` subcommands in `packages/mcp/src/cli.ts`, using `.collect` to accept repeated values; default `['mcp-protocol']` if none provided
+- [x] T081 [US5] Add target-validation in `packages/mcp/src/cli.ts`: for each `--invocation` value, call `loadAdapter()` eagerly before launching any server; exit 2 with `UNKNOWN_TARGET`/`ADAPTER_NOT_FOUND` listing installed adapters if any fail
+- [x] T082 [US5] Update `packages/mcp/src/cli.ts` extract-mode execution: after `extractMcpSkill` returns, loop over requested adapters, call `renderSkill` for each, write each to its own output dir; if more than one target, disambiguate via `<skillName>-<target>` suffix (FR-IT-009)
+- [x] T083 [US5] Update `packages/mcp/src/bundle.ts` multi-target support: read `invocation` field from normalized config (string or array), combine with CLI `--invocation` override, loop as in T082
 
 ### Fingerprint embedding contract enforcement
 
 - [x] T084 [US5] Add `generatedByFrontmatter(fingerprint: AdapterFingerprint): Record<string, unknown>` helper in `packages/mcp/src/adapter/fingerprint.ts`; used by all CLI adapters to produce identical `generated-by:` frontmatter shape
-- [ ] T084a [US5] Tighten the fingerprint dual-placement contract in the CLI adapters: update T072b and T078b to call `generatedByFrontmatter(this.fingerprint)` and merge the result into the rendered YAML frontmatter. Update T071 (and `renderFastMcpSetup` in T077) to embed the human-readable fingerprint line ("Generated for mcpc 2.1.x via @to-skills/target-mcpc 1.4.0"). Add assertion logic used by T085 — when the Setup section's embedded fingerprint disagrees with frontmatter's `generated-by`, the test fails. Implements FR-IT-012 completely
-- [ ] T085 [P] [US5] Add contract test `packages/mcp/tests/contract/fingerprint.test.ts` asserting that rendering any `cli:*` adapter against a fixture skill produces a SKILL.md whose frontmatter contains `generated-by` AND does NOT contain `mcp:`, AND the frontmatter `generated-by.adapter`/`version` exactly match the adapter/version substrings in the Setup section. Run parametrized against both target-mcpc and target-fastmcp
+- [x] T084a [US5] Tighten the fingerprint dual-placement contract in the CLI adapters: update T072b and T078b to call `generatedByFrontmatter(this.fingerprint)` and merge the result into the rendered YAML frontmatter. Update T071 (and `renderFastMcpSetup` in T077) to embed the human-readable fingerprint line ("Generated for mcpc 2.1.x via @to-skills/target-mcpc 1.4.0"). Add assertion logic used by T085 — when the Setup section's embedded fingerprint disagrees with frontmatter's `generated-by`, the test fails. Implements FR-IT-012 completely
+- [x] T085 [P] [US5] Add contract test `packages/mcp/tests/contract/fingerprint.test.ts` asserting that rendering any `cli:*` adapter against a fixture skill produces a SKILL.md whose frontmatter contains `generated-by` AND does NOT contain `mcp:`, AND the frontmatter `generated-by.adapter`/`version` exactly match the adapter/version substrings in the Setup section. Run parametrized against both target-mcpc and target-fastmcp
 
 ### Adapter freshness audit
 

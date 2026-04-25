@@ -29,6 +29,7 @@ import path, { join } from 'node:path';
 import { Command, InvalidArgumentError } from 'commander';
 import { renderSkill, writeSkills } from '@to-skills/core';
 import { loadAdapterAsync } from './adapter/loader.js';
+import type { InvocationAdapter } from './adapter/types.js';
 import { bundleMcpSkill } from './bundle.js';
 // Internal import: the bundle CLI does its own pre-flight DUPLICATE_SKILL_NAME
 // check (so --force semantics fire BEFORE bundleMcpSkill calls writeSkills,
@@ -80,6 +81,12 @@ export function buildProgram(): Command {
     .option('--canonicalize', 'Run canonicalization pass on output (default true)', true)
     .option('--no-canonicalize', 'Disable canonicalization pass')
     .option('--skill-name <name>', 'Override skill directory name (default: derived from server)')
+    .option(
+      '--invocation <target>',
+      'Render with this invocation target (repeatable). Default: mcp-protocol',
+      collect,
+      [] as string[]
+    )
     .action(runExtract);
 
   program
@@ -157,6 +164,7 @@ interface ExtractOpts {
   skipAudit?: boolean;
   canonicalize: boolean;
   skillName?: string;
+  invocation: string[];
 }
 
 /**
@@ -199,108 +207,175 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
   }
 
+  // Compute the requested invocation targets — empty `--invocation` means
+  // default to the MCP-native adapter. Repeated `--invocation` produces a
+  // multi-target run with disambiguated output directories (FR-IT-009).
+  const targets: InvocationTarget[] =
+    opts.invocation.length > 0
+      ? (opts.invocation as InvocationTarget[])
+      : (['mcp-protocol'] as InvocationTarget[]);
+
+  // Eager target validation (T081) — load every adapter BEFORE we spawn the
+  // server, so a typo on `--invocation` exits 5 without paying the spawn
+  // cost. The loader's per-process cache makes the subsequent
+  // loadAdapterAsync() calls in the render loop free.
+  const adapters = await validateTargets(targets);
+
   // Early collision check — fires BEFORE spawning the server when the user
   // supplied --skill-name (the common fast-feedback case). When the name
-  // depends on server introspection, the check repeats post-extract.
+  // depends on server introspection, the check repeats post-extract per
+  // target directory.
   if (opts.skillName !== undefined) {
-    const earlyDir = join(opts.out, opts.skillName);
-    if (existsSync(earlyDir) && !opts.force) {
-      throw new McpError(
-        `Output directory already exists: ${earlyDir}. Pass --force to overwrite.`,
-        'DUPLICATE_SKILL_NAME'
-      );
+    for (const adapter of adapters) {
+      const earlyDir = join(opts.out, dirNameForTarget(opts.skillName, adapter, adapters.length));
+      if (existsSync(earlyDir) && !opts.force) {
+        throw new McpError(
+          `Output directory already exists: ${earlyDir}. Pass --force to overwrite.`,
+          'DUPLICATE_SKILL_NAME'
+        );
+      }
     }
   }
 
-  if (opts.url !== undefined) {
-    await runHttpExtract(opts);
-  } else {
-    await runStdioExtract(opts);
-  }
-}
+  // Extract once — the IR is target-agnostic, so the loop below renders
+  // (and writes) one skill directory per requested target from the same IR.
+  const skill =
+    opts.url !== undefined
+      ? await extractMcpSkill({
+          transport: {
+            type: 'http',
+            url: opts.url,
+            headers: Object.keys(opts.header).length > 0 ? opts.header : undefined
+          },
+          skillName: opts.skillName,
+          maxTokens: opts.maxTokens
+        })
+      : await extractMcpSkill({
+          transport: {
+            type: 'stdio',
+            command: opts.command!,
+            args: opts.arg,
+            env: Object.keys(opts.env).length > 0 ? opts.env : undefined
+          },
+          skillName: opts.skillName,
+          maxTokens: opts.maxTokens
+        });
 
-/** Stdio-extract pipeline: spawn → introspect → render → write. */
-async function runStdioExtract(opts: ExtractOpts): Promise<void> {
-  const envEntries = Object.keys(opts.env);
-  const skill = await extractMcpSkill({
-    transport: {
-      type: 'stdio',
-      command: opts.command!,
-      args: opts.arg,
-      env: envEntries.length > 0 ? opts.env : undefined
-    },
-    skillName: opts.skillName,
-    maxTokens: opts.maxTokens
-  });
+  // Per-target render+write loop. Each iteration writes its own directory and
+  // emits one stdout line. Collision detection moves into the loop so each
+  // target dir is checked independently.
+  for (const adapter of adapters) {
+    const dirName = dirNameForTarget(skill.name, adapter, adapters.length);
+    const skillDir = join(opts.out, dirName);
+    if (existsSync(skillDir) && !opts.force) {
+      throw new McpError(
+        `Output directory already exists: ${skillDir}. Pass --force to overwrite.`,
+        'DUPLICATE_SKILL_NAME'
+      );
+    }
 
-  const adapter = await loadAdapterAsync('mcp-protocol');
-  const rendered = await renderSkill(skill, {
-    invocation: adapter,
-    invocationLaunchCommand: {
-      command: opts.command!,
-      args: opts.arg,
-      env: envEntries.length > 0 ? opts.env : undefined
-    },
-    maxTokens: opts.maxTokens
-  });
+    const renderOptions: Parameters<typeof renderSkill>[1] = {
+      invocation: adapter,
+      maxTokens: opts.maxTokens,
+      // Multi-target runs disambiguate the output directory by passing
+      // namePrefix; single-target keeps today's <outDir>/<skillName>/ shape.
+      ...(adapters.length > 1 ? { namePrefix: dirName } : {})
+    };
+    if (opts.url !== undefined) {
+      renderOptions.invocationHttpEndpoint = {
+        url: opts.url,
+        ...(Object.keys(opts.header).length > 0 ? { headers: opts.header } : {})
+      };
+    } else {
+      renderOptions.invocationLaunchCommand = {
+        command: opts.command!,
+        args: opts.arg,
+        env: Object.keys(opts.env).length > 0 ? opts.env : undefined
+      };
+    }
 
-  finalizeWrite(opts, skill.name, rendered);
-}
+    const rendered = await renderSkill(skill, renderOptions);
+    writeSkills([rendered], { outDir: opts.out });
 
-/** HTTP-extract pipeline: connect → introspect → render → write. */
-async function runHttpExtract(opts: ExtractOpts): Promise<void> {
-  const headerEntries = Object.keys(opts.header);
-  const skill = await extractMcpSkill({
-    transport: {
-      type: 'http',
-      url: opts.url!,
-      headers: headerEntries.length > 0 ? opts.header : undefined
-    },
-    skillName: opts.skillName,
-    maxTokens: opts.maxTokens
-  });
-
-  const adapter = await loadAdapterAsync('mcp-protocol');
-  const rendered = await renderSkill(skill, {
-    invocation: adapter,
-    invocationHttpEndpoint: {
-      url: opts.url!,
-      ...(headerEntries.length > 0 ? { headers: opts.header } : {})
-    },
-    maxTokens: opts.maxTokens
-  });
-
-  finalizeWrite(opts, skill.name, rendered);
-}
-
-/**
- * Shared tail: post-extract collision check, write the rendered files, emit
- * the success line on stdout. Extracted so the stdio and http branches share
- * exactly the same write/notice semantics.
- */
-function finalizeWrite(
-  opts: ExtractOpts,
-  skillName: string,
-  rendered: import('@to-skills/core').RenderedSkill
-): void {
-  // Collision detection (post-extract) — covers the case where the skill name
-  // came from server introspection rather than --skill-name.
-  const skillDir = join(opts.out, skillName);
-  if (existsSync(skillDir) && !opts.force) {
-    throw new McpError(
-      `Output directory already exists: ${skillDir}. Pass --force to overwrite.`,
-      'DUPLICATE_SKILL_NAME'
-    );
+    process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
   }
 
-  writeSkills([rendered], { outDir: opts.out });
-
-  // Optional llms.txt emission — stubbed for Phase 10 (T111).
+  // Optional llms.txt emission — stubbed for Phase 10 (T111). Emitted once
+  // per CLI invocation regardless of target count.
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
+}
 
-  process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
+/**
+ * Compute the per-target output directory name. Single-target runs keep the
+ * canonical `<skillName>` shape; multi-target runs append a `-<targetSuffix>`
+ * disambiguator (FR-IT-009). `targetSuffix` is the literal `target` string
+ * with `:` replaced by `-` (so `cli:mcpc` → `mcpc`, `mcp-protocol` stays
+ * `mcp-protocol`).
+ */
+function dirNameForTarget(
+  skillName: string,
+  adapter: InvocationAdapter,
+  totalTargets: number
+): string {
+  if (totalTargets <= 1) return skillName;
+  const suffix = adapter.target.replace(/:/g, '-');
+  return `${skillName}-${suffix}`;
+}
+
+/**
+ * Eagerly resolve every requested target before any extract spawn (T081).
+ * Wraps `loadAdapterAsync` errors with a hint enumerating the installed
+ * adapters so the user can fix `--invocation` typos and missing-package
+ * issues without consulting the docs.
+ */
+async function validateTargets(targets: readonly InvocationTarget[]): Promise<InvocationAdapter[]> {
+  const adapters: InvocationAdapter[] = [];
+  let installedHint: string | undefined;
+  for (const t of targets) {
+    try {
+      adapters.push(await loadAdapterAsync(t));
+    } catch (err) {
+      if (
+        err instanceof McpError &&
+        (err.code === 'UNKNOWN_TARGET' || err.code === 'ADAPTER_NOT_FOUND')
+      ) {
+        // Compute the installed-adapter hint lazily — it's only needed on
+        // failure, and probing every candidate target costs a require() each.
+        installedHint ??= await formatInstalledAdaptersHint();
+        throw new McpError(`${err.message}\n\n${installedHint}`, err.code, err);
+      }
+      throw err;
+    }
+  }
+  return adapters;
+}
+
+/**
+ * Probe each known target package and return a human-readable hint listing
+ * the resolvable ones plus an install-pointer for the rest.
+ *
+ * The known-target list is hardcoded — for now we only ship `mcp-protocol`,
+ * `cli:mcpc`, `cli:fastmcp`. Third-party adapters that follow the
+ * `to-skills-target-<name>` naming convention won't appear in this hint, but
+ * they remain loadable.
+ */
+async function formatInstalledAdaptersHint(): Promise<string> {
+  const known: InvocationTarget[] = ['mcp-protocol', 'cli:mcpc', 'cli:fastmcp'];
+  const installed: string[] = [];
+  for (const t of known) {
+    try {
+      await loadAdapterAsync(t);
+      installed.push(t);
+    } catch {
+      // Not installed — silently skip; the hint only enumerates resolvable adapters.
+    }
+  }
+  return (
+    `Installed adapters: ${installed.length > 0 ? installed.join(', ') : '(none)'}\n` +
+    `To install a missing adapter: npm install @to-skills/target-<name>`
+  );
 }
 
 /** Parsed `bundle` subcommand options as produced by commander. @internal */
@@ -354,6 +429,15 @@ async function runBundle(opts: BundleOpts): Promise<void> {
     );
   }
 
+  // Eager target validation (T081) — when the user supplied global
+  // `--invocation` overrides, resolve every adapter NOW so a typo exits 5
+  // before we read package.json or spawn anything. Per-entry targets (in the
+  // package.json invocation field) get validated by bundle.ts inside the
+  // multi-target loop.
+  if (opts.invocation.length > 0) {
+    await validateTargets(opts.invocation as InvocationTarget[]);
+  }
+
   // Pre-flight DUPLICATE_SKILL_NAME check. bundleMcpSkill → writeSkills will
   // rmSync the destination unconditionally; that's fine when the user opted
   // in via --force, but otherwise we should bail before any extract spawns.
@@ -362,13 +446,25 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   const entries = await readBundleConfig(packageRoot);
   const resolvedOutDir = outDir ?? path.join(packageRoot, 'skills');
   if (!opts.force) {
+    // Compute the effective per-entry targets so the pre-flight collision
+    // check covers the same disambiguated directory names that bundle.ts
+    // will write to. Global `--invocation` (when set) overrides per-entry.
+    const overrideTargets =
+      opts.invocation.length > 0 ? (opts.invocation as InvocationTarget[]) : undefined;
     for (const entry of entries) {
-      const dest = path.join(resolvedOutDir, entry.skillName);
-      if (existsSync(dest)) {
-        throw new McpError(
-          `Output directory already exists: ${dest}. Pass --force to overwrite.`,
-          'DUPLICATE_SKILL_NAME'
-        );
+      const effective = overrideTargets ?? entry.invocation;
+      for (const target of effective) {
+        const dirName =
+          effective.length > 1
+            ? `${entry.skillName}-${target.replace(/:/g, '-')}`
+            : entry.skillName;
+        const dest = path.join(resolvedOutDir, dirName);
+        if (existsSync(dest)) {
+          throw new McpError(
+            `Output directory already exists: ${dest}. Pass --force to overwrite.`,
+            'DUPLICATE_SKILL_NAME'
+          );
+        }
       }
     }
   }
