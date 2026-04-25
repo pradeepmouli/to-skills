@@ -141,17 +141,17 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 4 (FR-H017, SC-H004, SC-H005)
 
-- [ ] T034 [P] [US4] Create `packages/mcp/tests/unit/stderr-ring-buffer.test.ts`: mock stdio transport that streams 1 MB (1024 × 1 KB chunks) of stderr before exiting; assert captured buffer length ≤ 65 536 bytes; assert SERVER_EXITED_EARLY message contains the most-recent (tail) bytes.
-- [ ] T035 [P] [US4] Create `packages/mcp/tests/unit/initialize-timeout.test.ts`: mock stdio transport whose `connect()` Promise never resolves; use `vi.useFakeTimers()`; call `extractMcpSkill({ transport: { ..., initializeTimeoutMs: 5000 } })`; advance timers by 5001 ms; assert rejection with `McpError` matching `{ code: 'INITIALIZE_FAILED', message: /timed out after 5000ms/ }`.
-- [ ] T036 [P] [US4] Add a third test in `initialize-timeout.test.ts`: `initializeTimeoutMs: 0` disables the race entirely (resolves normally on a slow but finite mock connect).
+- [x] T034 [P] [US4] Create `packages/mcp/tests/unit/stderr-ring-buffer.test.ts`: mock stdio transport that streams 1 MB (1024 × 1 KB chunks) of stderr before exiting; assert captured buffer length ≤ 65 536 bytes; assert SERVER_EXITED_EARLY message contains the most-recent (tail) bytes.
+- [x] T035 [P] [US4] Create `packages/mcp/tests/unit/initialize-timeout.test.ts`: mock stdio transport whose `connect()` Promise never resolves; use `vi.useFakeTimers()`; call `extractMcpSkill({ transport: { ..., initializeTimeoutMs: 5000 } })`; advance timers by 5001 ms; assert rejection with `McpError` matching `{ code: 'INITIALIZE_FAILED', message: /timed out after 5000ms/ }`.
+- [x] T036 [P] [US4] Add a third test in `initialize-timeout.test.ts`: `initializeTimeoutMs: 0` disables the race entirely (resolves normally on a slow but finite mock connect).
 
 ### Implementation for User Story 4
 
-- [ ] T037 [US4] Implement the ring-buffer per `research.md` R2 in `packages/mcp/src/extract.ts`. Replace the unbounded `stderr.push(...)` array with the `append`/`flush` helpers. `MAX_STDERR_BYTES = 64 * 1024` as a module constant.
-- [ ] T038 [US4] Implement `connectWithTimeout` per `research.md` R3 in `packages/mcp/src/extract.ts`. Read `options.transport.initializeTimeoutMs ?? 30_000`. If `<= 0`, call `client.connect(transport)` directly (no race). Otherwise use the `Promise.race` pattern with a `setTimeout`-driven rejection; clear the timer in `finally`.
-- [ ] T039 [US4] Add `initializeTimeoutMs?: number` to `McpStdioTransportOptions` in `packages/mcp/src/types.ts` per `data-model.md` §4. JSDoc: default 30000, semantics for `<= 0`.
-- [ ] T040 [US4] Run all three new unit tests and verify they pass deterministically (no flakiness from real timers leaking past `useFakeTimers`).
-- [ ] T041 [US4] Commit: `feat(mcp): bounded stderr capture + initialize timeout (US4, FR-H007/H008)`.
+- [x] T037 [US4] Implement the ring-buffer per `research.md` R2 in `packages/mcp/src/extract.ts`. Replace the unbounded `stderr.push(...)` array with the `append`/`flush` helpers. `MAX_STDERR_BYTES = 64 * 1024` as a module constant.
+- [x] T038 [US4] Implement `connectWithTimeout` per `research.md` R3 in `packages/mcp/src/extract.ts`. Read `options.transport.initializeTimeoutMs ?? 30_000`. If `<= 0`, call `client.connect(transport)` directly (no race). Otherwise use the `Promise.race` pattern with a `setTimeout`-driven rejection; clear the timer in `finally`.
+- [x] T039 [US4] Add `initializeTimeoutMs?: number` to `McpStdioTransportOptions` in `packages/mcp/src/types.ts` per `data-model.md` §4. JSDoc: default 30000, semantics for `<= 0`.
+- [x] T040 [US4] Run all three new unit tests and verify they pass deterministically (no flakiness from real timers leaking past `useFakeTimers`).
+- [x] T041 [US4] Commit: `feat(mcp): bounded stderr capture + initialize timeout (US4, FR-H007/H008)`.
 
 **Checkpoint**: 1 MB stderr stream is capped to 64 KiB. Stuck initialize handshakes throw within configured timeout. Default behavior changes from "infinite hang" to "30 s timeout" (documented as a fix).
 
@@ -163,13 +163,13 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 5 (FR-H017, SC-H006)
 
-- [ ] T042 [P] [US5] Create `packages/mcp/tests/unit/stdio-listener-leak.test.ts`: 30-iteration loop calling `extractStdio` against a mock with a real `EventEmitter` for stderr; after each iteration, assert `(transport.stderr as EventEmitter).listenerCount('data') === 0`.
+- [x] T042 [P] [US5] Create `packages/mcp/tests/unit/stdio-listener-leak.test.ts`: 30-iteration loop calling `extractStdio` against a mock with a real `EventEmitter` for stderr; after each iteration, assert `(transport.stderr as EventEmitter).listenerCount('data') === 0`.
 
 ### Implementation for User Story 5
 
-- [ ] T043 [US5] Refactor the stderr listener attach point in `packages/mcp/src/extract.ts` per `research.md` R4: declare `const onStderr = (chunk: Buffer): void => append(chunk)`, attach with `transport.stderr?.on('data', onStderr)`, remove with `transport.stderr?.removeListener('data', onStderr)` in the `finally` block.
-- [ ] T044 [US5] Verify `stdio-listener-leak.test.ts` passes; verify other extract tests continue to pass (no behavior change beyond cleanup).
-- [ ] T045 [US5] Commit: `fix(mcp): remove stderr listener in finally to prevent leak (US5, FR-H009)`.
+- [x] T043 [US5] Refactor the stderr listener attach point in `packages/mcp/src/extract.ts` per `research.md` R4: declare `const onStderr = (chunk: Buffer): void => append(chunk)`, attach with `transport.stderr?.on('data', onStderr)`, remove with `transport.stderr?.removeListener('data', onStderr)` in the `finally` block.
+- [x] T044 [US5] Verify `stdio-listener-leak.test.ts` passes; verify other extract tests continue to pass (no behavior change beyond cleanup).
+- [x] T045 [US5] Commit: `fix(mcp): remove stderr listener in finally to prevent leak (US5, FR-H009)`.
 
 **Checkpoint**: 30 sequential stdio extracts leak no listeners.
 
