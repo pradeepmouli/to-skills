@@ -64,6 +64,59 @@ export interface ExtractedSkill {
   prompts?: ExtractedPrompt[];
   /** Setup instructions emitted when the invocation target is CLI-based. */
   setup?: SkillSetup;
+  /**
+   * MCP audit findings, surfaced on the return value of `extractMcpSkill`
+   * (FR-H006, US3) so programmatic callers can gate CI on structured results
+   * without parsing stderr.
+   *
+   * Tri-state semantics:
+   * - `undefined` — audit was skipped (`options.audit?.skip === true`) OR
+   *   this skill was produced by a non-MCP extractor (TypeDoc, CLI). Callers
+   *   cannot distinguish "ran clean" from "never ran" without the context.
+   * - `[]` — audit ran and found no issues.
+   * - `[…]` — audit ran and found issues. Length and `severity` distribution
+   *   are the gate criteria for CI.
+   *
+   * @remarks
+   * The element shape (`McpAuditIssue`) is forward-declared here in
+   * `@to-skills/core` so this field is typeable without a runtime dependency
+   * on `@to-skills/mcp`. The concrete audit engine lives in `@to-skills/mcp`,
+   * which re-exports the type as `AuditIssue` for adapter-author ergonomics.
+   */
+  readonly auditIssues?: readonly McpAuditIssue[];
+}
+
+// NOTE: Forward-declared for backward-compatible extension point.
+// The concrete audit engine lives in @to-skills/mcp; core has no runtime
+// dependency on it. Core owns the structural contract; @to-skills/mcp
+// re-exports as `AuditIssue` / `AuditSeverity` for ergonomics.
+//
+// The names are prefixed with `Mcp` here to avoid a collision with the
+// pre-existing skill-level `AuditIssue` exported from `audit-types.ts`,
+// which has a different shape (file/line/symbol/suggestion). Both are
+// re-exported from `@to-skills/core` under their respective names.
+/**
+ * Audit severity levels for MCP audit findings — same union as
+ * `@to-skills/mcp`'s `AuditSeverity`, declared here so
+ * `ExtractedSkill.auditIssues` is typeable from core.
+ */
+export type McpAuditSeverity = 'fatal' | 'error' | 'warning' | 'alert';
+
+/**
+ * Structural shape of an MCP audit issue, matching `@to-skills/mcp`'s
+ * `AuditIssue`. Forward-declared so `ExtractedSkill.auditIssues` is
+ * typeable without a core→mcp dependency. `@to-skills/mcp` re-exports
+ * this as `AuditIssue` so adapter authors get the familiar name.
+ */
+export interface McpAuditIssue {
+  /** M1-M99 for MCP audit codes. */
+  readonly code: `M${number}`;
+  /** Severity level. */
+  readonly severity: McpAuditSeverity;
+  /** Human-readable description of the finding. */
+  readonly message: string;
+  /** Where the issue was found (tool name, parameter path). */
+  readonly location?: { readonly tool?: string; readonly parameter?: string };
 }
 
 /** An MCP-exposed resource (static or templated URI, readable by the agent harness). */

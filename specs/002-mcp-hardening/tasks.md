@@ -122,14 +122,14 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 3 (FR-H017, SC-H007)
 
-- [ ] T029 [P] [US3] Create `packages/mcp/tests/unit/extract-audit-issues-return.test.ts` with three cases: (a) audit-skipped (`audit: { skip: true }`) → `auditIssues === undefined`, (b) audit ran clean → `auditIssues` is `[]` (length 0), (c) audit ran with issues → `auditIssues[0].code === 'M1'` for a tool with empty description. Use mocked SDK client per existing extract test patterns.
+- [x] T029 [P] [US3] Create `packages/mcp/tests/unit/extract-audit-issues-return.test.ts` with three cases: (a) audit-skipped (`audit: { skip: true }`) → `auditIssues === undefined`, (b) audit ran clean → `auditIssues` is `[]` (length 0), (c) audit ran with issues → `auditIssues[0].code === 'M1'` for a tool with empty description. Use mocked SDK client per existing extract test patterns.
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Add `readonly auditIssues?: readonly AuditIssue[]` to `ExtractedSkill` in `packages/core/src/types.ts` per `data-model.md` §3. Add JSDoc explaining tri-state semantics.
-- [ ] T031 [US3] Update `packages/mcp/src/extract.ts::extractMcpSkill` to populate `auditIssues` on the return value. Logic: if `options.audit?.skip === true`, leave undefined; else run audit, capture `result.issues`, set `auditIssues: result.issues`. Stderr emission of audit issues continues unchanged (back-compat).
-- [ ] T032 [US3] Verify `tests/unit/extract-audit-issues-return.test.ts` passes; verify CLI integration test still emits to stderr (no regression).
-- [ ] T033 [US3] Commit: `feat(mcp): expose auditIssues on extractMcpSkill return (US3, FR-H006)`.
+- [x] T030 [US3] Add `readonly auditIssues?: readonly AuditIssue[]` to `ExtractedSkill` in `packages/core/src/types.ts` per `data-model.md` §3. Add JSDoc explaining tri-state semantics.
+- [x] T031 [US3] Update `packages/mcp/src/extract.ts::extractMcpSkill` to populate `auditIssues` on the return value. Logic: if `options.audit?.skip === true`, leave undefined; else run audit, capture `result.issues`, set `auditIssues: result.issues`. Stderr emission of audit issues continues unchanged (back-compat).
+- [x] T032 [US3] Verify `tests/unit/extract-audit-issues-return.test.ts` passes; verify CLI integration test still emits to stderr (no regression).
+- [x] T033 [US3] Commit: `feat(mcp): expose auditIssues on extractMcpSkill return (US3, FR-H006)`.
 
 **Checkpoint**: Programmatic callers can gate on `result.auditIssues`. CLI stderr behavior unchanged.
 

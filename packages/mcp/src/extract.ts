@@ -26,7 +26,7 @@ import type { McpClient } from './introspect/client-types.js';
 import { listPrompts } from './introspect/prompts.js';
 import { listResources } from './introspect/resources.js';
 import { listTools } from './introspect/tools.js';
-import type { McpExtractOptions } from './types.js';
+import type { AuditIssue, McpExtractOptions } from './types.js';
 import { PACKAGE_VERSION } from './version.js';
 
 /**
@@ -342,6 +342,15 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // at the IR layer; bundle mode owns the failure-on-fatal/error policy.
   if (options.audit?.skip !== true) {
     const issues = runMcpAudit(skill);
+    // US3 (FR-H006): surface audit findings on the return value so
+    // programmatic callers can gate CI on structured `auditIssues` without
+    // forking stderr. Tri-state semantics on the field:
+    //   undefined  — audit was skipped
+    //   []         — audit ran clean
+    //   [...]      — audit found issues
+    // The `as` cast bypasses the readonly modifier on `ExtractedSkill.auditIssues`;
+    // we own this skill literal end-to-end so the localized mutation is safe.
+    (skill as { auditIssues: readonly AuditIssue[] }).auditIssues = issues;
     const includeAlerts = options.audit?.includeAlerts === true;
     for (const issue of issues) {
       if (issue.severity === 'alert' && !includeAlerts) continue;

@@ -37,7 +37,9 @@ export type {
   AdapterRenderContextStdio,
   RenderedFile,
   RenderedSkill,
-  SkillRenderOptions
+  SkillRenderOptions,
+  McpAuditSeverity,
+  McpAuditIssue
 } from './types.js';
 
 export { renderSkills, renderSkill } from './renderer.js';

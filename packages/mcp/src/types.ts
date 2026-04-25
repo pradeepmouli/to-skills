@@ -1,3 +1,4 @@
+import type { McpAuditIssue, McpAuditSeverity } from '@to-skills/core';
 import type { InvocationTarget } from './adapter/types.js';
 
 export type McpTransport =
@@ -76,16 +77,27 @@ export interface McpBundleOptions {
   llmsTxt?: boolean;
 }
 
-export type AuditSeverity = 'fatal' | 'error' | 'warning' | 'alert';
+/**
+ * Audit severity levels for MCP audit findings.
+ *
+ * @remarks
+ * Sourced from `@to-skills/core` as `McpAuditSeverity` (forward-declared
+ * there so `ExtractedSkill.auditIssues` is typeable from core without a
+ * core→mcp dependency). Re-exported here under the familiar `AuditSeverity`
+ * name so existing adapter-author imports from `@to-skills/mcp` keep working.
+ */
+export type AuditSeverity = McpAuditSeverity;
 
-export interface AuditIssue {
-  /** M1-M99 for MCP audit codes. */
-  code: `M${number}`;
-  severity: AuditSeverity;
-  message: string;
-  /** Where the issue was found. */
-  location?: { tool?: string; parameter?: string };
-}
+/**
+ * MCP audit finding emitted by `runMcpAudit`.
+ *
+ * @remarks
+ * Sourced from `@to-skills/core` as `McpAuditIssue` (forward-declared there
+ * so `ExtractedSkill.auditIssues` is typeable from core). Re-exported here
+ * under the historical `AuditIssue` name to preserve the public surface of
+ * `@to-skills/mcp`. Single source of truth: `McpAuditIssue` in core.
+ */
+export type AuditIssue = McpAuditIssue;
 
 export interface AuditResult {
   /** Issues found, sorted by severity descending. */
