@@ -12,7 +12,12 @@
  */
 
 import { test } from 'vitest';
-import type { AdapterRenderContext } from '@to-skills/mcp';
+// Source-path import: @to-skills/mcp's dist/ is not committed, so a clean
+// checkout cannot resolve the package by name without a built workspace.
+// The DU shape is the same whether imported from the public name or the
+// source path — the negative compile-time assertions below exercise the
+// type definitions directly.
+import type { AdapterRenderContext } from '../../src/index.js';
 
 test('(a) bundle arm rejects launchCommand (two arms set)', () => {
   // The bundle arm has no `launchCommand` field; including one is an
