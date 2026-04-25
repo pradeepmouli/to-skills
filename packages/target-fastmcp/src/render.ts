@@ -30,23 +30,16 @@ import type {
   AdapterFingerprint,
   AdapterRenderContext,
   ExtractedFunction,
-  ExtractedParameter,
   ExtractedSkill,
   RenderedFile,
   RenderedSkill
 } from '@to-skills/core';
 import { estimateTokens, renderSkill, truncateToTokenBudget } from '@to-skills/core';
 import type { InvocationAdapter, ParameterPlan } from '@to-skills/mcp';
-import {
-  McpError,
-  classifyParameters,
-  generatedByFrontmatter,
-  renderCliParamTable,
-  splitToolsByNamespace
-} from '@to-skills/mcp';
-import type { JSONSchema7 } from 'json-schema';
+import { generatedByFrontmatter, splitToolsByNamespace } from '@to-skills/mcp';
+import { renderToolsBody, resolveLaunchCommand } from '@to-skills/mcp/adapter-utils';
 import { encodeFastMcpArgs } from './args.js';
-import { renderFastMcpSetup, type StdioLaunchCommand, type HttpLaunchEndpoint } from './setup.js';
+import { renderFastMcpSetup } from './setup.js';
 import { PACKAGE_VERSION } from './version.js';
 
 /**
@@ -111,44 +104,6 @@ export class FastMcpAdapter implements InvocationAdapter {
 }
 
 /**
- * Pick the launch shape passed to `renderFastMcpSetup`. Narrows on `ctx.mode`:
- *
- * 1. **`mode: 'http'`** — emit `{ url, headers? }` shape.
- * 2. **`mode: 'stdio'`** — verbatim stdio command.
- * 3. **`mode: 'bundle'`** — synthesize `{ command: 'npx', args: ['-y', <name>] }`
- *    (or the multi-bin `--package=` form, FR-034).
- *
- * The renderer's invocation-adapter dispatch guarantees `ctx.mode` is set; the
- * `default` branch exists solely for compile-time exhaustiveness.
- */
-function resolveLaunchCommand(ctx: AdapterRenderContext): StdioLaunchCommand | HttpLaunchEndpoint {
-  switch (ctx.mode) {
-    case 'http':
-      return ctx.httpEndpoint.headers
-        ? { url: ctx.httpEndpoint.url, headers: ctx.httpEndpoint.headers }
-        : { url: ctx.httpEndpoint.url };
-    case 'stdio':
-      return ctx.launchCommand;
-    case 'bundle': {
-      const args = ctx.binName
-        ? ['-y', `--package=${ctx.packageName}`, ctx.binName]
-        : ['-y', ctx.packageName];
-      return { command: 'npx', args };
-    }
-    default: {
-      // Exhaustiveness check: a new arm without a case here surfaces as a
-      // type error on `_exhaustive`. The runtime throw is unreachable
-      // because the renderer always sets `mode`.
-      const _exhaustive: never = ctx;
-      throw new McpError(
-        `FastMcpAdapter.render: unknown ctx.mode (${String(_exhaustive)})`,
-        'MISSING_LAUNCH_COMMAND'
-      );
-    }
-  }
-}
-
-/**
  * Build the `references/tools.md` file(s) with fastmcp command-shape rows.
  *
  * Returns an empty array when the IR has no tools (so the adapter doesn't
@@ -168,15 +123,25 @@ function renderToolsReference(
 ): RenderedFile[] {
   if (functions.length === 0) return [];
 
+  const cliVerb = `pyfastmcp call ${skillName}`;
   const groups = splitToolsByNamespace(
     functions,
-    (subset) => estimateTokens(renderToolsBody(subset, skillName)),
+    (subset) =>
+      estimateTokens(
+        renderToolsBody(subset, skillName, encodePlanForTable, encodeFastMcpArgs, cliVerb)
+      ),
     maxTokens
   );
 
   const files: RenderedFile[] = [];
   for (const group of groups) {
-    const content = renderToolsBody(group.tools, skillName);
+    const content = renderToolsBody(
+      group.tools,
+      skillName,
+      encodePlanForTable,
+      encodeFastMcpArgs,
+      cliVerb
+    );
     const filename =
       group.name === 'tools'
         ? `${skillName}/references/tools.md`
@@ -191,62 +156,12 @@ function renderToolsReference(
 }
 
 /**
- * Render the textual body for a (possibly partial) tool list. Extracted
- * from `renderToolsReference` so the namespace-splitter's cost estimator
- * can call it on candidate subsets without duplicating layout code.
- */
-function renderToolsBody(functions: readonly ExtractedFunction[], skillName: string): string {
-  const lines: string[] = ['# Tools', ''];
-  for (const fn of functions) {
-    lines.push(`## ${fn.name}`);
-    lines.push('');
-    if (fn.description) {
-      lines.push(fn.description);
-      lines.push('');
-    }
-
-    const plan = planForTool(fn);
-    const encoded = encodeFastMcpArgs(plan);
-
-    // Command line — fastmcp invokes a tool via:
-    //   pyfastmcp call <skillName> <tool> <encoded-args>
-    // Tier 3 fallback (a single `--input-json '...'` token) is appended at
-    // the end since fastmcp accepts it as one of the argument tokens.
-    const argv = [...encoded.tier12];
-    if (encoded.tier3Fallback) argv.push(encoded.tier3Fallback);
-    const argvSuffix = argv.length > 0 ? ' ' + argv.join(' ') : '';
-    lines.push('```sh');
-    lines.push(`pyfastmcp call ${skillName} ${fn.name}${argvSuffix}`);
-    lines.push('```');
-    lines.push('');
-
-    if (plan.size > 0) {
-      lines.push('### Parameters');
-      lines.push('');
-      lines.push(renderCliParamTable(fn, plan, encodePlanForTable));
-      lines.push('');
-    }
-  }
-
-  return collapseTrailingNewlines(lines.join('\n'));
-}
-
-/**
- * Trim runs of trailing newlines down to a single `\n`. We avoid the regex
- * `s.replace(/\n+$/, '\n')` because CodeQL flags the unbounded `+` repeat
- * as a polynomial-ReDoS risk on adversarial input. Manual slice is O(n) and
- * has the same observable behavior.
- */
-function collapseTrailingNewlines(s: string): string {
-  let end = s.length;
-  while (end > 0 && s.charCodeAt(end - 1) === 0x0a) end--;
-  return s.slice(0, end) + '\n';
-}
-
-/**
  * Encoder used by `renderCliParamTable`. Identical encoding rules to
  * `encodeFastMcpArgs` but operates on a single plan so it can be the
  * per-row-callback the table expects.
+ *
+ * fastmcp-specific: all flags use `=` (fastmcp parses RHS by schema), and
+ * Tier 3 fallback emits `--input-json '<JSON-payload>'`.
  */
 function encodePlanForTable(plan: ParameterPlan): string {
   const key = plan.path.join('.');
@@ -270,46 +185,4 @@ function encodePlanForTable(plan: ParameterPlan): string {
       );
     }
   }
-}
-
-/**
- * Synthesize a minimal JSON Schema from the IR's `ExtractedParameter` list and
- * classify it. The IR doesn't preserve the original `inputSchema`, so we
- * reconstruct enough structural information for `classifyParameters` to
- * decide tier and scalar type.
- *
- * Type-label mapping:
- * - `'string'` / `'number'` / `'integer'` / `'boolean'` → JSON Schema scalar
- * - `'string[]'` → string array (Tier 1 string-array)
- * - `'object'` → escalates to Tier 3 (we have no nested property info)
- * - anything else (`'union'`, `'array'`, custom labels) → Tier 3
- */
-function planForTool(fn: ExtractedFunction): Map<string, ParameterPlan> {
-  const properties: Record<string, JSONSchema7> = {};
-  const required: string[] = [];
-
-  for (const p of fn.parameters) {
-    properties[p.name] = parameterToSchema(p);
-    if (!p.optional) required.push(p.name);
-  }
-
-  const schema: JSONSchema7 = {
-    type: 'object',
-    properties
-  };
-  if (required.length > 0) schema.required = required;
-
-  return classifyParameters(schema);
-}
-
-function parameterToSchema(param: ExtractedParameter): JSONSchema7 {
-  const label = param.type.trim();
-  if (label === 'string') return { type: 'string' };
-  if (label === 'number') return { type: 'number' };
-  if (label === 'integer') return { type: 'integer' };
-  if (label === 'boolean') return { type: 'boolean' };
-  if (label === 'string[]') return { type: 'array', items: { type: 'string' } };
-  // Everything else is too ambiguous to classify Tier 1 — give the
-  // classifier an empty schema so it falls through to Tier 3.
-  return {};
 }

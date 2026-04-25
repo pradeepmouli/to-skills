@@ -99,18 +99,18 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 2 (FR-H016)
 
-- [ ] T020 [P] [US2] No new test file required — existing inline-snapshot tests in target-mcpc and target-fastmcp continue to gate behavior. Add a single `packages/mcp/tests/adapter-utils-public-surface.test.ts` that imports each of the 7 exports from `@to-skills/mcp/adapter-utils` and asserts each is a function (smoke test).
+- [x] T020 [P] [US2] No new test file required — existing inline-snapshot tests in target-mcpc and target-fastmcp continue to gate behavior. Add a single `packages/mcp/tests/adapter-utils-public-surface.test.ts` that imports each of the 7 exports from `@to-skills/mcp/adapter-utils` and asserts each is a function (smoke test).
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Create `packages/mcp/src/adapter/cli-tools-helpers.ts` with the 7 exports from `contracts/adapter-utils.md`: `resolveLaunchCommand`, `formatCliMarker`, `shellQuote`, `collapseTrailingNewlines`, `renderToolsBody`, `planForTool`, `parameterToSchema`. Implement bodies as moved-from `target-mcpc/src/render.ts` (the source-of-truth copy). `renderToolsBody` accepts `(functions, skillName, encodeOne, cliVerb)` per the contract.
-- [ ] T022 [US2] Update `packages/mcp/package.json` to add the `./adapter-utils` subpath under `exports`, pointing to `./dist/adapter/cli-tools-helpers.{js,d.ts}` per `research.md` R6.
-- [ ] T023 [US2] Update `packages/mcp/src/index.ts` to NOT re-export the helpers from the main entrypoint — they are subpath-only.
-- [ ] T024 [P] [US2] Refactor `packages/target-mcpc/src/render.ts`: delete the local copies of the 7 helpers; import from `@to-skills/mcp/adapter-utils`. Pass adapter-specific `encodeOne` (mcpc `:=` typed marker) and `cliVerb: 'mcpc <skillName> tools-call'` to `renderToolsBody`. Verify all 23 tests pass.
-- [ ] T025 [P] [US2] Refactor `packages/target-fastmcp/src/render.ts`: same as T024 with fastmcp `=` always-string encoder and `cliVerb: 'pyfastmcp call'`. Verify all 23 tests pass.
-- [ ] T026 [US2] Add `@to-skills/mcp` workspace dependency to `packages/target-mcpc/package.json` and `packages/target-fastmcp/package.json` (`"@to-skills/mcp": "workspace:*"` if not already present). Update `tsconfig.build.json` references where needed.
-- [ ] T027 [US2] Run `pnpm -r --workspace-concurrency=1 run build` then `pnpm test`. Confirm `wc -l packages/target-{mcpc,fastmcp}/src/render.ts` shows ≥80 lines reduction combined (SC-H003). Record numbers in commit message.
-- [ ] T028 [US2] Commit: `refactor(mcp): extract CLI adapter helpers to @to-skills/mcp/adapter-utils (US2)`.
+- [x] T021 [US2] Create `packages/mcp/src/adapter/cli-tools-helpers.ts` with the 7 exports from `contracts/adapter-utils.md`: `resolveLaunchCommand`, `formatCliMarker`, `shellQuote`, `collapseTrailingNewlines`, `renderToolsBody`, `planForTool`, `parameterToSchema`. Implement bodies as moved-from `target-mcpc/src/render.ts` (the source-of-truth copy). `renderToolsBody` accepts `(functions, skillName, encodeOne, cliVerb)` per the contract.
+- [x] T022 [US2] Update `packages/mcp/package.json` to add the `./adapter-utils` subpath under `exports`, pointing to `./dist/adapter/cli-tools-helpers.{js,d.ts}` per `research.md` R6.
+- [x] T023 [US2] Update `packages/mcp/src/index.ts` to NOT re-export the helpers from the main entrypoint — they are subpath-only.
+- [x] T024 [P] [US2] Refactor `packages/target-mcpc/src/render.ts`: delete the local copies of the 7 helpers; import from `@to-skills/mcp/adapter-utils`. Pass adapter-specific `encodeOne` (mcpc `:=` typed marker) and `cliVerb: 'mcpc <skillName> tools-call'` to `renderToolsBody`. Verify all 23 tests pass.
+- [x] T025 [P] [US2] Refactor `packages/target-fastmcp/src/render.ts`: same as T024 with fastmcp `=` always-string encoder and `cliVerb: 'pyfastmcp call'`. Verify all 23 tests pass.
+- [x] T026 [US2] Add `@to-skills/mcp` workspace dependency to `packages/target-mcpc/package.json` and `packages/target-fastmcp/package.json` (`"@to-skills/mcp": "workspace:*"` if not already present). Update `tsconfig.build.json` references where needed.
+- [x] T027 [US2] Run `pnpm -r --workspace-concurrency=1 run build` then `pnpm test`. Confirm `wc -l packages/target-{mcpc,fastmcp}/src/render.ts` shows ≥80 lines reduction combined (SC-H003). Record numbers in commit message.
+- [x] T028 [US2] Commit: `refactor(mcp): extract CLI adapter helpers to @to-skills/mcp/adapter-utils (US2)`.
 
 **Checkpoint**: Three CLI adapters share helpers. Existing snapshot tests unchanged. Net LOC down ≥80.
 
