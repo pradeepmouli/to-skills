@@ -194,7 +194,10 @@ describe('bundle subcommand', () => {
     expect(bundleCalls[0]?.invocation).toBeUndefined();
   });
 
-  it('emits stderr notices for unwired flags (--no-canonicalize, --skip-audit, --llms-txt)', async () => {
+  it('emits stderr notices for still-unwired flags (--no-canonicalize, --llms-txt) and threads --skip-audit into bundleMcpSkill', async () => {
+    // Phase 10 / B21 wired --skip-audit through to bundleMcpSkill. The two
+    // surviving stub-flag notices stay; --skip-audit instead surfaces as a
+    // captured option on the spy so we know it reached the bundle layer.
     configEntries.push({ skillName: 'my-server' });
     bundleResults.push({ skills: {}, failures: {}, packageJsonWarnings: [] });
     const program = makeProgram();
@@ -210,8 +213,10 @@ describe('bundle subcommand', () => {
     ]);
     const err = stderrLines.join('');
     expect(err).toMatch(/--no-canonicalize is not yet wired/);
-    expect(err).toMatch(/--skip-audit is not yet implemented/);
     expect(err).toMatch(/--llms-txt is not yet implemented/);
+    expect(err).not.toMatch(/--skip-audit is not yet implemented/);
+    expect(bundleCalls).toHaveLength(1);
+    expect(bundleCalls[0]?.skipAudit).toBe(true);
   });
 
   it('emits a stderr notice when --max-tokens is set to a non-default value', async () => {

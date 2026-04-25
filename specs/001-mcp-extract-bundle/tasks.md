@@ -319,15 +319,15 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### Audit rules (all codes M1-M5)
 
-- [ ] T104a [P] Create `packages/mcp/src/audit/rule-m1.ts` implementing the M1 rule (missing tool description → fatal severity). Export a single function `runM1(skill: ExtractedSkill): AuditIssue[]`
-- [ ] T104b [P] Create `packages/mcp/src/audit/rule-m2.ts` implementing M2 (missing or invalid `inputSchema` → error severity). Coordinates with the `SCHEMA_REF_CYCLE` handling from T026 — cycle-failed schemas surface here as M2
-- [ ] T104c [P] Create `packages/mcp/src/audit/rule-m3.ts` implementing M3 (missing `useWhen` annotation → warning). Checks both tool-level and server-level `useWhen` aggregation
-- [ ] T104d [P] Create `packages/mcp/src/audit/rule-m4.ts` implementing M4 (generic tool name → alert). Heuristic match against a configurable list: `get`, `set`, `run`, `do`, `list`, `find`, `help`, `test`
-- [ ] T104e Create `packages/mcp/src/audit/rules.ts` exporting `runMcpAudit(skill: ExtractedSkill, adapterFingerprint?: AdapterFingerprint, installedAdapter?: InvocationAdapter): AuditIssue[]` — aggregates M1-M4 from T104a-d and delegates to `auditAdapterFreshness` (T086) for M5. Deterministic order (severity descending, then code ascending)
-- [ ] T105 [P] Add unit test `packages/mcp/tests/unit/audit-rules.test.ts` with fixture ExtractedSkill instances exercising each of M1-M5; one assertion per rule
-- [ ] T106 Wire audit into `packages/mcp/src/extract.ts` + `packages/mcp/src/bundle.ts`: run rules via `runMcpAudit`, populate `AuditResult`, include in `BundleResult.skills[name].audit`; in bundle mode, exit non-zero on fatal/error severity unless `--skip-audit` per FR-041
-- [ ] T107 [P] Add integration test `packages/mcp/tests/integration/audit-failing.test.ts` with a fixture server whose tools have blank descriptions; assert exit code 3 on bundle with default audit settings, and exit code 0 with `--skip-audit`
-- [ ] T107a [P] Performance test `packages/mcp/tests/integration/bundle-perf.test.ts` with a synthetic fixture server exposing 30 tools / 10 resources / 5 prompts (generated programmatically at test-setup to avoid shipping a large fixture); measure bundle wall-clock excluding server-spawn time; assert under 30000ms. Gate with `describe.skipIf(process.env.CI !== 'true' && !process.env.RUN_PERF_TESTS)` to avoid flakiness on developer laptops. Exercises SC-006
+- [x] T104a [P] Create `packages/mcp/src/audit/rule-m1.ts` implementing the M1 rule (missing tool description → fatal severity). Export a single function `runM1(skill: ExtractedSkill): AuditIssue[]`
+- [x] T104b [P] Create `packages/mcp/src/audit/rule-m2.ts` implementing M2 (missing or invalid `inputSchema` → error severity). Coordinates with the `SCHEMA_REF_CYCLE` handling from T026 — cycle-failed schemas surface here as M2
+- [x] T104c [P] Create `packages/mcp/src/audit/rule-m3.ts` implementing M3 (missing `useWhen` annotation → warning). Checks both tool-level and server-level `useWhen` aggregation
+- [x] T104d [P] Create `packages/mcp/src/audit/rule-m4.ts` implementing M4 (generic tool name → alert). Heuristic match against a configurable list: `get`, `set`, `run`, `do`, `list`, `find`, `help`, `test`
+- [x] T104e Create `packages/mcp/src/audit/rules.ts` exporting `runMcpAudit(skill: ExtractedSkill, adapterFingerprint?: AdapterFingerprint, installedAdapter?: InvocationAdapter): AuditIssue[]` — aggregates M1-M4 from T104a-d and delegates to `auditAdapterFreshness` (T086) for M5. Deterministic order (severity descending, then code ascending)
+- [x] T105 [P] Add unit test `packages/mcp/tests/unit/audit-rules.test.ts` with fixture ExtractedSkill instances exercising each of M1-M5; one assertion per rule
+- [x] T106 Wire audit into `packages/mcp/src/extract.ts` + `packages/mcp/src/bundle.ts`: run rules via `runMcpAudit`, populate `AuditResult`, include in `BundleResult.skills[name].audit`; in bundle mode, exit non-zero on fatal/error severity unless `--skip-audit` per FR-041
+- [x] T107 [P] Add integration test `packages/mcp/tests/integration/audit-failing.test.ts` with a fixture server whose tools have blank descriptions; assert exit code 3 on bundle with default audit settings, and exit code 0 with `--skip-audit`
+- [x] T107a [P] Performance test `packages/mcp/tests/integration/bundle-perf.test.ts` with a synthetic fixture server exposing 30 tools / 10 resources / 5 prompts (generated programmatically at test-setup to avoid shipping a large fixture); measure bundle wall-clock excluding server-spawn time; assert under 30000ms. Gate with `describe.skipIf(process.env.CI !== 'true' && !process.env.RUN_PERF_TESTS)` to avoid flakiness on developer laptops. Exercises SC-006
 
 ### Token budgeting + namespace splitting
 

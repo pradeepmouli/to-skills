@@ -23,6 +23,11 @@ export type { McpErrorCode } from './errors.js';
 
 // Audit rules
 export { auditAdapterFreshness } from './audit/freshness.js';
+export { runM1 } from './audit/rule-m1.js';
+export { runM2 } from './audit/rule-m2.js';
+export { runM3 } from './audit/rule-m3.js';
+export { runM4 } from './audit/rule-m4.js';
+export { runMcpAudit, worstSeverityOf } from './audit/rules.js';
 
 // Extract orchestrator
 export { extractMcpSkill } from './extract.js';

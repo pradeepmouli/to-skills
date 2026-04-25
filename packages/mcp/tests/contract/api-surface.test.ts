@@ -88,8 +88,17 @@ describe('@to-skills/mcp public API surface', () => {
     expect(typeof Mcp.listPrompts).toBe('function');
   });
 
-  it('exports the audit-rule helper', () => {
+  it('exports the audit-rule helpers', () => {
     expect(typeof Mcp.auditAdapterFreshness).toBe('function');
+    // B21 / Phase 10 — M1-M4 + aggregator + worstSeverityOf are public API
+    // so consumers (e.g. CI integrations, custom bundlers) can run audits
+    // without spawning the CLI.
+    expect(typeof Mcp.runM1).toBe('function');
+    expect(typeof Mcp.runM2).toBe('function');
+    expect(typeof Mcp.runM3).toBe('function');
+    expect(typeof Mcp.runM4).toBe('function');
+    expect(typeof Mcp.runMcpAudit).toBe('function');
+    expect(typeof Mcp.worstSeverityOf).toBe('function');
   });
 
   it('exports the config-file batch reader', () => {

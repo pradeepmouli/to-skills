@@ -30,10 +30,17 @@ import path from 'node:path';
 import { renderSkill, writeSkills } from '@to-skills/core';
 import type { RenderedSkill } from '@to-skills/core';
 import { loadAdapterAsync } from './adapter/loader.js';
+import { runMcpAudit, worstSeverityOf } from './audit/rules.js';
 import { type NormalizedBundleEntry, readBundleConfig } from './bundle/config.js';
 import { McpError } from './errors.js';
 import { extractMcpSkill } from './extract.js';
-import type { BundleFailure, BundleResult, McpBundleOptions, WrittenSkill } from './types.js';
+import type {
+  AuditIssue,
+  BundleFailure,
+  BundleResult,
+  McpBundleOptions,
+  WrittenSkill
+} from './types.js';
 import type { InvocationTarget } from './adapter/types.js';
 
 /**
@@ -79,7 +86,13 @@ export async function bundleMcpSkill(options: McpBundleOptions = {}): Promise<Bu
   };
 
   for (const entry of entries) {
-    await processEntry(entry, { packageRoot, outDir, packageName, result });
+    await processEntry(entry, {
+      packageRoot,
+      outDir,
+      packageName,
+      result,
+      skipAudit: options.skipAudit === true
+    });
   }
 
   // Files-field check runs after writes so we only nag the user when there's
@@ -108,12 +121,19 @@ async function processEntry(
     outDir: string;
     packageName: string | undefined;
     result: BundleResult;
+    skipAudit: boolean;
   }
 ): Promise<void> {
-  const { outDir, packageName, result } = ctx;
+  const { outDir, packageName, result, skipAudit } = ctx;
 
   // 1. Extract via stdio transport. The IR is target-agnostic, so a single
   //    extract feeds the whole multi-target render loop below.
+  //
+  //    Pass `audit.skip: true` through to the extractor regardless of the
+  //    bundle-side `skipAudit` setting — bundle mode runs the audit ITSELF
+  //    below (so it can populate `WrittenSkill.audit` and record
+  //    AUDIT_FAILED), and we don't want extract to also log the same issues
+  //    to stderr a second time.
   let skill: import('@to-skills/core').ExtractedSkill;
   try {
     const env = entry.env ? Object.fromEntries(Object.entries(entry.env)) : undefined;
@@ -130,12 +150,19 @@ async function processEntry(
             command: entry.command,
             args: [...entry.args]
           },
-      skillName: entry.skillName
+      skillName: entry.skillName,
+      audit: { skip: true }
     });
   } catch (err) {
     recordFailure(result, entry.skillName, err);
     return;
   }
+
+  // Run the audit ONCE per entry — the IR is target-agnostic so M1–M4 are
+  // identical across targets. (M5 freshness is per-target but isn't checkable
+  // here without an embedded fingerprint, so we skip it for now.)
+  const auditIssues: readonly AuditIssue[] = skipAudit ? [] : runMcpAudit(skill);
+  const worst = worstSeverityOf(auditIssues);
 
   // 2. Per-target render+write loop. Each tuple gets its own WrittenSkill in
   //    `result.skills`, keyed by the disambiguated directory name (so
@@ -188,10 +215,39 @@ async function processEntry(
         ...rendered.references.map((r) => toRelative(r.filename))
       ],
       target,
-      audit: { issues: [], worstSeverity: 'none' }
+      audit: { issues: [...auditIssues], worstSeverity: worst }
     };
     result.skills[dirName] = written;
   }
+
+  // Audit-failure recording (FR-041). When the audit produced fatal/error
+  // severity AND the operator did NOT pass --skip-audit, record a parallel
+  // BundleFailure so the CLI's worst-code mapper raises the exit code
+  // alongside any sibling extract/render failures. We key the failure with
+  // an `audit:` prefix so it doesn't collide with target-level extract/write
+  // failures keyed by `dirName` — both can co-exist on the same entry.
+  if (!skipAudit && (worst === 'fatal' || worst === 'error')) {
+    const summary = summarizeAuditFailure(auditIssues);
+    result.failures[`audit:${entry.skillName}`] = {
+      code: 'AUDIT_FAILED',
+      message: `Audit failed for ${entry.skillName}: ${summary}`
+    };
+  }
+}
+
+/**
+ * One-line summary of the fatal/error issues that triggered an AUDIT_FAILED.
+ * Used in the BundleFailure message so stderr surfaces actionable detail
+ * without dumping the full issue list (the `audit` field on WrittenSkill
+ * carries the structured copy for programmatic consumers).
+ */
+function summarizeAuditFailure(issues: readonly AuditIssue[]): string {
+  const blocking = issues.filter((i) => i.severity === 'fatal' || i.severity === 'error');
+  if (blocking.length === 0) return 'unknown';
+  const first = blocking[0]!;
+  const rest = blocking.length - 1;
+  const tail = rest > 0 ? ` (+ ${rest} more)` : '';
+  return `[${first.code} ${first.severity}] ${first.message}${tail}`;
 }
 
 /**

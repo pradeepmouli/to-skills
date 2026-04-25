@@ -20,6 +20,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ExtractedSkill } from '@to-skills/core';
+import { runMcpAudit } from './audit/rules.js';
 import { McpError, type McpErrorCode } from './errors.js';
 import type { McpClient } from './introspect/client-types.js';
 import { listPrompts } from './introspect/prompts.js';
@@ -324,6 +325,28 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   // remarks sections light up automatically. Strictly additive: malformed or
   // absent metadata leaves the skill unchanged.
   applyMetaEnrichment(skill, serverInfo, functions);
+
+  // Phase 10 / T106: surface audit findings to stderr at extract time.
+  //
+  // Extract returns a single ExtractedSkill — there is no AuditResult slot to
+  // populate, and we don't have an embedded fingerprint or installed adapter
+  // here (those come from bundle context). Running M1–M4 is still useful: a
+  // missing description or generic name shows up immediately, before the user
+  // pipes the IR into a renderer that won't know to flag the same problems.
+  //
+  // Severity-gated logging — anything `warning` or worse goes to stderr;
+  // alerts stay quiet to avoid stderr spam on otherwise-fine servers. We
+  // don't change exit codes here because extract is informational at the IR
+  // layer; bundle mode owns the failure-on-fatal/error policy.
+  if (options.audit?.skip !== true) {
+    const issues = runMcpAudit(skill);
+    for (const issue of issues) {
+      if (issue.severity === 'alert') continue;
+      const tool = issue.location?.tool;
+      const where = tool ? ` [${tool}]` : '';
+      process.stderr.write(`[audit ${issue.code} ${issue.severity}]${where} ${issue.message}\n`);
+    }
+  }
 
   return skill;
 }

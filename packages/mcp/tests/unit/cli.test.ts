@@ -291,7 +291,11 @@ describe('buildProgram', () => {
       expect(stderrText.join('')).toMatch(/--no-canonicalize is not yet wired/);
     });
 
-    it('emits a stderr notice when --skip-audit is used (flag is currently a stub)', async () => {
+    it('does not emit a stub notice for --skip-audit (now wired through to extractMcpSkill)', async () => {
+      // Phase 10 / B21 wired --skip-audit. The flag now disables audit-rule
+      // evaluation inside the extractor instead of emitting a stub notice.
+      // The collision-blocker assertion still fires (DUPLICATE_SKILL_NAME),
+      // but stderr should NOT mention `--skip-audit is not yet implemented`.
       const program = makeProgram();
       const stderrText: string[] = [];
       stderrSpy.mockImplementation((chunk) => {
@@ -314,7 +318,7 @@ describe('buildProgram', () => {
           skillName
         ])
       ).rejects.toBeInstanceOf(McpError);
-      expect(stderrText.join('')).toMatch(/--skip-audit is not yet implemented/);
+      expect(stderrText.join('')).not.toMatch(/--skip-audit is not yet implemented/);
     });
   });
 });

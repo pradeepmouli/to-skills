@@ -218,9 +218,6 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
       '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
     );
   }
-  if (opts.skipAudit) {
-    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
-  }
 
   // Compute the requested invocation targets — empty `--invocation` means
   // default to the MCP-native adapter. Repeated `--invocation` produces a
@@ -254,6 +251,7 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
 
   // Extract once — the IR is target-agnostic, so the loop below renders
   // (and writes) one skill directory per requested target from the same IR.
+  const auditOpts = opts.skipAudit === true ? { audit: { skip: true } } : {};
   const skill =
     opts.url !== undefined
       ? await extractMcpSkill({
@@ -263,7 +261,8 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
             headers: Object.keys(opts.header).length > 0 ? opts.header : undefined
           },
           skillName: opts.skillName,
-          maxTokens: opts.maxTokens
+          maxTokens: opts.maxTokens,
+          ...auditOpts
         })
       : await extractMcpSkill({
           transport: {
@@ -273,7 +272,8 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
             env: Object.keys(opts.env).length > 0 ? opts.env : undefined
           },
           skillName: opts.skillName,
-          maxTokens: opts.maxTokens
+          maxTokens: opts.maxTokens,
+          ...auditOpts
         });
 
   // Per-target render+write loop. Each iteration writes its own directory and
@@ -352,9 +352,6 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
       '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
     );
   }
-  if (opts.skipAudit) {
-    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
-  }
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
@@ -419,6 +416,7 @@ async function runConfigEntry(
 ): Promise<void> {
   // Build the McpExtractOptions from the entry. Stdio if `command` set,
   // HTTP if `url` set. The reader has already enforced one-or-the-other.
+  const auditOpts = opts.skipAudit === true ? { audit: { skip: true } } : {};
   let extractOpts: McpExtractOptions;
   if (entry.command !== undefined) {
     extractOpts = {
@@ -429,7 +427,8 @@ async function runConfigEntry(
         ...(entry.env !== undefined ? { env: entry.env } : {})
       },
       skillName: entryName,
-      maxTokens: opts.maxTokens
+      maxTokens: opts.maxTokens,
+      ...auditOpts
     };
   } else if (entry.url !== undefined) {
     extractOpts = {
@@ -439,7 +438,8 @@ async function runConfigEntry(
         ...(entry.headers !== undefined ? { headers: entry.headers } : {})
       },
       skillName: entryName,
-      maxTokens: opts.maxTokens
+      maxTokens: opts.maxTokens,
+      ...auditOpts
     };
   } else {
     // Defensive — readMcpConfigFile guarantees one of the two is set, but
@@ -516,6 +516,11 @@ function pickWorstCode(codes: readonly McpErrorCode[]): McpErrorCode {
     'ADAPTER_NOT_FOUND',
     'SCHEMA_REF_CYCLE',
     'SERVER_EXITED_EARLY',
+    // Audit failures sit just below the schema-cycle / early-exit tier:
+    // they're "output exists but is operationally broken" — strictly more
+    // actionable than a transient init or transport blip, but less actionable
+    // than a config-side cycle that the operator must fix in source.
+    'AUDIT_FAILED',
     'PROTOCOL_VERSION_UNSUPPORTED',
     'INITIALIZE_FAILED',
     'TRANSPORT_FAILED'
@@ -639,9 +644,6 @@ async function runBundle(opts: BundleOpts): Promise<void> {
       '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
     );
   }
-  if (opts.skipAudit) {
-    process.stderr.write('[to-skills-mcp] --skip-audit is not yet implemented (Phase 10).\n');
-  }
   if (opts.llmsTxt) {
     process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
@@ -697,7 +699,8 @@ async function runBundle(opts: BundleOpts): Promise<void> {
   const bundleOptions: McpBundleOptions = {
     packageRoot,
     ...(outDir !== undefined ? { outDir } : {}),
-    ...(opts.invocation.length > 0 ? { invocation: opts.invocation as InvocationTarget[] } : {})
+    ...(opts.invocation.length > 0 ? { invocation: opts.invocation as InvocationTarget[] } : {}),
+    ...(opts.skipAudit === true ? { skipAudit: true } : {})
   };
 
   const result = await bundleMcpSkill(bundleOptions);

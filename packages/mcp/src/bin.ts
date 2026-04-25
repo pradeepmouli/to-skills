@@ -13,7 +13,7 @@
  * | Code | Error codes |
  * | ---- | ----------- |
  * | 2    | TRANSPORT_FAILED, INITIALIZE_FAILED, PROTOCOL_VERSION_UNSUPPORTED |
- * | 3    | SCHEMA_REF_CYCLE, SERVER_EXITED_EARLY |
+ * | 3    | SCHEMA_REF_CYCLE, SERVER_EXITED_EARLY, AUDIT_FAILED |
  * | 4    | DUPLICATE_SKILL_NAME |
  * | 5    | ADAPTER_NOT_FOUND, UNKNOWN_TARGET, MISSING_LAUNCH_COMMAND |
  * | 130  | SIGINT / SIGTERM |
@@ -30,6 +30,10 @@ const ERROR_EXIT_CODES: Record<string, number> = {
   PROTOCOL_VERSION_UNSUPPORTED: 2,
   SCHEMA_REF_CYCLE: 3,
   SERVER_EXITED_EARLY: 3,
+  // Audit-failure exit code shares the 3 bucket alongside other "output is
+  // structurally well-formed but operationally broken" codes — distinct from
+  // the 2 bucket (transport/init failures, where we never produced output).
+  AUDIT_FAILED: 3,
   DUPLICATE_SKILL_NAME: 4,
   // Spec contract (contracts/package-json-config.md): MISSING_LAUNCH_COMMAND
   // is exit 5 — distinguishes "config exists but is incomplete" (5) from
