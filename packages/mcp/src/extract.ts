@@ -316,7 +316,106 @@ async function introspect(client: Client, options: McpExtractOptions): Promise<E
   };
   if (resources !== undefined) skill.resources = resources;
   if (prompts !== undefined) skill.prompts = prompts;
+
+  // US7 (Phase 9): annotation enrichment via `_meta.toSkills`. Server- and
+  // tool-level metadata produced by `_meta.toSkills.{useWhen, avoidWhen,
+  // pitfalls, remarks, packageDescription}` is read here and projected onto
+  // the skill so the core renderer's existing "When to Use" / "NEVER" /
+  // remarks sections light up automatically. Strictly additive: malformed or
+  // absent metadata leaves the skill unchanged.
+  applyMetaEnrichment(skill, serverInfo, functions);
+
   return skill;
+}
+
+/**
+ * Project `_meta.toSkills` (server-level + per-tool aggregate) onto the skill.
+ *
+ * Server-level fields read off `serverInfo._meta.toSkills` (the SDK's
+ * Implementation schema is `passthrough`, so unknown fields including `_meta`
+ * survive validation):
+ *  - `remarks: string`             → `skill.remarks`
+ *  - `packageDescription: string`  → `skill.packageDescription`
+ *  - `useWhen: string[]`           → seed for `skill.useWhen`
+ *  - `avoidWhen: string[]`         → seed for `skill.avoidWhen`
+ *  - `pitfalls: string[]`          → seed for `skill.pitfalls`
+ *
+ * Per-tool meta is then aggregated on top: each function's
+ * `tags.useWhen|avoidWhen|pitfalls` (joined with `\n` per `readToolMetaTags`
+ * in tools.ts) is split back into individual lines and pushed into the
+ * skill-level arrays. The renderer iterates these arrays directly to emit the
+ * corresponding sections.
+ *
+ * All inputs are validated for type before consumption — wrong types or
+ * non-string array entries are silently dropped so a malformed annotation
+ * cannot crash a healthy extract.
+ */
+function applyMetaEnrichment(
+  skill: ExtractedSkill,
+  serverInfo: unknown,
+  functions: ExtractedSkill['functions']
+): void {
+  const serverMeta = readServerMetaToSkills(serverInfo);
+
+  const remarks = serverMeta['remarks'];
+  if (typeof remarks === 'string' && remarks.length > 0) {
+    skill.remarks = remarks;
+  }
+  const packageDescription = serverMeta['packageDescription'];
+  if (typeof packageDescription === 'string' && packageDescription.length > 0) {
+    skill.packageDescription = packageDescription;
+  }
+
+  const useWhen: string[] = [];
+  const avoidWhen: string[] = [];
+  const pitfalls: string[] = [];
+
+  const serverUseWhen = serverMeta['useWhen'];
+  if (Array.isArray(serverUseWhen)) {
+    for (const v of serverUseWhen) if (typeof v === 'string' && v.length > 0) useWhen.push(v);
+  }
+  const serverAvoidWhen = serverMeta['avoidWhen'];
+  if (Array.isArray(serverAvoidWhen)) {
+    for (const v of serverAvoidWhen) if (typeof v === 'string' && v.length > 0) avoidWhen.push(v);
+  }
+  const serverPitfalls = serverMeta['pitfalls'];
+  if (Array.isArray(serverPitfalls)) {
+    for (const v of serverPitfalls) if (typeof v === 'string' && v.length > 0) pitfalls.push(v);
+  }
+
+  // Per-tool aggregation. tags.* values are newline-joined arrays (see
+  // readToolMetaTags); split and accumulate.
+  for (const fn of functions) {
+    pushSplit(useWhen, fn.tags['useWhen']);
+    pushSplit(avoidWhen, fn.tags['avoidWhen']);
+    pushSplit(pitfalls, fn.tags['pitfalls']);
+  }
+
+  if (useWhen.length > 0) skill.useWhen = useWhen;
+  if (avoidWhen.length > 0) skill.avoidWhen = avoidWhen;
+  if (pitfalls.length > 0) skill.pitfalls = pitfalls;
+}
+
+/** Append each non-empty line of a newline-joined string to `target`. */
+function pushSplit(target: string[], joined: string | undefined): void {
+  if (!joined) return;
+  for (const line of joined.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.length > 0) target.push(trimmed);
+  }
+}
+
+/**
+ * Pluck `_meta.toSkills` off the SDK's `serverInfo` (Implementation), guarding
+ * each layer against malformed shapes. Returns an empty object on absence.
+ */
+function readServerMetaToSkills(serverInfo: unknown): Record<string, unknown> {
+  if (typeof serverInfo !== 'object' || serverInfo === null) return {};
+  const meta = (serverInfo as { _meta?: unknown })._meta;
+  if (typeof meta !== 'object' || meta === null) return {};
+  const toSkills = (meta as { toSkills?: unknown }).toSkills;
+  if (typeof toSkills !== 'object' || toSkills === null || Array.isArray(toSkills)) return {};
+  return toSkills as Record<string, unknown>;
 }
 
 /**

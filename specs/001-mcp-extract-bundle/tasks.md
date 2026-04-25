@@ -306,10 +306,10 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 **Independent Test**: Build a mock MCP server that returns tool metadata with `_meta.toSkills.useWhen = ["..."]`. Run extract. Verify the rendered SKILL.md includes a "When to Use" section populated from the array.
 
-- [ ] T100 [P] [US7] Extend `packages/mcp/src/introspect/tools.ts` to read `_meta.toSkills` from each tool — populates `ExtractedFunction.tags` with `useWhen`, `avoidWhen`, `pitfalls` keys when present; populates the aggregated `ExtractedSkill.useWhen/avoidWhen/pitfalls` arrays via core's existing aggregation
-- [ ] T101 [P] [US7] Add `_meta.toSkills` reading to `packages/mcp/src/extract.ts` at the server level: if `initialize` response's `serverInfo._meta.toSkills` is set, populate `ExtractedSkill.remarks`, `ExtractedSkill.useWhen`, `packageDescription` from those fields per US7 AC3
-- [ ] T102 [P] [US7] Add unit test `packages/mcp/tests/unit/meta-extension.test.ts` with mocked tool listings containing `_meta.toSkills`; assert the extracted IR has corresponding fields populated
-- [ ] T103 [P] [US7] Add integration test `packages/mcp/tests/integration/meta-passthrough.test.ts` running bundle against a fixture server that emits `_meta.toSkills`; assert the committed SKILL.md contains the rendered "When to Use" / "Avoid When" / NEVER sections per US7 AC4
+- [x] T100 [P] [US7] Extend `packages/mcp/src/introspect/tools.ts` to read `_meta.toSkills` from each tool — populates `ExtractedFunction.tags` with `useWhen`, `avoidWhen`, `pitfalls` keys when present; populates the aggregated `ExtractedSkill.useWhen/avoidWhen/pitfalls` arrays via core's existing aggregation
+- [x] T101 [P] [US7] Add `_meta.toSkills` reading to `packages/mcp/src/extract.ts` at the server level: if `initialize` response's `serverInfo._meta.toSkills` is set, populate `ExtractedSkill.remarks`, `ExtractedSkill.useWhen`, `packageDescription` from those fields per US7 AC3
+- [x] T102 [P] [US7] Add unit test `packages/mcp/tests/unit/meta-extension.test.ts` with mocked tool listings containing `_meta.toSkills`; assert the extracted IR has corresponding fields populated
+- [x] T103 [P] [US7] Add integration test `packages/mcp/tests/integration/meta-passthrough.test.ts` running bundle against a fixture server that emits `_meta.toSkills`; assert the committed SKILL.md contains the rendered "When to Use" / "Avoid When" / NEVER sections per US7 AC4
 
 ---
 
