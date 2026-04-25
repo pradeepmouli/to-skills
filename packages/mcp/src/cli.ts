@@ -50,6 +50,7 @@ import type {
 import type { InvocationTarget } from './adapter/types.js';
 import { McpError, type McpErrorCode } from './errors.js';
 import { extractMcpSkill } from './extract.js';
+import { renderLlmsTxt } from './render/llms-txt.js';
 import { PACKAGE_VERSION } from './version.js';
 
 /**
@@ -310,15 +311,15 @@ async function runExtract(opts: ExtractOpts): Promise<void> {
     }
 
     const rendered = await renderSkill(skill, renderOptions);
+    if (opts.llmsTxt) {
+      // Append before writeSkills so the writer persists llms.txt alongside
+      // SKILL.md and the references/. The file lives at the skill root
+      // (next to SKILL.md), per the llmstxt.org convention.
+      rendered.references.push(renderLlmsTxt(rendered, skill));
+    }
     writeSkills([rendered], { outDir: opts.out });
 
     process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
-  }
-
-  // Optional llms.txt emission — stubbed for Phase 10 (T111). Emitted once
-  // per CLI invocation regardless of target count.
-  if (opts.llmsTxt) {
-    process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
   }
 }
 
@@ -352,10 +353,6 @@ async function runConfigExtract(opts: ExtractOpts): Promise<void> {
       '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
     );
   }
-  if (opts.llmsTxt) {
-    process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
-  }
-
   const configFile = await readMcpConfigFile(opts.config!);
 
   // Resolve invocation targets eagerly — same approach as runExtract so a
@@ -495,6 +492,9 @@ async function runConfigEntry(
     }
 
     const rendered = await renderSkill(skill, renderOptions);
+    if (opts.llmsTxt) {
+      rendered.references.push(renderLlmsTxt(rendered, skill));
+    }
     writeSkills([rendered], { outDir: opts.out });
 
     process.stdout.write(`Wrote ${skillDir}/SKILL.md (${rendered.references.length} references)\n`);
@@ -644,9 +644,6 @@ async function runBundle(opts: BundleOpts): Promise<void> {
       '[to-skills-mcp] --no-canonicalize is not yet wired; canonicalization currently always runs (Phase 10).\n'
     );
   }
-  if (opts.llmsTxt) {
-    process.stderr.write('[to-skills-mcp] --llms-txt is not yet implemented (Phase 10).\n');
-  }
   // --max-tokens is parsed for forward-compatibility but not yet threaded into
   // McpBundleOptions (no maxTokens field there). Notice the user only when
   // they explicitly chose a non-default value, so the default 4000 stays quiet.
@@ -700,7 +697,8 @@ async function runBundle(opts: BundleOpts): Promise<void> {
     packageRoot,
     ...(outDir !== undefined ? { outDir } : {}),
     ...(opts.invocation.length > 0 ? { invocation: opts.invocation as InvocationTarget[] } : {}),
-    ...(opts.skipAudit === true ? { skipAudit: true } : {})
+    ...(opts.skipAudit === true ? { skipAudit: true } : {}),
+    ...(opts.llmsTxt === true ? { llmsTxt: true } : {})
   };
 
   const result = await bundleMcpSkill(bundleOptions);

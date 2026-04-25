@@ -34,6 +34,7 @@ import { runMcpAudit, worstSeverityOf } from './audit/rules.js';
 import { type NormalizedBundleEntry, readBundleConfig } from './bundle/config.js';
 import { McpError } from './errors.js';
 import { extractMcpSkill } from './extract.js';
+import { renderLlmsTxt } from './render/llms-txt.js';
 import type {
   AuditIssue,
   BundleFailure,
@@ -91,7 +92,8 @@ export async function bundleMcpSkill(options: McpBundleOptions = {}): Promise<Bu
       outDir,
       packageName,
       result,
-      skipAudit: options.skipAudit === true
+      skipAudit: options.skipAudit === true,
+      llmsTxt: options.llmsTxt === true
     });
   }
 
@@ -122,9 +124,10 @@ async function processEntry(
     packageName: string | undefined;
     result: BundleResult;
     skipAudit: boolean;
+    llmsTxt: boolean;
   }
 ): Promise<void> {
-  const { outDir, packageName, result, skipAudit } = ctx;
+  const { outDir, packageName, result, skipAudit, llmsTxt } = ctx;
 
   // 1. Extract via stdio transport. The IR is target-agnostic, so a single
   //    extract feeds the whole multi-target render loop below.
@@ -189,6 +192,12 @@ async function processEntry(
           : {})
       };
       rendered = await renderSkill(skill, renderOptions);
+      if (llmsTxt) {
+        // Append before writeSkills so the writer persists llms.txt alongside
+        // SKILL.md (T111). Per-target — each disambiguated directory gets its
+        // own index file.
+        rendered.references.push(renderLlmsTxt(rendered, skill));
+      }
     } catch (err) {
       recordFailure(result, dirName, err);
       continue;

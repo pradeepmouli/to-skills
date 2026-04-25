@@ -41,6 +41,11 @@ export interface McpBundleOptions {
   invocation?: InvocationTarget | InvocationTarget[];
   /** Skip audit (CI bypass). */
   skipAudit?: boolean;
+  /**
+   * Emit `llms.txt` alongside `SKILL.md` for each generated skill directory
+   * (per https://llmstxt.org/).
+   */
+  llmsTxt?: boolean;
 }
 
 export type AuditSeverity = 'fatal' | 'error' | 'warning' | 'alert';

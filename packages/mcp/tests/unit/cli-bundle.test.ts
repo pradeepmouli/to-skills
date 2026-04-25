@@ -194,10 +194,12 @@ describe('bundle subcommand', () => {
     expect(bundleCalls[0]?.invocation).toBeUndefined();
   });
 
-  it('emits stderr notices for still-unwired flags (--no-canonicalize, --llms-txt) and threads --skip-audit into bundleMcpSkill', async () => {
-    // Phase 10 / B21 wired --skip-audit through to bundleMcpSkill. The two
-    // surviving stub-flag notices stay; --skip-audit instead surfaces as a
-    // captured option on the spy so we know it reached the bundle layer.
+  it('emits a stderr notice for --no-canonicalize, threads --skip-audit + --llms-txt into bundleMcpSkill', async () => {
+    // Phase 10 / B21 wired --skip-audit through to bundleMcpSkill; B23 (T111)
+    // wired --llms-txt the same way. The --no-canonicalize stub notice stays
+    // until canonicalization becomes opt-out-able. --skip-audit and
+    // --llms-txt now both surface as captured options on the spy so we know
+    // they reached the bundle layer rather than emitting Phase-10 stubs.
     configEntries.push({ skillName: 'my-server' });
     bundleResults.push({ skills: {}, failures: {}, packageJsonWarnings: [] });
     const program = makeProgram();
@@ -213,10 +215,11 @@ describe('bundle subcommand', () => {
     ]);
     const err = stderrLines.join('');
     expect(err).toMatch(/--no-canonicalize is not yet wired/);
-    expect(err).toMatch(/--llms-txt is not yet implemented/);
+    expect(err).not.toMatch(/--llms-txt is not yet implemented/);
     expect(err).not.toMatch(/--skip-audit is not yet implemented/);
     expect(bundleCalls).toHaveLength(1);
     expect(bundleCalls[0]?.skipAudit).toBe(true);
+    expect(bundleCalls[0]?.llmsTxt).toBe(true);
   });
 
   it('emits a stderr notice when --max-tokens is set to a non-default value', async () => {

@@ -338,30 +338,30 @@ description: 'Task list for @to-skills/mcp — Extract and Bundle MCP Servers as
 
 ### llms.txt emission
 
-- [ ] T111 Wire `--llms-txt` flag to core's existing llms.txt emitter from both CLI subcommands; write alongside `SKILL.md` when the flag is set
+- [x] T111 Wire `--llms-txt` flag to core's existing llms.txt emitter from both CLI subcommands; write alongside `SKILL.md` when the flag is set
 
 ### Additional edge cases from spec
 
-- [ ] T112 [P] Add integration test `packages/mcp/tests/integration/zero-tools.test.ts` against a fixture server that exposes only resources (no tools); assert SKILL.md is still produced with a note explaining the server exposes only resources
-- [ ] T113 [P] Add integration test `packages/mcp/tests/integration/schema-ref-cycle.test.ts` with a fixture server whose tool has recursive $ref; assert the tool appears in Quick Reference, parameter table is omitted, audit M2 warning is logged
-- [ ] T114 [P] Add integration test `packages/mcp/tests/integration/tool-name-collision.test.ts` with a tool literally named `connect` under `cli:mcpc`; assert the rendered command uses the session alias prefix per spec edge-case handling
+- [x] T112 [P] Add integration test `packages/mcp/tests/integration/zero-tools.test.ts` against a fixture server that exposes only resources (no tools); assert SKILL.md is still produced with a note explaining the server exposes only resources
+- [x] T113 [P] Add integration test `packages/mcp/tests/integration/schema-ref-cycle.test.ts` with a fixture server whose tool has recursive $ref; assert the tool appears in Quick Reference, parameter table is omitted, audit M2 warning is logged
+- [x] T114 [P] Add integration test `packages/mcp/tests/integration/tool-name-collision.test.ts` with a tool literally named `connect` under `cli:mcpc`; assert the rendered command uses the session alias prefix per spec edge-case handling
 
 ### Documentation
 
-- [ ] T115 [P] Write `packages/mcp/README.md` covering install, extract/bundle usage, programmatic API (copy-edit from quickstart.md), link to adapter authoring guide
-- [ ] T116 [P] Write `packages/target-mcp-protocol/README.md` documenting the adapter's contract, fingerprint format, when a consumer would pick this target
-- [ ] T117 [P] Write `packages/target-mcpc/README.md` documenting mcpc version compatibility, argument-encoding rules, and the Setup commands it emits
-- [ ] T118 [P] Write `packages/target-fastmcp/README.md` mirroring T117
-- [ ] T119 [P] Add a "Building a Custom Adapter" doc at `packages/mcp/docs/adapter-authoring.md` that walks through packaging, publishing, and testing a third-party `@org/to-skills-target-<n>` package
+- [x] T115 [P] Write `packages/mcp/README.md` covering install, extract/bundle usage, programmatic API (copy-edit from quickstart.md), link to adapter authoring guide
+- [x] T116 [P] Write `packages/target-mcp-protocol/README.md` documenting the adapter's contract, fingerprint format, when a consumer would pick this target
+- [x] T117 [P] Write `packages/target-mcpc/README.md` documenting mcpc version compatibility, argument-encoding rules, and the Setup commands it emits
+- [x] T118 [P] Write `packages/target-fastmcp/README.md` mirroring T117
+- [x] T119 [P] Add a "Building a Custom Adapter" doc at `packages/mcp/docs/adapter-authoring.md` that walks through packaging, publishing, and testing a third-party `@org/to-skills-target-<n>` package
 
 ### Changesets
 
-- [ ] T120 Add a changeset at `.changeset/feat-mcp-extract-bundle.md` describing the new package set, the new IR fields in core (minor bump), and the `renderSkill` extension (minor bump)
+- [x] T120 Add a changeset at `.changeset/feat-mcp-extract-bundle.md` describing the new package set, the new IR fields in core (minor bump), and the `renderSkill` extension (minor bump)
 
 ### Spec-delta handling
 
 - [x] T121 Record spec-deltas at `specs/001-mcp-extract-bundle/spec-deltas.md` — documents FR-038/SC-009 softening (Delta 1), B22's deferred Quick Reference linking (Delta 2), B7's deferred protocol-version runtime check (Delta 3), B20's SDK-strip server-level `_meta` (Delta 4), and B18's args-shape fix (Delta 5). Seeded during B22 to formalize T110's partial deferral.
-- [ ] T122 [P] Run `pnpm -r run type-check && pnpm -r run test && pnpm -r run build` at repo root to verify the full workspace passes; fix any cross-package type issues surfaced by the new exports
+- [x] T122 [P] Run `pnpm -r run type-check && pnpm -r run test && pnpm -r run build` at repo root to verify the full workspace passes; fix any cross-package type issues surfaced by the new exports
 
 ---
 

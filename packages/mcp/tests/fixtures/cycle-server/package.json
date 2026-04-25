@@ -1,0 +1,10 @@
+{
+  "name": "@fixture/cycle-server",
+  "version": "0.0.0",
+  "private": true,
+  "bin": "./dist/server.js",
+  "files": [
+    "dist"
+  ],
+  "type": "module"
+}
