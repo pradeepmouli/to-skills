@@ -121,6 +121,159 @@ describe('renderSkill — invocation hook', () => {
     expect(ctx.launchCommand).toEqual({ command: 'npx', args: ['-y', '@org/my-server'] });
   });
 
+  it('threads invocationHttpEndpoint into ctx', async () => {
+    const render = vi.fn(
+      async (_s: ExtractedSkill, _c: AdapterRenderContext): Promise<RenderedSkill> => ({
+        skill: { filename: 's/SKILL.md', content: '---\nname: s\n---\n' },
+        references: []
+      })
+    );
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render
+    };
+    await renderSkill(minimalSkill, {
+      invocation: adapter,
+      invocationHttpEndpoint: {
+        url: 'https://example.com/mcp',
+        headers: { Authorization: 'Bearer' }
+      }
+    });
+    const ctx = render.mock.calls[0]![1];
+    expect(ctx.httpEndpoint).toEqual({
+      url: 'https://example.com/mcp',
+      headers: { Authorization: 'Bearer' }
+    });
+  });
+
+  it('threads invocationBinName into ctx (multi-bin bundle path)', async () => {
+    const render = vi.fn(
+      async (_s: ExtractedSkill, _c: AdapterRenderContext): Promise<RenderedSkill> => ({
+        skill: { filename: 's/SKILL.md', content: '---\nname: s\n---\n' },
+        references: []
+      })
+    );
+    const adapter: InvocationAdapter = {
+      target: 'mcp-protocol',
+      fingerprint: { adapter: 'x', version: '0' },
+      render
+    };
+    await renderSkill(minimalSkill, {
+      invocation: adapter,
+      invocationPackageName: '@org/multi',
+      invocationBinName: 'tool-b'
+    });
+    expect(render.mock.calls[0]![1].binName).toBe('tool-b');
+  });
+
+  it('bodyPrefix injects content between frontmatter and the existing body (default path)', () => {
+    const out = renderSkill(minimalSkill, { bodyPrefix: '## Setup\n\n```sh\nnpm i x\n```' });
+    // Frontmatter terminator is followed by the prefix, before the existing `# my-lib` heading.
+    const idx = out.skill.content.indexOf('## Setup');
+    const headingIdx = out.skill.content.indexOf('# my-lib');
+    expect(idx).toBeGreaterThan(0);
+    expect(headingIdx).toBeGreaterThan(idx);
+  });
+
+  it('skipDefaultFunctionsRef suppresses references/functions.md on the default path', () => {
+    const skillWithFn: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'doThing',
+          description: 'Does the thing.',
+          signature: 'doThing(input: string): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ]
+    };
+
+    const baseline = renderSkill(skillWithFn);
+    const baseHasFunctions = baseline.references.some((r) => r.filename.endsWith('functions.md'));
+    expect(baseHasFunctions).toBe(true);
+
+    const skipped = renderSkill(skillWithFn, { skipDefaultFunctionsRef: true });
+    const skippedHasFunctions = skipped.references.some((r) => r.filename.endsWith('functions.md'));
+    expect(skippedHasFunctions).toBe(false);
+  });
+
+  it('canonicalize: false returns un-canonicalized output (default path)', () => {
+    // additionalFrontmatter with insertion-order keys lets us observe whether
+    // canonicalize ran (canonicalize sorts keys alphabetically).
+    const withCanon = renderSkill(minimalSkill, {
+      additionalFrontmatter: { z: 'last', a: 'first' }
+    });
+    const noCanon = renderSkill(minimalSkill, {
+      additionalFrontmatter: { z: 'last', a: 'first' },
+      canonicalize: false
+    });
+    // With canonicalize, frontmatter keys end up alphabetically ordered.
+    // Without, insertion order is preserved (z appears before a in our input).
+    const canonZIdx = withCanon.skill.content.indexOf('z: last');
+    const canonAIdx = withCanon.skill.content.indexOf('a: first');
+    expect(canonAIdx).toBeLessThan(canonZIdx);
+    const rawZIdx = noCanon.skill.content.indexOf('z: last');
+    const rawAIdx = noCanon.skill.content.indexOf('a: first');
+    expect(rawZIdx).toBeLessThan(rawAIdx);
+  });
+
+  it('renders all reference kinds (functions, classes, types, enums, variables, examples)', () => {
+    const fullSkill: ExtractedSkill = {
+      ...minimalSkill,
+      functions: [
+        {
+          name: 'fn',
+          description: 'd',
+          signature: 'fn(): void',
+          parameters: [],
+          returnType: 'void',
+          examples: [],
+          tags: {}
+        }
+      ],
+      classes: [
+        {
+          name: 'C',
+          description: 'd',
+          constructorSignature: 'new C()',
+          methods: [],
+          properties: [],
+          examples: [],
+          tags: {}
+        }
+      ],
+      types: [{ name: 'T', description: 'd', definition: 'string' }],
+      enums: [
+        { name: 'E', description: 'd', members: [{ name: 'A', value: '1', description: '' }] }
+      ],
+      variables: [{ name: 'V', type: 'number', description: 'd', isConst: true }],
+      examples: ['ex1', 'ex2']
+    };
+    const out = renderSkill(fullSkill);
+    const filenames = out.references.map((r) => r.filename);
+    expect(filenames.some((f) => f.endsWith('functions.md'))).toBe(true);
+    expect(filenames.some((f) => f.endsWith('classes.md'))).toBe(true);
+    expect(filenames.some((f) => f.endsWith('types.md'))).toBe(true);
+    expect(filenames.some((f) => f.endsWith('variables.md'))).toBe(true);
+    expect(filenames.some((f) => f.endsWith('examples.md'))).toBe(true);
+  });
+
+  it('renders resources and prompts references when populated', () => {
+    const skillWithResAndPrompts: ExtractedSkill = {
+      ...minimalSkill,
+      resources: [{ uri: 'file:///x', name: 'X', description: 'a resource' }],
+      prompts: [{ name: 'p', description: 'a prompt', arguments: [] }]
+    };
+    const out = renderSkill(skillWithResAndPrompts);
+    const filenames = out.references.map((r) => r.filename);
+    expect(filenames.some((f) => f.endsWith('resources.md'))).toBe(true);
+    expect(filenames.some((f) => f.endsWith('prompts.md'))).toBe(true);
+  });
+
   // Type-guard: renderSkills must reject an invocation adapter at compile time.
   // This is a compile-time assertion, not a runtime one — if the file type-checks,
   // the guard is in place. The runtime body is a no-op.
