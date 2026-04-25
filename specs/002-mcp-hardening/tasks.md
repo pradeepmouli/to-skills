@@ -219,14 +219,14 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 9 (FR-H013, SC-H008)
 
-- [ ] T056 [P] [US9] Create `packages/mcp/tests/integration/http-header-end-to-end.integration.test.ts` gated on `RUN_INTEGRATION_TESTS=true`. Spin up the existing mock SSE server fixture (or extend it) so it captures incoming headers. Run the CLI with `--url <fixture-url> --header "Authorization=Bearer test-token"`. Assert the captured server-side header equals `'Bearer test-token'`.
-- [ ] T057 [P] [US9] Create `packages/mcp/tests/integration/bundle-multi-target.integration.test.ts` gated on `RUN_INTEGRATION_TESTS=true`. Use the existing `fake-server-package` fixture. Run `bundle --invocation mcp-protocol --invocation cli:mcpc <fixture>`. Assert two output dirs exist (`skills/<name>-mcp-protocol/`, `skills/<name>-cli-mcpc/`); assert the first has `mcp:` frontmatter, the second has `generated-by:` frontmatter.
+- [x] T056 [P] [US9] Create `packages/mcp/tests/integration/http-header-end-to-end.integration.test.ts` gated on `RUN_INTEGRATION_TESTS=true`. Spin up the existing mock SSE server fixture (or extend it) so it captures incoming headers. Run the CLI with `--url <fixture-url> --header "Authorization=Bearer test-token"`. Assert the captured server-side header equals `'Bearer test-token'`.
+- [x] T057 [P] [US9] Create `packages/mcp/tests/integration/bundle-multi-target.integration.test.ts` gated on `RUN_INTEGRATION_TESTS=true`. Use the existing `fake-server-package` fixture. Run `bundle --invocation mcp-protocol --invocation cli:mcpc <fixture>`. Assert two output dirs exist (`skills/<name>-mcp-protocol/`, `skills/<name>-cli-mcpc/`); assert the first has `mcp:` frontmatter, the second has `generated-by:` frontmatter.
 
 ### Implementation for User Story 9
 
-- [ ] T058 [US9] No production-code change required if the existing CLI handles both flows correctly. If the integration tests reveal a regression, fix in-place; if not, the tests serve as future-regression gates.
-- [ ] T059 [US9] Run `RUN_INTEGRATION_TESTS=true pnpm test` once locally to confirm both new integration tests pass. Default `pnpm test` (no env var) skips them per existing convention.
-- [ ] T060 [US9] Commit: `test(mcp): add HTTP header + bundle multi-target integration tests (US9, FR-H013)`.
+- [x] T058 [US9] No production-code change required if the existing CLI handles both flows correctly. If the integration tests reveal a regression, fix in-place; if not, the tests serve as future-regression gates.
+- [x] T059 [US9] Run `RUN_INTEGRATION_TESTS=true pnpm test` once locally to confirm both new integration tests pass. Default `pnpm test` (no env var) skips them per existing convention.
+- [x] T060 [US9] Commit: `test(mcp): add HTTP header + bundle multi-target integration tests (US9, FR-H013)`.
 
 **Checkpoint**: Both user-visible CLI paths now have integration coverage.
 
