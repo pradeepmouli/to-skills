@@ -123,4 +123,27 @@ describe('auditAdapterFreshness — rule M5', () => {
     expect(issues[0]!.code).toBe('M5');
     expect(issues[0]!.severity).toBe('warning');
   });
+
+  it('skips audit when embedded version is malformed (empty / non-semver)', () => {
+    // Without the early-exit guard, parseSemver would return [0] for these
+    // and emit a spurious M5 against any real installed version.
+    expect(auditAdapterFreshness(skill, makeEmbeddedFingerprint(''), makeAdapter('1.2.3'))).toEqual(
+      []
+    );
+    expect(
+      auditAdapterFreshness(skill, makeEmbeddedFingerprint('unknown'), makeAdapter('1.2.3'))
+    ).toEqual([]);
+    expect(
+      auditAdapterFreshness(skill, makeEmbeddedFingerprint('dev'), makeAdapter('1.2.3'))
+    ).toEqual([]);
+  });
+
+  it('skips audit when installed version is malformed', () => {
+    expect(auditAdapterFreshness(skill, makeEmbeddedFingerprint('1.2.3'), makeAdapter(''))).toEqual(
+      []
+    );
+    expect(
+      auditAdapterFreshness(skill, makeEmbeddedFingerprint('1.2.3'), makeAdapter('unknown'))
+    ).toEqual([]);
+  });
 });

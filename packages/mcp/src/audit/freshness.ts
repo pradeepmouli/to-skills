@@ -55,6 +55,14 @@ export function auditAdapterFreshness(
   const installedVersion = installedAdapter.fingerprint.version;
   const embeddedVersion = embeddedFingerprint.version;
 
+  // Defensive: parseSemver intentionally falls non-numeric components back to
+  // 0 (see its JSDoc), which would mis-classify a malformed/empty embedded
+  // version like '' or 'unknown' as 0.0.0 and emit a spurious M5 against any
+  // real installed version. Skip the audit when either side isn't semver-shaped.
+  if (!isSemverShaped(embeddedVersion) || !isSemverShaped(installedVersion)) {
+    return [];
+  }
+
   if (compareSemver(embeddedVersion, installedVersion) < 0) {
     return [
       {
@@ -101,6 +109,21 @@ function compareSemver(a: string, b: string): -1 | 0 | 1 {
     if (ai > bi) return 1;
   }
   return 0;
+}
+
+/**
+ * Returns true when `v` looks like a parseable semver-shaped version string —
+ * at minimum a leading numeric component. We use this as the early-exit gate
+ * in `auditAdapterFreshness` so malformed strings (`''`, `'unknown'`,
+ * `'dev'`) don't compare as 0.0.0 against a real installed version.
+ *
+ * Permissive on purpose: `'1'`, `'1.0'`, `'v1.2.3'`, `'1.2.3-alpha+meta'` all
+ * pass; `'unknown'`, `''`, `'-1.0'` all fail.
+ */
+function isSemverShaped(v: string | undefined): v is string {
+  if (typeof v !== 'string' || v.length === 0) return false;
+  const stripped = v.startsWith('v') ? v.slice(1) : v;
+  return /^\d/.test(stripped);
 }
 
 function parseSemver(v: string): number[] {
