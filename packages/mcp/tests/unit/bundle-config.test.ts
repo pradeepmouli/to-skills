@@ -272,4 +272,61 @@ describe('readBundleConfig', () => {
       expect(err).toBeInstanceOf(McpError);
     }
   });
+
+  it('multi-bin with explicit binName derives launch command and surfaces binName', async () => {
+    writePkg({
+      name: '@my/server',
+      bin: { 'tool-a': './dist/a.js', 'tool-b': './dist/b.js' },
+      'to-skills': {
+        mcp: { skillName: 'my-server', binName: 'tool-b' }
+      }
+    });
+    const entries = await readBundleConfig(workDir);
+    expect(entries[0]?.command).toBe('node');
+    expect(entries[0]?.args[0]).toMatch(/dist\/b\.js$/);
+    expect(entries[0]?.binName).toBe('tool-b');
+  });
+
+  it('multi-bin without binName still throws MISSING_LAUNCH_COMMAND with helpful message', async () => {
+    writePkg({
+      name: '@my/server',
+      bin: { 'tool-a': './dist/a.js', 'tool-b': './dist/b.js' },
+      'to-skills': { mcp: { skillName: 'my-server' } }
+    });
+    await expect(readBundleConfig(workDir)).rejects.toMatchObject({
+      code: 'MISSING_LAUNCH_COMMAND'
+    });
+    await expect(readBundleConfig(workDir)).rejects.toThrow(/binName.*tool-a, tool-b/);
+  });
+
+  it('multi-bin with binName that does not match any bin key throws', async () => {
+    writePkg({
+      name: '@my/server',
+      bin: { 'tool-a': './dist/a.js', 'tool-b': './dist/b.js' },
+      'to-skills': { mcp: { skillName: 'my-server', binName: 'nonexistent' } }
+    });
+    await expect(readBundleConfig(workDir)).rejects.toMatchObject({
+      code: 'MISSING_LAUNCH_COMMAND'
+    });
+  });
+
+  it('single-bin object form surfaces the bin key as binName', async () => {
+    writePkg({
+      name: '@my/server',
+      bin: { 'only-tool': './dist/only.js' },
+      'to-skills': { mcp: { skillName: 'my-server' } }
+    });
+    const entries = await readBundleConfig(workDir);
+    expect(entries[0]?.binName).toBe('only-tool');
+  });
+
+  it('string-bin form does NOT surface a binName (single-bin no-name case)', async () => {
+    writePkg({
+      name: '@my/server',
+      bin: './dist/server.js',
+      'to-skills': { mcp: { skillName: 'my-server' } }
+    });
+    const entries = await readBundleConfig(workDir);
+    expect(entries[0]?.binName).toBeUndefined();
+  });
 });

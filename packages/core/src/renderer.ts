@@ -88,6 +88,7 @@ export function renderSkill(
       maxTokens: opts.maxTokens,
       canonicalize: true,
       packageName: opts.invocationPackageName,
+      binName: opts.invocationBinName,
       launchCommand: opts.invocationLaunchCommand,
       httpEndpoint: opts.invocationHttpEndpoint
     };

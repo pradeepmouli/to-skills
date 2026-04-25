@@ -43,6 +43,13 @@ export interface NormalizedBundleEntry {
   readonly args: readonly string[];
   readonly env?: Readonly<Record<string, string>>;
   readonly invocation: readonly InvocationTarget[];
+  /**
+   * Multi-bin selector. Set when the entry was derived from (or explicitly
+   * targets) a specific key in package.json's multi-bin object. The bundle
+   * orchestrator forwards this to the MCP adapter so the emitted skill uses
+   * the npx `--package=<pkg> <binName>` form (FR-034).
+   */
+  readonly binName?: string;
 }
 
 /**
@@ -190,9 +197,23 @@ function validateAndNormalize(
     env = envObj as Record<string, string>;
   }
 
-  // command — optional; if absent, derive from bin.
+  // binName — optional; selects a specific entry in package.json's multi-bin
+  // object so the launch command can be unambiguously derived AND the emitted
+  // mcp: frontmatter can use the `--package=<pkg> <binName>` form (FR-034).
+  let binName: string | undefined;
+  const rawBinName = obj['binName'];
+  if (rawBinName !== undefined) {
+    if (typeof rawBinName !== 'string' || rawBinName.length === 0) {
+      throw new McpError(`${prefix}.binName: must be a non-empty string`, 'TRANSPORT_FAILED');
+    }
+    binName = rawBinName;
+  }
+
+  // command — optional; if absent, derive from bin (using binName when supplied
+  // for multi-bin disambiguation).
   let command: string;
   let derivedArgs: string[] | undefined;
+  let derivedBinName: string | undefined;
   const rawCommand = obj['command'];
   if (rawCommand !== undefined) {
     if (typeof rawCommand !== 'string' || rawCommand.length === 0) {
@@ -200,9 +221,10 @@ function validateAndNormalize(
     }
     command = rawCommand;
   } else {
-    const derived = deriveFromBin(pkg, packageRoot, skillName);
+    const derived = deriveFromBin(pkg, packageRoot, skillName, binName);
     command = derived.command;
     derivedArgs = derived.args;
+    derivedBinName = derived.binName;
   }
 
   // invocation — optional; default ['mcp-protocol']. String → single-element array.
@@ -212,38 +234,41 @@ function validateAndNormalize(
   // When command was derived, prefer the derived args unless the user supplied
   // their own.
   const finalArgs = args ?? derivedArgs ?? [];
+  // The explicit `binName` field always wins; otherwise, use whatever the
+  // derivation step uncovered (single-bin object form gives a free binName).
+  const finalBinName = binName ?? derivedBinName;
 
-  const entry: NormalizedBundleEntry = env
-    ? {
-        skillName,
-        command,
-        args: finalArgs,
-        env,
-        invocation
-      }
-    : {
-        skillName,
-        command,
-        args: finalArgs,
-        invocation
-      };
+  const entry: NormalizedBundleEntry = {
+    skillName,
+    command,
+    args: finalArgs,
+    invocation,
+    ...(env !== undefined ? { env } : {}),
+    ...(finalBinName !== undefined ? { binName: finalBinName } : {})
+  };
   return entry;
 }
 
 /**
  * Derive `command`/`args` from `package.json.bin` for an entry that did NOT
- * supply its own `command` field. Implements T058's two-shape rule.
+ * supply its own `command` field. Implements T058's two-shape rule plus
+ * T062's multi-bin selector.
  *
- * - String bin → `node <binPath>`.
- * - Object bin with exactly one key → same as string bin.
- * - Object bin with >1 key → throws `MISSING_LAUNCH_COMMAND` (ambiguous).
+ * - String bin → `node <binPath>` (no binName surfaced).
+ * - Object bin with exactly one key → same as string bin; binName surfaces the
+ *   single key so FR-034's `--package=` form can fire when packageName is set.
+ * - Object bin with >1 key + binName supplied + matches → derives launch from
+ *   that key.
+ * - Object bin with >1 key + binName missing/non-matching → throws
+ *   `MISSING_LAUNCH_COMMAND` (ambiguous).
  * - No bin at all → throws `MISSING_LAUNCH_COMMAND`.
  */
 function deriveFromBin(
   pkg: PackageJson,
   packageRoot: string,
-  skillName: string
-): { command: string; args: string[] } {
+  skillName: string,
+  selectedBin?: string
+): { command: string; args: string[]; binName?: string } {
   const bin = pkg.bin;
   if (bin === undefined) {
     throw new McpError(
@@ -264,20 +289,37 @@ function deriveFromBin(
   }
   const keys = Object.keys(bin);
   if (keys.length === 1) {
-    const path = bin[keys[0]!];
+    const onlyKey = keys[0]!;
+    const path = bin[onlyKey];
     if (typeof path !== 'string') {
       throw new McpError(
-        `to-skills.mcp entry "${skillName}": package.json "bin.${keys[0]}" is not a string; ` +
+        `to-skills.mcp entry "${skillName}": package.json "bin.${onlyKey}" is not a string; ` +
           `set command/args explicitly in to-skills.mcp.`,
         'MISSING_LAUNCH_COMMAND'
       );
     }
-    return { command: 'node', args: [resolveBinPath(path, packageRoot)] };
+    return { command: 'node', args: [resolveBinPath(path, packageRoot)], binName: onlyKey };
   }
-  // Multi-bin: ambiguous, refuse to guess.
+  // Multi-bin: refuse to guess unless the entry supplied an explicit binName
+  // that matches one of the keys.
+  if (selectedBin !== undefined && Object.prototype.hasOwnProperty.call(bin, selectedBin)) {
+    const selectedPath = bin[selectedBin];
+    if (typeof selectedPath !== 'string') {
+      throw new McpError(
+        `to-skills.mcp entry "${skillName}": package.json "bin.${selectedBin}" is not a string.`,
+        'MISSING_LAUNCH_COMMAND'
+      );
+    }
+    return {
+      command: 'node',
+      args: [resolveBinPath(selectedPath, packageRoot)],
+      binName: selectedBin
+    };
+  }
   throw new McpError(
     `to-skills.mcp entry "${skillName}" has no command set; package.json bin is multi-bin so ` +
-      `the launch command cannot be derived. Set command/args explicitly in to-skills.mcp.`,
+      `the launch command cannot be derived. Set "binName": "<one of: ${keys.join(', ')}>" ` +
+      `in to-skills.mcp, or set command/args explicitly.`,
     'MISSING_LAUNCH_COMMAND'
   );
 }

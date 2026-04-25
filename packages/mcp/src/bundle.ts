@@ -150,13 +150,18 @@ async function processEntry(
 
   // 2. Render with the target's adapter; bundle mode passes packageName so the
   //    emitted skill instructs MCP harnesses to launch via `npx -y <packageName>`
-  //    rather than embedding the local launch command (FR-033).
+  //    rather than embedding the local launch command (FR-033). When the entry
+  //    has a binName (multi-bin packages), thread it so the adapter can emit
+  //    `--package=<pkg> <binName>` (FR-034).
   let rendered: RenderedSkill;
   try {
     const adapter = await loadAdapterAsync(target);
     const renderOptions: Parameters<typeof renderSkill>[1] = {
       invocation: adapter,
-      ...(packageName !== undefined ? { invocationPackageName: packageName } : {})
+      ...(packageName !== undefined ? { invocationPackageName: packageName } : {}),
+      ...(packageName !== undefined && entry.binName !== undefined
+        ? { invocationBinName: entry.binName }
+        : {})
     };
     rendered = await renderSkill(skill, renderOptions);
   } catch (err) {

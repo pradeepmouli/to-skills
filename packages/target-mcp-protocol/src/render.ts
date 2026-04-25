@@ -68,7 +68,12 @@ export class McpProtocolAdapter implements InvocationAdapter {
     if (ctx.packageName) {
       // Bundle mode: emit npx-by-name self-reference. Wins over any explicit
       // launchCommand because the package is the canonical self-launch entry point.
-      launchCommand = { command: 'npx', args: ['-y', ctx.packageName] };
+      // When the host also passes binName (multi-bin packages, FR-034), use the
+      // explicit `--package=` form so npx invokes the right bin rather than the
+      // package's "directories.bin" or single-bin default.
+      launchCommand = ctx.binName
+        ? { command: 'npx', args: ['-y', `--package=${ctx.packageName}`, ctx.binName] }
+        : { command: 'npx', args: ['-y', ctx.packageName] };
     } else if (ctx.httpEndpoint) {
       // HTTP-extract mode: emit {url, headers} shape. No shell launch.
       launchCommand = ctx.httpEndpoint.headers

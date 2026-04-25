@@ -280,6 +280,14 @@ export interface SkillRenderOptions {
    */
   invocationPackageName?: string;
   /**
+   * Forwarded into `AdapterRenderContext.binName` for bundle-mode multi-bin
+   * packages. When the host package's `bin` field is an object with multiple
+   * entries and the bundle config selects one, the adapter emits the npx
+   * `--package=<pkg> <binName>` form so the right bin is invoked at run time
+   * (FR-034). Ignored when `invocationPackageName` is unset.
+   */
+  invocationBinName?: string;
+  /**
    * Forwarded into `AdapterRenderContext.httpEndpoint` for HTTP-transport extract mode.
    *
    * @remarks
@@ -324,6 +332,12 @@ export interface InvocationAdapter {
 export interface AdapterRenderContext {
   /** Bundle-mode self-reference — the package name the emitted skill should invoke via `npx`; `undefined` in extract mode where the skill is for a third-party server. */
   packageName?: string;
+  /**
+   * Bundle-mode multi-bin selector — when set alongside `packageName`, the
+   * adapter should emit the npx `--package=<packageName> <binName>` form
+   * (FR-034). Ignored when `packageName` is undefined.
+   */
+  binName?: string;
   /** Output directory name chosen by the caller (e.g. "filesystem", "my-server"). */
   skillName: string;
   /** Token budget ceiling per reference file — adapters should stay under this but the host will truncate if exceeded. */

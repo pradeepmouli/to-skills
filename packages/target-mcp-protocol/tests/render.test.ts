@@ -125,6 +125,35 @@ describe('McpProtocolAdapter', () => {
     expect(inner.args).toEqual(['-y', '@org/my-server']);
   });
 
+  it('bundle mode multi-bin — packageName + binName produces --package= form (FR-034)', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({ packageName: '@org/my-server', binName: 'mcp-tool' })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
+      command: string;
+      args: string[];
+    };
+    expect(inner.command).toBe('npx');
+    expect(inner.args).toEqual(['-y', '--package=@org/my-server', 'mcp-tool']);
+  });
+
+  it('binName without packageName is ignored (extract mode does not honor it)', async () => {
+    const out = await adapter.render(
+      baseSkill,
+      makeCtx({ binName: 'orphan', launchCommand: { command: 'node', args: ['./a.js'] } })
+    );
+    const fm = parseFrontmatter(out.skill.content) as { mcp: Record<string, unknown> };
+    const inner = (fm.mcp as Record<string, unknown>)['my-server'] as {
+      command: string;
+      args: string[];
+    };
+    // Extract-mode launchCommand is used verbatim; binName has no effect.
+    expect(inner.command).toBe('node');
+    expect(inner.args).toEqual(['./a.js']);
+  });
+
   it('bundle mode wins — packageName + launchCommand both set, packageName takes precedence', async () => {
     const out = await adapter.render(
       baseSkill,
