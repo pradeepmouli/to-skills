@@ -18,8 +18,8 @@ importers:
         specifier: ^25.6.0
         version: 25.6.0
       '@typescript/native-preview':
-        specifier: 7.0.0-dev.20260414.1
-        version: 7.0.0-dev.20260414.1
+        specifier: 7.0.0-dev.20260425.1
+        version: 7.0.0-dev.20260425.1
       '@vitest/coverage-v8':
         specifier: ^4.1.4
         version: 4.1.4(vitest@4.1.4)
@@ -190,7 +190,7 @@ importers:
         version: link:../core
       vitepress:
         specifier: '>=1.0.0'
-        version: 1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.9)(search-insights@2.17.3)(typescript@6.0.2)
+        version: 1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.10)(search-insights@2.17.3)(typescript@6.0.2)
 
   website:
     devDependencies:
@@ -199,7 +199,7 @@ importers:
         version: link:../packages/vitepress
       vitepress:
         specifier: ^1.6.4
-        version: 1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.9)(search-insights@2.17.3)(typescript@6.0.2)
+        version: 1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.10)(search-insights@2.17.3)(typescript@6.0.2)
 
 packages:
 
@@ -612,8 +612,8 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@napi-rs/wasm-runtime@1.1.3':
-    resolution: {integrity: sha512-xK9sGVbJWYb08+mTJt3/YV24WxvxpXcXtP6B172paPZ+Ts69Re9dAr7lKwJoeIx8OoeuimEiRZ7umkiUVClmmQ==}
+  '@napi-rs/wasm-runtime@1.1.4':
+    resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
@@ -1075,43 +1075,51 @@ packages:
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-O7h9lNcE9YMA2TKw1YX9GZO3K/Kb1FUmxjEJAfBFvjQhGydIk4oNsuoOQ3RQHVvebCdFjNroZzoIXNeR3ceCdA==}
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-vM7O+PlxHRUT4Dv0VkxEmU3N2uyWeSFrhu57O7s3SE9TX1ENljwQlCFG0oQdBGLBRo+SZSoedxKL5jOGlD1eiw==}
+    engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-ax7OUrIaIIay+yI9EhavXmsnO+79AdFVv/N3ZibC11LBixJXaYhfTyFikQL5IyMkfoKm3oBQ0tHyI0xMkS+9tA==}
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-EiikklZSuEvMhZEeN0VRb0vmedhLgtKwz5p4Oz9e8hlJ4lLrslgvX7Z7JWb2YSKlhm14dUlRMvdoe+6t+56rSA==}
+    engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-oGAWMCw6JZ27+LBZlLEg8NGHZyIFPx9YUNYCaDcX3Z9dGh6ZPeD7uIaBiw7JZ0fh05sgK6DZBsAz5nWnnSvc7Q==}
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-5KJ++prl1dscJtxnkE7Cb6rjud4T3nO4mcnKhkCfYcQaFtFrvcZhBtDobwcpSzHbfsW0MeM+QCy1UfWoK4gjUQ==}
+    engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-0gYz37o/hr5PAlsABXbai2D1sPioB9pMy2Ft4leF/Rc6qq4QVuyLPE+QbXgu/2k4I0YWud2On6k4+kEobXK9qA==}
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-9eWInaHqhfTu1Mt/1M85p5M+HlSStahAQkqYaW9rJzUWRe+AcVUKsN6I7U7iwxbkCT8gFZsMCRqABcwBUWw3kg==}
+    engines: {node: '>=16.20.0'}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-9YnVwJoiu6w8m7g+Q7AQECz9nxieKGIRFeibmQ1MnF+lEtnXFZMLJWkNzE+Jt2UXIkKZBvVT3VDgmpExzeHGBA==}
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-a/E/8UL2x6nWmIJwrrbEvLz938RMcrFfm5hLRKaPMjCE32bgwesBZEG5jRn8fzQes+4HICRXKEaL544jtb/Syg==}
+    engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-Sjm40DJk62e+aR8EblKwlX/KsTJlYgg+EwSi9FPGsi3YY+BSoM6kQ6NF7FmE41FEOqRyuWom0ap9CqXIwosBOg==}
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-BZ7jEnaNZHkHbq9LWuqqIgYMmMb2E2NReMybjOyl3ASFmJHYekDnytXIT3Zbp4dyPLJV55faGzLqMw2MMS81NA==}
+    engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-TMgYk82tvehQjze0mdo2CUSXYkh7ZOqxewLVqGAHsAG5QFPEZ+8qSbGwTytznOs9wL4V2rrbziL6psGonJoBxw==}
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-/iwK50mO31lKr1KVDRCqW5xGyKArZuq9jQr2b/PJ3e0xEuV6hoJ4Kok11LA1lhx1uctqr3UXKmfwQF3HWqcZTQ==}
+    engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
 
-  '@typescript/native-preview@7.0.0-dev.20260414.1':
-    resolution: {integrity: sha512-b9C7ZVKSGCF1VFvA8UdAKHCGmKOrmm44UwmGgICSQmWg6vseLdElx0F8UvuNsA6risIOXh5hs7Buif+QRrCYuA==}
+  '@typescript/native-preview@7.0.0-dev.20260425.1':
+    resolution: {integrity: sha512-qhSVDT9DsoKPBeEm777eUUkiCDjBFlF7wwjfMvcPctZFVHfD6b1O1icpfCdQHPqzjrSXWu2YaNiY0DXbljTmgw==}
+    engines: {node: '>=16.20.0'}
     hasBin: true
 
   '@ungap/structured-clone@1.3.0':
@@ -2139,6 +2147,10 @@ packages:
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
+
+  postcss@8.5.10:
+    resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
+    engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.9:
     resolution: {integrity: sha512-7a70Nsot+EMX9fFU3064K/kdHWZqGVY+BADLyXc8Dfv+mTLLVl6JzJpPaCZ2kQL9gIJvKXSLMHhqdRRjwQeFtw==}
@@ -3189,7 +3201,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@napi-rs/wasm-runtime@1.1.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
+  '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
     dependencies:
       '@emnapi/core': 1.9.1
       '@emnapi/runtime': 1.9.1
@@ -3305,7 +3317,7 @@ snapshots:
 
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.10(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.1.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
+      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -3501,36 +3513,36 @@ snapshots:
 
   '@types/web-bluetooth@0.0.21': {}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260414.1':
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260425.1':
     optional: true
 
-  '@typescript/native-preview@7.0.0-dev.20260414.1':
+  '@typescript/native-preview@7.0.0-dev.20260425.1':
     optionalDependencies:
-      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260414.1
-      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260414.1
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260425.1
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260425.1
 
   '@ungap/structured-clone@1.3.0': {}
 
@@ -4559,6 +4571,12 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
+  postcss@8.5.10:
+    dependencies:
+      nanoid: 3.3.11
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
   postcss@8.5.9:
     dependencies:
       nanoid: 3.3.11
@@ -4996,7 +5014,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.9
+      postcss: 8.5.10
       rolldown: 1.0.0-rc.10(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
       tinyglobby: 0.2.16
     optionalDependencies:
@@ -5007,7 +5025,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  vitepress@1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.9)(search-insights@2.17.3)(typescript@6.0.2):
+  vitepress@1.6.4(@algolia/client-search@5.50.2)(@types/node@25.6.0)(lightningcss@1.32.0)(postcss@8.5.10)(search-insights@2.17.3)(typescript@6.0.2):
     dependencies:
       '@docsearch/css': 3.8.2
       '@docsearch/js': 3.8.2(@algolia/client-search@5.50.2)(search-insights@2.17.3)
@@ -5028,7 +5046,7 @@ snapshots:
       vite: 5.4.21(@types/node@25.6.0)(lightningcss@1.32.0)
       vue: 3.5.32(typescript@6.0.2)
     optionalDependencies:
-      postcss: 8.5.9
+      postcss: 8.5.10
     transitivePeerDependencies:
       - '@algolia/client-search'
       - '@types/node'
