@@ -37,13 +37,15 @@ type AdapterRenderContext =
 
 The host (`@to-skills/core`'s `renderSkill`) builds `ctx` from `SkillRenderOptions` deterministically:
 
-| `SkillRenderOptions` shape     | Produced `mode` | Throws                                               |
-| ------------------------------ | --------------- | ---------------------------------------------------- |
-| `invocationPackageName` only   | `'bundle'`      | —                                                    |
-| `invocationHttpEndpoint` only  | `'http'`        | —                                                    |
-| `invocationLaunchCommand` only | `'stdio'`       | —                                                    |
-| more than one of the three     | n/a             | `McpError('TRANSPORT_FAILED', /more than one of/)`   |
-| none of the three              | n/a             | `McpError('MISSING_LAUNCH_COMMAND', ...)` (existing) |
+| `SkillRenderOptions` shape     | Produced `mode` | Throws                                                                                                                                                                                                                                             |
+| ------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invocationPackageName` only   | `'bundle'`      | —                                                                                                                                                                                                                                                  |
+| `invocationHttpEndpoint` only  | `'http'`        | —                                                                                                                                                                                                                                                  |
+| `invocationLaunchCommand` only | `'stdio'`       | —                                                                                                                                                                                                                                                  |
+| more than one of the three     | n/a             | plain `Error` — message prefix `"AdapterRenderContext: more than one of invocationPackageName, invocationHttpEndpoint, invocationLaunchCommand was set"` (mapped to `TRANSPORT_FAILED` exit code by `@to-skills/mcp`'s `bundle.ts::recordFailure`) |
+| none of the three              | n/a             | plain `Error` — message prefix `"AdapterRenderContext: missing launch info — set one of invocationPackageName, invocationHttpEndpoint, invocationLaunchCommand"` (mapped to `MISSING_LAUNCH_COMMAND` by the same wrapper)                          |
+
+**Why plain `Error`, not `McpError`**: `@to-skills/core` cannot depend on `@to-skills/mcp` (the dependency runs the other direction). Core throws structural `Error` with stable message prefixes; the mcp wrapper that calls `renderSkill` translates them to the right `McpError` code at the user-facing boundary.
 
 ## Consumer contract (adapter authors)
 
