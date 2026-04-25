@@ -40,20 +40,22 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { McpError } from '../errors.js';
-import type { McpConfigFile, McpServerConfig } from '../types.js';
+import type { ConfigEntry, McpTransport } from '../types.js';
 
 /**
  * Read and validate an `mcp.json` / `claude_desktop_config.json` file.
  *
  * @param configPath — absolute or cwd-relative path to the config file.
- * @returns the validated {@link McpConfigFile}.
+ * @returns the validated entries as a frozen `ConfigEntry[]`. Each entry
+ *   carries a fully-discriminated {@link McpTransport}, so downstream code
+ *   does not need to re-narrow `command`-vs-`url` at runtime.
  * @throws McpError with `code === 'TRANSPORT_FAILED'` on any IO, parse, or
  *   validation failure. The original error (when applicable) is attached as
  *   `cause`.
  *
  * @public
  */
-export async function readMcpConfigFile(configPath: string): Promise<McpConfigFile> {
+export async function readMcpConfigFile(configPath: string): Promise<readonly ConfigEntry[]> {
   const resolved = path.resolve(configPath);
 
   let raw: string;
@@ -90,7 +92,7 @@ export async function readMcpConfigFile(configPath: string): Promise<McpConfigFi
  * tests can exercise it directly if needed; not exported (callers should go
  * through {@link readMcpConfigFile}).
  */
-function validateConfig(parsed: unknown, sourcePath: string): McpConfigFile {
+function validateConfig(parsed: unknown, sourcePath: string): readonly ConfigEntry[] {
   if (!isPlainObject(parsed)) {
     throw new McpError(
       `Config file ${sourcePath} must contain a JSON object at the top level.`,
@@ -111,102 +113,137 @@ function validateConfig(parsed: unknown, sourcePath: string): McpConfigFile {
     );
   }
 
-  const validated: Record<string, McpServerConfig> = {};
+  const entries: ConfigEntry[] = [];
   for (const [name, entry] of Object.entries(servers)) {
-    validated[name] = validateEntry(name, entry, sourcePath);
+    entries.push(validateEntry(name, entry, sourcePath));
   }
 
-  return { mcpServers: validated };
+  return entries;
 }
 
 /**
  * Validate a single `mcpServers[name]` entry. Accepts the optional fields
  * documented in the module header; rejects unknown types eagerly so the
  * downstream extract pipeline never sees an `args: 5` or similar.
+ *
+ * Returns a {@link ConfigEntry} with the wire-shape's optional
+ * `command`/`url` collapsed into a fully-discriminated `McpTransport`. The
+ * one-of-two invariant — every entry MUST set either `command` (stdio) or
+ * `url` (HTTP) — is enforced here, so callers get a typed transport without
+ * needing runtime narrowing.
  */
-function validateEntry(name: string, entry: unknown, sourcePath: string): McpServerConfig {
+function validateEntry(name: string, entry: unknown, sourcePath: string): ConfigEntry {
   if (!isPlainObject(entry)) {
     throw new McpError(
       `Config file ${sourcePath}: entry "${name}" must be an object, got ${describeType(entry)}.`,
       'TRANSPORT_FAILED'
     );
   }
-  const result: McpServerConfig = {};
+
+  let command: string | undefined;
+  let args: string[] | undefined;
+  let env: Record<string, string> | undefined;
+  let url: string | undefined;
+  let headers: Record<string, string> | undefined;
+  let disabled: boolean | undefined;
 
   if ('command' in entry) {
-    const command = entry['command'];
-    if (typeof command !== 'string') {
+    const value = entry['command'];
+    if (typeof value !== 'string') {
       throw new McpError(
-        `Config file ${sourcePath}: entry "${name}".command must be a string, got ${describeType(command)}.`,
+        `Config file ${sourcePath}: entry "${name}".command must be a string, got ${describeType(value)}.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.command = command;
+    command = value;
   }
 
   if ('args' in entry) {
-    const args = entry['args'];
-    if (!Array.isArray(args) || !args.every((a) => typeof a === 'string')) {
+    const value = entry['args'];
+    if (!Array.isArray(value) || !value.every((a) => typeof a === 'string')) {
       throw new McpError(
         `Config file ${sourcePath}: entry "${name}".args must be a string array.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.args = args as string[];
+    args = value as string[];
   }
 
   if ('env' in entry) {
-    const envValue = entry['env'];
-    if (!isStringRecord(envValue)) {
+    const value = entry['env'];
+    if (!isStringRecord(value)) {
       throw new McpError(
         `Config file ${sourcePath}: entry "${name}".env must be a Record<string, string>.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.env = envValue;
+    env = value;
   }
 
   if ('url' in entry) {
-    const url = entry['url'];
-    if (typeof url !== 'string') {
+    const value = entry['url'];
+    if (typeof value !== 'string') {
       throw new McpError(
-        `Config file ${sourcePath}: entry "${name}".url must be a string, got ${describeType(url)}.`,
+        `Config file ${sourcePath}: entry "${name}".url must be a string, got ${describeType(value)}.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.url = url;
+    url = value;
   }
 
   if ('headers' in entry) {
-    const headers = entry['headers'];
-    if (!isStringRecord(headers)) {
+    const value = entry['headers'];
+    if (!isStringRecord(value)) {
       throw new McpError(
         `Config file ${sourcePath}: entry "${name}".headers must be a Record<string, string>.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.headers = headers;
+    headers = value;
   }
 
   if ('disabled' in entry) {
-    const disabled = entry['disabled'];
-    if (typeof disabled !== 'boolean') {
+    const value = entry['disabled'];
+    if (typeof value !== 'boolean') {
       throw new McpError(
-        `Config file ${sourcePath}: entry "${name}".disabled must be a boolean, got ${describeType(disabled)}.`,
+        `Config file ${sourcePath}: entry "${name}".disabled must be a boolean, got ${describeType(value)}.`,
         'TRANSPORT_FAILED'
       );
     }
-    result.disabled = disabled;
+    disabled = value;
   }
 
-  if (result.command === undefined && result.url === undefined) {
+  // Build the discriminated transport — the wire shape allows both `command`
+  // and `url` to be optional, but the contract requires exactly one. We
+  // prefer stdio when `command` is set (mirrors the legacy cli.ts narrowing
+  // order); a future extension could reject ambiguous entries that set both,
+  // but today we silently prefer stdio to avoid breaking pre-existing files.
+  let transport: McpTransport;
+  if (command !== undefined) {
+    transport = {
+      type: 'stdio',
+      command,
+      ...(args !== undefined ? { args } : {}),
+      ...(env !== undefined ? { env } : {})
+    };
+  } else if (url !== undefined) {
+    transport = {
+      type: 'http',
+      url,
+      ...(headers !== undefined ? { headers } : {})
+    };
+  } else {
     throw new McpError(
       `Config file ${sourcePath}: entry "${name}" must specify either "command" (stdio) or "url" (HTTP).`,
       'TRANSPORT_FAILED'
     );
   }
 
-  return result;
+  return {
+    name,
+    transport,
+    ...(disabled !== undefined ? { disabled } : {})
+  };
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

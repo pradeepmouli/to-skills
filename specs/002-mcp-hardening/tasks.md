@@ -200,14 +200,14 @@ description: 'Task list for `@to-skills/mcp` Hardening — discriminated unions,
 
 ### Tests for User Story 8 (FR-H016)
 
-- [ ] T051 [P] [US8] Verify existing `packages/mcp/tests/unit/config-file-reader.test.ts` cases continue to pass after the refactor (T052-T053). Add one additional case: a malformed entry (missing `command`/`url`) causes `readMcpConfigFile` to throw `McpError('CONFIG_INVALID', ...)`.
+- [x] T051 [P] [US8] Verify existing `packages/mcp/tests/unit/config-file-reader.test.ts` cases continue to pass after the refactor (T052-T053). Add one additional case: a malformed entry (missing `command`/`url`) causes `readMcpConfigFile` to throw `McpError('CONFIG_INVALID', ...)`.
 
 ### Implementation for User Story 8
 
-- [ ] T052 [US8] Refactor `packages/mcp/src/config-file-reader.ts::readMcpConfigFile` per `data-model.md` §5 and `research.md` R9: return `Promise<readonly ConfigEntry[]>` where each entry has `name`, `transport: McpTransport`, `disabled?`. Move all validation/narrowing logic from `cli.ts` into this reader. Throw `McpError('CONFIG_INVALID', ...)` on malformed entries.
-- [ ] T053 [US8] Update `packages/mcp/src/cli.ts::runConfigEntry` (and the parent `runConfigExtract`) to consume the new shape. Delete the `// Defensive` comment block and its runtime narrowing — the type system now guarantees the validated shape.
-- [ ] T054 [US8] Run `pnpm test`; all config-file-reader tests pass; the new malformed-entry case throws as expected.
-- [ ] T055 [US8] Commit: `refactor(mcp): parse mcp.json at the boundary (US8, FR-H012)`.
+- [x] T052 [US8] Refactor `packages/mcp/src/config-file-reader.ts::readMcpConfigFile` per `data-model.md` §5 and `research.md` R9: return `Promise<readonly ConfigEntry[]>` where each entry has `name`, `transport: McpTransport`, `disabled?`. Move all validation/narrowing logic from `cli.ts` into this reader. Throw `McpError('CONFIG_INVALID', ...)` on malformed entries.
+- [x] T053 [US8] Update `packages/mcp/src/cli.ts::runConfigEntry` (and the parent `runConfigExtract`) to consume the new shape. Delete the `// Defensive` comment block and its runtime narrowing — the type system now guarantees the validated shape.
+- [x] T054 [US8] Run `pnpm test`; all config-file-reader tests pass; the new malformed-entry case throws as expected.
+- [x] T055 [US8] Commit: `refactor(mcp): parse mcp.json at the boundary (US8, FR-H012)`.
 
 **Checkpoint**: `McpServerConfig` un-validated shape no longer leaks past `readMcpConfigFile`.
 

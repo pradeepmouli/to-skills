@@ -191,3 +191,30 @@ export interface McpServerConfig {
 export interface McpConfigFile {
   mcpServers: Record<string, McpServerConfig>;
 }
+
+/**
+ * A validated `mcpServers[name]` entry, with the wire-shape's optional
+ * `command`/`url` collapsed into a fully-discriminated {@link McpTransport}.
+ *
+ * @remarks
+ * This is the boundary type produced by {@link readMcpConfigFile}. Once an
+ * entry has been parsed and validated, downstream code (CLI batch loop,
+ * extract orchestrator) gets a `ConfigEntry` rather than the un-validated
+ * {@link McpServerConfig} wire shape — the type system now guarantees the
+ * one-of-two invariant that the reader enforces, so consumers no longer
+ * need runtime narrowing or "defensive" branches.
+ *
+ * The wire-shape `McpServerConfig` remains exported for tooling that needs
+ * to inspect the raw JSON shape (e.g. config-file linters), but the rest
+ * of `@to-skills/mcp` works with `ConfigEntry` past the file boundary.
+ *
+ * @public
+ */
+export interface ConfigEntry {
+  /** The `mcpServers[name]` key from the source file. */
+  readonly name: string;
+  /** Fully-discriminated transport (stdio or http) — one of `command` or `url` is guaranteed present. */
+  readonly transport: McpTransport;
+  /** When `true`, the entry is configured but skipped at extract time. */
+  readonly disabled?: boolean;
+}

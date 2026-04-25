@@ -77,7 +77,8 @@ export type {
   BundleFailure,
   BundleResult,
   McpServerConfig,
-  McpConfigFile
+  McpConfigFile,
+  ConfigEntry
 } from './types.js';
 
 // Re-export useful core types for adapter/author ergonomics
