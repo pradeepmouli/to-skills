@@ -106,9 +106,6 @@ importers:
       '@to-skills/mcp':
         specifier: workspace:*
         version: link:../mcp
-      yaml:
-        specifier: ^2.0.0
-        version: 2.8.3
     devDependencies:
       '@types/json-schema':
         specifier: ^7.0.15
@@ -119,6 +116,9 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.39)(lightningcss@1.32.0)
+      yaml:
+        specifier: ^2.0.0
+        version: 2.8.3
 
   packages/target-mcp-protocol:
     dependencies:
@@ -147,9 +147,6 @@ importers:
       '@to-skills/mcp':
         specifier: workspace:*
         version: link:../mcp
-      yaml:
-        specifier: ^2.0.0
-        version: 2.8.3
     devDependencies:
       '@types/json-schema':
         specifier: ^7.0.15
@@ -160,6 +157,9 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.39)(lightningcss@1.32.0)
+      yaml:
+        specifier: ^2.0.0
+        version: 2.8.3
 
   packages/typedoc:
     dependencies:

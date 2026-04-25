@@ -109,5 +109,10 @@ function formatCliMarker(targetCliRange: string | undefined): string {
     const [, name, major] = majorMatch;
     return `${name} ${major}.x`;
   }
+  // Operators outside [\^~=] (e.g. `>=`, `<`) — strip the @range suffix and
+  // return just the package name so the fingerprint line stays human-readable.
+  // The fingerprint frontmatter still carries the precise raw range.
+  const nameOnly = targetCliRange.match(/^([^@]+)@/);
+  if (nameOnly) return nameOnly[1]!;
   return targetCliRange;
 }

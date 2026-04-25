@@ -97,8 +97,20 @@ function formatCliMarker(targetCliRange: string | undefined): string {
   if (!targetCliRange) return 'mcpc';
   // Match `<name>@<range>` where range starts with ^/~/= followed by a
   // major.minor pair. Render as "<name> <major>.<minor>.x".
-  const match = targetCliRange.match(/^([^@]+)@[\^~=]?(\d+)\.(\d+)/);
-  if (!match) return targetCliRange;
-  const [, name, major, minor] = match;
-  return `${name} ${major}.${minor}.x`;
+  const fullMatch = targetCliRange.match(/^([^@]+)@[\^~=]?(\d+)\.(\d+)/);
+  if (fullMatch) {
+    const [, name, major, minor] = fullMatch;
+    return `${name} ${major}.${minor}.x`;
+  }
+  // Major-only fallback (e.g. mcpc@^2 → "mcpc 2.x").
+  const majorMatch = targetCliRange.match(/^([^@]+)@[\^~=]?(\d+)/);
+  if (majorMatch) {
+    const [, name, major] = majorMatch;
+    return `${name} ${major}.x`;
+  }
+  // Operators outside [\^~=] (e.g. `>=`, `<`) — strip the @range suffix and
+  // return just the package name so the fingerprint line stays human-readable.
+  const nameOnly = targetCliRange.match(/^([^@]+)@/);
+  if (nameOnly) return nameOnly[1]!;
+  return targetCliRange;
 }

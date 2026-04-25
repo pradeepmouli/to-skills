@@ -168,9 +168,17 @@ describe('FastMcpAdapter', () => {
   });
 
   it('throws McpError(MISSING_LAUNCH_COMMAND) when no launch info is set', async () => {
-    const promise = adapter.render(baseSkill, makeCtx());
-    await expect(promise).rejects.toBeInstanceOf(McpError);
-    await expect(promise).rejects.toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
+    // Catch-once pattern: a rejected promise can only be safely consumed once
+    // through .rejects without risking unhandled-rejection warnings if the
+    // implementation ever gains async work before the throw.
+    let caught: unknown;
+    try {
+      await adapter.render(baseSkill, makeCtx());
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(McpError);
+    expect(caught).toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
   });
 
   it('falls back to npx-by-name when only packageName is set', async () => {

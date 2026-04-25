@@ -172,10 +172,17 @@ describe('McpProtocolAdapter', () => {
   });
 
   it('throws McpError(MISSING_LAUNCH_COMMAND) when neither packageName nor launchCommand is set', async () => {
-    const promise = adapter.render(baseSkill, makeCtx());
-    await expect(promise).rejects.toBeInstanceOf(McpError);
-    await expect(promise).rejects.toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
-    await expect(promise).rejects.toThrow(/none of/);
+    // Catch-once pattern: avoids attaching three rejection handlers to the
+    // same promise (would warn under future async refactors of render()).
+    let caught: unknown;
+    try {
+      await adapter.render(baseSkill, makeCtx());
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(McpError);
+    expect(caught).toMatchObject({ code: 'MISSING_LAUNCH_COMMAND' });
+    expect((caught as Error).message).toMatch(/none of/);
   });
 
   it('http-extract mode — ctx.httpEndpoint emits {url, headers} shape', async () => {
