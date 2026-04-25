@@ -2,7 +2,28 @@ import type { McpAuditIssue, McpAuditSeverity } from '@to-skills/core';
 import type { InvocationTarget } from './adapter/types.js';
 
 export type McpTransport =
-  | { type: 'stdio'; command: string; args?: string[]; env?: Record<string, string> }
+  | {
+      type: 'stdio';
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+      /**
+       * Maximum time (ms) to wait for `client.connect()` (the MCP `initialize`
+       * handshake) before failing with `INITIALIZE_FAILED`.
+       *
+       * Defaults to `30000` (30 s). Set to `0` (or any non-positive number) to
+       * disable the timeout entirely — useful when a caller explicitly opts
+       * into waiting indefinitely (e.g. an interactive session attached to a
+       * known-slow server).
+       *
+       * Without a timeout, a server that accepts the spawn but never completes
+       * the handshake (e.g. blocked on a sync call, deadlocked init code) hangs
+       * the extract process forever; the default 30 s ceiling preserves user
+       * sanity at the cost of a hard failure on legitimately-slow servers
+       * (callers can opt out via `initializeTimeoutMs: 0`).
+       */
+      initializeTimeoutMs?: number;
+    }
   | { type: 'http'; url: string; headers?: Record<string, string> };
 
 export interface AuditOptions {

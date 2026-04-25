@@ -38,6 +38,24 @@ import { PACKAGE_VERSION } from './version.js';
 const TRANSPORT_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'ENOTDIR', 'EBUSY']);
 
 /**
+ * Maximum bytes of stderr we retain from the spawned MCP server. Bounded so a
+ * chatty server can't OOM the extract process (FR-H007). Implemented as a
+ * ring-buffer over a list of {@link Buffer} chunks: when the running total
+ * exceeds the cap, the oldest chunk(s) are dropped. Buffer-level (not string-
+ * level) accumulation avoids splitting multi-byte UTF-8 sequences during
+ * capture; the {@link buildEarlyExitMessage} helper applies a separate
+ * 2 KiB display-trim before returning a string.
+ */
+const MAX_STDERR_BYTES = 64 * 1024;
+
+/**
+ * Default cap (ms) on the SDK `client.connect()` call (the MCP `initialize`
+ * handshake) for stdio transports (FR-H008). Caller-overridable via
+ * {@link McpTransport} (`initializeTimeoutMs`); set to `0` to disable.
+ */
+const DEFAULT_INITIALIZE_TIMEOUT_MS = 30_000;
+
+/**
  * Connect to a live MCP server, introspect its surface, and produce an
  * `ExtractedSkill`.
  *
@@ -119,20 +137,51 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
   );
 
   // Capture stderr chunks so a pre-initialize crash can surface readable
-  // diagnostics in the SERVER_EXITED_EARLY message. The SDK exposes
-  // `transport.stderr` as `Stream | null` — guard against null and tolerate
-  // either Buffer or string chunks.
-  const stderrChunks: string[] = [];
+  // diagnostics in the SERVER_EXITED_EARLY message. Bounded as a ring-buffer
+  // so a chatty server can't OOM the extract process (US4 / FR-H007). The SDK
+  // exposes `transport.stderr` as `Stream | null` — guard against null and
+  // tolerate either Buffer or string chunks.
+  //
+  // Buffer-level (not string-level) accumulation avoids splitting multi-byte
+  // UTF-8 sequences while we're still appending; the rendered message decodes
+  // once at the very end and applies an additional 2 KiB display-trim on top
+  // of the 64 KiB capture cap (both layers are intentional).
+  const stderrBuffers: Buffer[] = [];
+  let stderrBytes = 0;
+  /**
+   * Named listener so US5 (FR-H009) can `removeListener` it in `finally` —
+   * EventEmitter looks listeners up by reference identity, so an anonymous
+   * arrow would be unrecoverable across bundle iterations. Keep the cap logic
+   * inline here (rather than a free helper) so the closure's hot-path stays
+   * one allocation per chunk.
+   */
+  const onStderr = (chunk: Buffer | string): void => {
+    const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+    stderrBuffers.push(buf);
+    stderrBytes += buf.length;
+    // Drop whole oldest chunks until either (a) we're under the cap, or (b)
+    // we're down to the single most-recent chunk — at which point we slice
+    // its tail to fit the budget exactly.
+    while (stderrBytes > MAX_STDERR_BYTES && stderrBuffers.length > 1) {
+      const dropped = stderrBuffers.shift()!;
+      stderrBytes -= dropped.length;
+    }
+    if (stderrBytes > MAX_STDERR_BYTES && stderrBuffers.length === 1) {
+      const tail = stderrBuffers[0]!.subarray(stderrBuffers[0]!.length - MAX_STDERR_BYTES);
+      stderrBytes = tail.length;
+      stderrBuffers[0] = tail;
+    }
+  };
   const stderrStream = (transport as { stderr?: unknown }).stderr;
-  if (stderrStream && typeof stderrStream === 'object' && 'on' in stderrStream) {
-    (stderrStream as NodeJS.ReadableStream).on('data', (chunk: Buffer | string) => {
-      stderrChunks.push(typeof chunk === 'string' ? chunk : chunk.toString('utf8'));
-    });
-  }
+  const stderrEmitter =
+    stderrStream && typeof stderrStream === 'object' && 'on' in stderrStream
+      ? (stderrStream as NodeJS.ReadableStream)
+      : undefined;
+  stderrEmitter?.on('data', onStderr);
 
   /** Compose the SERVER_EXITED_EARLY message including any captured stderr. */
   const buildEarlyExitMessage = (): string => {
-    const stderrText = stderrChunks.join('');
+    const stderrText = Buffer.concat(stderrBuffers, stderrBytes).toString('utf8');
     const trimmedStderr = stderrText.length > 2048 ? `…${stderrText.slice(-2048)}` : stderrText;
     return trimmedStderr
       ? `MCP server process exited before initialize completed.\nServer stderr:\n${trimmedStderr}`
@@ -148,10 +197,30 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
     };
   });
 
+  // Optional initialize-handshake timeout (FR-H008). When `initializeTimeoutMs`
+  // is `<= 0`, the caller has explicitly opted out of the race.
+  const timeoutMs = options.transport.initializeTimeoutMs ?? DEFAULT_INITIALIZE_TIMEOUT_MS;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  const timeoutPromise =
+    timeoutMs > 0
+      ? new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            reject(
+              new McpError(
+                `MCP server initialize handshake timed out after ${timeoutMs}ms`,
+                'INITIALIZE_FAILED'
+              )
+            );
+          }, timeoutMs);
+        })
+      : null;
+
   try {
-    // Race connect() against the early-exit signal so a process-death
-    // beats a generic INITIALIZE_FAILED.
-    await Promise.race([client.connect(transport), exitPromise]);
+    // Race connect() against the early-exit signal (process death) and, when
+    // configured, the initialize-handshake timeout.
+    const racers: Promise<unknown>[] = [client.connect(transport), exitPromise];
+    if (timeoutPromise) racers.push(timeoutPromise);
+    await Promise.race(racers);
     return await introspect(client, options);
   } catch (err) {
     if (err instanceof McpError) throw err;
@@ -161,6 +230,7 @@ async function extractStdio(options: McpExtractOptions): Promise<ExtractedSkill>
     }
     throw new McpError(messageOf(err), 'INITIALIZE_FAILED', err);
   } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
     transport.onclose = undefined;
     try {
       await client.close();
