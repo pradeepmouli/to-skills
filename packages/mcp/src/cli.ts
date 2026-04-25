@@ -462,8 +462,14 @@ async function runConfigEntry(
 
   const skill = await extractMcpSkill(extractOpts);
 
+  // Use entryName (the config key) consistently as the directory base. The
+  // pre-flight check above used entryName; we keep using it here so the
+  // collision check protects the same directory writeSkills will write to.
+  // Since extractOpts.skillName === entryName, skill.name should already
+  // equal entryName in practice — but referencing entryName directly removes
+  // the implicit invariant.
   for (const adapter of adapters) {
-    const dirName = dirNameForTarget(skill.name, adapter, adapters.length);
+    const dirName = dirNameForTarget(entryName, adapter, adapters.length);
     const skillDir = join(opts.out, dirName);
 
     const renderOptions: Parameters<typeof renderSkill>[1] = {
@@ -477,9 +483,13 @@ async function runConfigEntry(
         ...(entry.headers !== undefined ? { headers: entry.headers } : {})
       };
     } else {
+      // Mirror extractOpts shape: omit `args` when the entry omits it rather
+      // than emitting an empty array. Otherwise the rendered mcp: frontmatter
+      // would carry `args: []` for entries that didn't declare any args, while
+      // the spawn would see undefined — observably different in the YAML.
       renderOptions.invocationLaunchCommand = {
         command: entry.command!,
-        ...(entry.args !== undefined ? { args: entry.args } : { args: [] }),
+        ...(entry.args !== undefined ? { args: entry.args } : {}),
         ...(entry.env !== undefined ? { env: entry.env } : {})
       };
     }
@@ -510,7 +520,16 @@ function pickWorstCode(codes: readonly McpErrorCode[]): McpErrorCode {
     'INITIALIZE_FAILED',
     'TRANSPORT_FAILED'
   ];
-  return ordered.find((c) => codes.includes(c)) ?? codes[0]!;
+  // Callers (`runConfigExtract`, `runBundle`) guard `codes.length > 0` before
+  // calling this. The fallback handles the maintenance-trap case where a
+  // future McpErrorCode gets added without an entry in the `ordered` list —
+  // we surface the first observed code rather than silently returning
+  // `undefined`-typed-as-McpErrorCode.
+  const fallback = codes[0];
+  if (fallback === undefined) {
+    throw new Error('pickWorstCode: codes array must be non-empty');
+  }
+  return ordered.find((c) => codes.includes(c)) ?? fallback;
 }
 
 /**
